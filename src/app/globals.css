@@ -118,5 +118,29 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Nunito', var(--font-geist-sans), sans-serif;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.2;
+  }
+  25% {
+    transform: translateY(-30px) rotate(90deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(-15px) rotate(180deg);
+    opacity: 0.2;
+  }
+  75% {
+    transform: translateY(-40px) rotate(270deg);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(0) rotate(360deg);
+    opacity: 0.2;
   }
 }
