@@ -1,0 +1,611 @@
+   501→   501→   501→                  : 'linear-gradient(135deg, #e8dcc8, #d4c5a9)',
+   502→   502→   502→                borderColor: item ? `${data.color}60` : '#c4b594',
+   503→   503→   503→                boxShadow: item
+   504→   504→   504→                  ? `0 2px 8px ${data.color}30, inset 0 1px 0 rgba(255,255,255,0.3)`
+   505→   505→   505→                  : 'inset 0 2px 4px rgba(0,0,0,0.08)',
+   506→   506→   506→                transform: item ? 'scale(1.05)' : 'scale(1)',
+   507→   507→   507→              }}
+   508→   508→   508→            >
+   509→   509→   509→              {item && (
+   510→   510→   510→                <motion.span
+   511→   511→   511→                  initial={{ scale: 0 }}
+   512→   512→   512→                  animate={{ scale: 1 }}
+   513→   513→   513→                  className="text-3xl md:text-4xl"
+   514→   514→   514→                >
+   515→   515→   515→                  {item.emoji}
+   516→   516→   516→                </motion.span>
+   517→   517→   517→              )}
+   518→   518→   518→            </button>
+   519→   519→   519→          ))}
+   520→   520→   520→        </div>
+   521→   521→   521→      )}
+   522→   522→   522→
+   523→   523→   523→      {feedback && (
+   524→   524→   524→        <motion.div
+   525→   525→   525→          key={feedback}
+   526→   526→   526→          initial={{ opacity: 0, y: 10 }}
+   527→   527→   527→          animate={{ opacity: 1, y: 0 }}
+   528→   528→   528→          className="absolute bottom-3 left-1/2 -translate-x-1/2"
+   529→   529→   529→        >
+   530→   530→   530→          <span className={`text-xs font-bold px-3 py-1 rounded-full sk-btn ${feedback === 'Miss!' ? 'opacity-50' : ''}`}>
+   531→   531→   531→            {feedback}
+   532→   532→   532→          </span>
+   533→   533→   533→        </motion.div>
+   534→   534→   534→      )}
+   535→   535→   535→    </div>
+   536→   536→   536→  );
+   537→   537→   537→}
+   538→   538→   538→
+   539→   539→   539→/* ═══════════════════════════════════════════════════
+   540→   540→   540→   HERO / LANDING (SKEUOMORPHIC)
+   541→   541→   541→   ═══════════════════════════════════════════════════ */
+   542→   542→   542→function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
+   543→   543→   543→  const [year, setYear] = useState('');
+   544→   544→   544→  const [hoveredDecade, setHoveredDecade] = useState<string | null>(null);
+   545→   545→   545→  const [tapeRotate] = useState(() => -2 + Math.random() * 4);
+   546→   546→   546→
+   547→   547→   547→  const handleSubmit = () => {
+   548→   548→   548→    const y = parseInt(year);
+   549→   549→   549→    if (y >= 1970 && y <= 2019) onSubmit(y);
+   550→   550→   550→  };
+   551→   551→   551→
+   552→   552→   552→  const decades = Object.values(nostalgiaData);
+   553→   553→   553→
+   554→   554→   554→  return (
+   555→   555→   555→    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative">
+   556→   556→   556→      <DustMotes />
+   557→   557→   557→
+   558→   558→   558→      <motion.div
+   559→   559→   559→        initial={{ opacity: 0, y: 30 }}
+   560→   560→   560→        animate={{ opacity: 1, y: 0 }}
+   561→   561→   561→        transition={{ duration: 0.8 }}
+   562→   562→   562→        className="text-center mb-8 z-10"
+   563→   563→   563→      >
+   564→   564→   564→        <motion.div
+   565→   565→   565→          animate={{ rotate: [0, 3, -3, 0] }}
+   566→   566→   566→          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+   567→   567→   567→          className="text-6xl md:text-8xl mb-3"
+   568→   568→   568→          style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
+   569→   569→   569→        >
+   570→   570→   570→          📼
+   571→   571→   571→        </motion.div>
+   572→   572→   572→        <h1
+   573→   573→   573→          className="text-5xl md:text-7xl font-black tracking-tight mb-3 text-transparent bg-clip-text"
+   574→   574→   574→          style={{
+   575→   575→   575→            backgroundImage: 'linear-gradient(180deg, #5c4033 0%, #8b5e3c 40%, #c4956a 100%)',
+   576→   576→   576→            filter: 'drop-shadow(0 2px 1px rgba(255,255,255,0.4))',
+   577→   577→   577→          }}
+   578→   578→   578→        >
+   579→   579→   579→          Rewind
+   580→   580→   580→        </h1>
+   581→   581→   581→        <p className="text-base md:text-lg text-[#8b7355] max-w-md mx-auto leading-relaxed">
+   582→   582→   582→          Take a trip back to the days when life was simple.
+   583→   583→   583→          <br className="hidden md:block" />
+   584→   584→   584→          Remember who you were before the world told you who to be.
+   585→   585→   585→        </p>
+   586→   586→   586→      </motion.div>
+   587→   587→   587→
+   588→   588→   588→      <motion.div
+   589→   589→   589→        initial={{ opacity: 0, scale: 0.9, rotate: -1 }}
+   590→   590→   590→        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+   591→   591→   591→        transition={{ duration: 0.7, delay: 0.2, type: 'spring' }}
+   592→   592→   592→        className="z-10 w-full max-w-sm"
+   593→   593→   593→      >
+   594→   594→   594→        <div className="sk-paper rounded-lg p-6 sk-tape relative overflow-hidden sk-noise" style={{ '--tape-rotate': `${tapeRotate}deg` } as React.CSSProperties}>
+   595→   595→   595→          <label className="block text-sm font-bold text-[#5c4033] mb-3 text-center tracking-wide uppercase">
+   596→   596→   596→            When were you born?
+   597→   597→   597→          </label>
+   598→   598→   598→          <div className="flex gap-2">
+   599→   599→   599→            <input
+   600→   600→   600→              type="number"
+   601→   601→   601→              min={1970}
+   602→   602→   602→              max={2019}
+   603→   603→   603→              placeholder="e.g. 1992"
+   604→   604→   604→              value={year}
+   605→   605→   605→              onChange={(e) => setYear(e.target.value)}
+   606→   606→   606→              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+   607→   607→   607→              className="sk-inset flex-1 text-center text-2xl font-bold rounded-lg p-3 text-[#5c4033] focus:outline-none transition-shadow focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),0_0_0_2px_#8b5e3c]"
+   608→   608→   608→              aria-label="Birth year"
+   609→   609→   609→            />
+   610→   610→   610→          </div>
+   611→   611→   611→          <button
+   612→   612→   612→            onClick={handleSubmit}
+   613→   613→   613→            className="sk-leather w-full mt-4 text-[#faf6eb] font-bold text-lg py-3.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] flex items-center justify-center gap-2"
+   614→   614→   614→          >
+   615→   615→   615→            <Clock className="h-5 w-5" />
+   616→   616→   616→            Take Me Back
+   617→   617→   617→          </button>
+   618→   618→   618→          <p className="text-xs text-center text-[#8b7355] mt-3 font-medium">
+   619→   619→   619→            1970 – 2019 &nbsp;·&nbsp; Your memories, your era
+   620→   620→   620→          </p>
+   621→   621→   621→        </div>
+   622→   622→   622→      </motion.div>
+   623→   623→   623→
+   624→   624→   624→      <motion.div
+   625→   625→   625→        initial={{ opacity: 0 }}
+   626→   626→   626→        animate={{ opacity: 1 }}
+   627→   627→   627→        transition={{ delay: 0.8 }}
+   628→   628→   628→        className="flex flex-wrap justify-center gap-3 mt-8 z-10 max-w-lg"
+   629→   629→   629→      >
+   630→   630→   630→        {decades.map((d, i) => (
+   631→   631→   631→          <motion.button
+   632→   632→   632→            key={d.decade}
+   633→   633→   633→            onMouseEnter={() => setHoveredDecade(d.decade)}
+   634→   634→   634→            onMouseLeave={() => setHoveredDecade(null)}
+   635→   635→   635→            onClick={() => {
+   636→   636→   636→              const y = parseInt(d.years.split('–')[0]);
+   637→   637→   637→              setYear(String(y));
+   638→   638→   638→              onSubmit(y);
+   639→   639→   639→            }}
+   640→   640→   640→            whileHover={{ scale: 1.08, y: -3 }}
+   641→   641→   641→            whileTap={{ scale: 0.95 }}
+   642→   642→   642→            className="sk-paper rounded-lg px-4 py-2 text-sm font-bold cursor-pointer transition-all duration-200 relative overflow-hidden sk-noise"
+   643→   643→   643→            style={{
+   644→   644→   644→              borderColor: hoveredDecade === d.decade ? d.color : '#c4b594',
+   645→   645→   645→              color: hoveredDecade === d.decade ? '#5c4033' : '#8b7355',
+   646→   646→   646→              boxShadow: hoveredDecade === d.decade
+   647→   647→   647→                ? `0 4px 16px ${d.color}40, 0 1px 3px rgba(0,0,0,0.1)`
+   648→   648→   648→                : '0 2px 6px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.06)',
+   649→   649→   649→            }}
+   650→   650→   650→          >
+   651→   651→   651→            {d.decade}
+   652→   652→   652→          </motion.button>
+   653→   653→   653→        ))}
+   654→   654→   654→      </motion.div>
+   655→   655→   655→
+   656→   656→   656→      <motion.p
+   657→   657→   657→        initial={{ opacity: 0 }}
+   658→   658→   658→        animate={{ opacity: 1 }}
+   659→   659→   659→        transition={{ delay: 1.2 }}
+   660→   660→   660→        className="text-center text-[#8b7355] text-sm mt-8 z-10 max-w-sm leading-relaxed"
+   661→   661→   661→      >
+   662→   662→   662→        Everybody is running for jobs, money, markets…
+   663→   663→   663→        <br />but you&apos;re still <span className="font-extrabold text-[#5c4033]">human</span>. Take a breath. Remember the good days.
+   664→   664→   664→      </motion.p>
+   665→   665→   665→    </div>
+   666→   666→   666→  );
+   667→   667→   667→}
+   668→   668→   668→
+   669→   669→   669→/* ═══════════════════════════════════════════════════
+   670→   670→   670→   QUOTE BANNER
+   671→   671→   671→   ═══════════════════════════════════════════════════ */
+   672→   672→   672→function QuoteBanner({ quotes }: { quotes: string[] }) {
+   673→   673→   673→  const [idx, setIdx] = useState(0);
+   674→   674→   674→  useEffect(() => {
+   675→   675→   675→    const t = setInterval(() => setIdx((i) => (i + 1) % quotes.length), 8000);
+   676→   676→   676→    return () => clearInterval(t);
+   677→   677→   677→  }, [quotes.length]);
+   678→   678→   678→
+   679→   679→   679→  return (
+   680→   680→   680→    <AnimatePresence mode="wait">
+   681→   681→   681→      <motion.div
+   682→   682→   682→        key={idx}
+   683→   683→   683→        initial={{ opacity: 0, y: 10 }}
+   684→   684→   684→        animate={{ opacity: 1, y: 0 }}
+   685→   685→   685→        exit={{ opacity: 0, y: -10 }}
+   686→   686→   686→        transition={{ duration: 0.5 }}
+   687→   687→   687→        className="sk-lined p-4 rounded-lg italic text-[#5c4033] text-sm md:text-base text-center"
+   688→   688→   688→      >
+   689→   689→   689→        &ldquo;{quotes[idx]}&rdquo;
+   690→   690→   690→      </motion.div>
+   691→   691→   691→    </AnimatePresence>
+   692→   692→   692→  );
+   693→   693→   693→}
+   694→   694→   694→
+   695→   695→   695→/* ═══════════════════════════════════════════════════
+   696→   696→   696→   MEMORY CARD (Polaroid)
+   697→   697→   697→   ═══════════════════════════════════════════════════ */
+   698→   698→   698→function MemoryCard({ item, color, index }: { item: NostalgiaItem; color: string; index: number }) {
+   699→   699→   699→  const [rot] = useState(() => -2 + Math.random() * 4);
+   700→   700→   700→  return (
+   701→   701→   701→    <motion.div
+   702→   702→   702→      initial={{ opacity: 0, scale: 0.9 }}
+   703→   703→   703→      whileInView={{ opacity: 1, scale: 1 }}
+   704→   704→   704→      viewport={{ once: true, margin: '-20px' }}
+   705→   705→   705→      transition={{ duration: 0.4, delay: index * 0.04 }}
+   706→   706→   706→    >
+   707→   707→   707→      <div
+   708→   708→   708→        className="sk-polaroid rounded-sm transition-all duration-300 cursor-default relative overflow-hidden sk-noise"
+   709→   709→   709→        style={{ '--rotate': `${rot}deg` } as React.CSSProperties}
+   710→   710→   710→      >
+   711→   711→   711→        <div
+   712→   712→   712→          className="h-20 flex items-center justify-center rounded-sm"
+   713→   713→   713→          style={{ background: `linear-gradient(135deg, ${color}15, ${color}08)` }}
+   714→   714→   714→        >
+   715→   715→   715→          <span className="text-4xl drop-shadow-sm">{item.emoji}</span>
+   716→   716→   716→        </div>
+   717→   717→   717→        <div className="pt-2 pb-1 px-1">
+   718→   718→   718→          <h4 className="font-extrabold text-xs text-[#3d2b1f] leading-tight">{item.title}</h4>
+   719→   719→   719→          <p className="text-[10px] text-[#8b7355] mt-0.5 leading-relaxed line-clamp-2">{item.description}</p>
+   720→   720→   720→        </div>
+   721→   721→   721→      </div>
+   722→   722→   722→    </motion.div>
+   723→   723→   723→  );
+   724→   724→   724→}
+   725→   725→   725→
+   726→   726→   726→/* ═══════════════════════════════════════════════════
+   727→   727→   727→   CATEGORY GRID
+   728→   728→   728→   ═══════════════════════════════════════════════════ */
+   729→   729→   729→function CategoryGrid({ items, color }: { items: NostalgiaItem[]; color: string }) {
+   730→   730→   730→  return (
+   731→   731→   731→    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   732→   732→   732→      {items.map((item, i) => (
+   733→   733→   733→        <MemoryCard key={item.title} item={item} color={color} index={i} />
+   734→   734→   734→      ))}
+   735→   735→   735→    </div>
+   736→   736→   736→  );
+   737→   737→   737→}
+   738→   738→   738→
+   739→   739→   739→/* ═══════════════════════════════════════════════════
+   740→   740→   740→   PERSONAL TIMELINE
+   741→   741→   741→   ═══════════════════════════════════════════════════ */
+   742→   742→   742→function PersonalTimeline({ birthYear }: { birthYear: number }) {
+   743→   743→   743→  const timeline = getPersonalTimeline(birthYear);
+   744→   744→   744→  return (
+   745→   745→   745→    <div className="space-y-4">
+   746→   746→   746→      {timeline.map((entry, i) => {
+   747→   747→   747→        const d = nostalgiaData[entry.decade];
+   748→   748→   748→        return (
+   749→   749→   749→          <motion.div
+   750→   750→   750→            key={entry.decade}
+   751→   751→   751→            initial={{ opacity: 0, x: -20 }}
+   752→   752→   752→            whileInView={{ opacity: 1, x: 0 }}
+   753→   753→   753→            viewport={{ once: true }}
+   754→   754→   754→            transition={{ delay: i * 0.15 }}
+   755→   755→   755→          >
+   756→   756→   756→            <div className="sk-paper rounded-lg p-4 flex items-center gap-4 sk-noise relative overflow-hidden" style={{ '--tape-rotate': `${-3 + i * 2}deg` } as React.CSSProperties}>
+   757→   757→   757→              <div
+   758→   758→   758→                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg flex-shrink-0"
+   759→   759→   759→                style={{
+   760→   760→   760→                  background: `linear-gradient(135deg, ${d.color}, ${d.color}cc)`,
+   761→   761→   761→                  boxShadow: `0 3px 8px ${d.color}50, inset 0 1px 0 rgba(255,255,255,0.3)`,
+   762→   762→   762→                }}
+   763→   763→   763→              >
+   764→   764→   764→                {entry.age.replace('Age ', '')}
+   765→   765→   765→              </div>
+   766→   766→   766→              <div className="flex-1 min-w-0">
+   767→   767→   767→                <div className="flex items-center gap-2">
+   768→   768→   768→                  <span className="font-extrabold text-sm text-[#3d2b1f]">{entry.decade}</span>
+   769→   769→   769→                  <span className="sk-vhs-label text-[10px] font-bold text-[#8b7355] px-2 py-0.5 rounded">{entry.age}</span>
+   770→   770→   770→                </div>
+   771→   771→   771→                <p className="text-xs text-[#8b7355] mt-0.5">{entry.label}</p>
+   772→   772→   772→              </div>
+   773→   773→   773→              <ChevronRight className="h-4 w-4 text-[#b8a888]" />
+   774→   774→   774→            </div>
+   775→   775→   775→          </motion.div>
+   776→   776→   776→        );
+   777→   777→   777→      })}
+   778→   778→   778→    </div>
+   779→   779→   779→  );
+   780→   780→   780→}
+   781→   781→   781→
+   782→   782→   782→/* ═══════════════════════════════════════════════════
+   783→   783→   783→   ERA SPOTLIGHT (VHS Tape)
+   784→   784→   784→   ═══════════════════════════════════════════════════ */
+   785→   785→   785→function EraSpotlight({ data }: { data: DecadeData }) {
+   786→   786→   786→  const [spotIdx, setSpotIdx] = useState(0);
+   787→   787→   787→  const allItems = useMemo(() => [
+   788→   788→   788→    ...data.cartoons, ...data.toys, ...data.music, ...data.movies,
+   789→   789→   789→    ...data.snacks, ...data.games, ...data.trends, ...data.schoolLife, ...data.tech,
+   790→   790→   790→  ], [data]);
+   791→   791→   791→  const spot = allItems[spotIdx % allItems.length];
+   792→   792→   792→
+   793→   793→   793→  useEffect(() => {
+   794→   794→   794→    const t = setInterval(() => setSpotIdx((i) => i + 1), 5000);
+   795→   795→   795→    return () => clearInterval(t);
+   796→   796→   796→  }, [allItems.length]);
+   797→   797→   797→
+   798→   798→   798→  return (
+   799→   799→   799→    <AnimatePresence mode="wait">
+   800→   800→   800→      <motion.div
+   801→   801→   801→        key={spotIdx}
+   802→   802→   802→        initial={{ opacity: 0, scale: 0.95 }}
+   803→   803→   803→        animate={{ opacity: 1, scale: 1 }}
+   804→   804→   804→        exit={{ opacity: 0, scale: 0.95 }}
+   805→   805→   805→        transition={{ duration: 0.5 }}
+   806→   806→   806→      >
+   807→   807→   807→        <div className="sk-paper-aged rounded-xl p-5 sk-noise relative overflow-hidden">
+   808→   808→   808→          <div className="absolute top-0 left-0 right-0 h-10 sk-wood rounded-t-xl flex items-center px-4">
+   809→   809→   809→            <div className="flex gap-1.5">
+   810→   810→   810→              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+   811→   811→   811→              <span className="w-2.5 h-2.5 rounded-full bg-[#d4a574] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+   812→   812→   812→              <span className="w-2.5 h-2.5 rounded-full bg-green-600 shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+   813→   813→   813→            </div>
+   814→   814→   814→            <span className="ml-auto text-[10px] font-bold text-[#faf6eb] tracking-widest uppercase">REC</span>
+   815→   815→   815→          </div>
+   816→   816→   816→          <div className="pt-12 text-center">
+   817→   817→   817→            <motion.span
+   818→   818→   818→              animate={{ scale: [1, 1.1, 1] }}
+   819→   819→   819→              transition={{ duration: 2, repeat: Infinity }}
+   820→   820→   820→              className="text-7xl block mb-3"
+   821→   821→   821→              style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }}
+   822→   822→   822→            >
+   823→   823→   823→              {spot.emoji}
+   824→   824→   824→            </motion.span>
+   825→   825→   825→            <span className="sk-vhs-label text-[10px] font-bold text-[#8b7355] px-3 py-1 rounded inline-block mb-2">
+   826→   826→   826→              {spot.category} &middot; {data.decade}
+   827→   827→   827→            </span>
+   828→   828→   828→            <h3 className="text-xl font-black text-[#3d2b1f]">{spot.title}</h3>
+   829→   829→   829→            <p className="text-sm text-[#8b7355] mt-2 leading-relaxed max-w-sm mx-auto">{spot.description}</p>
+   830→   830→   830→          </div>
+   831→   831→   831→        </div>
+   832→   832→   832→      </motion.div>
+   833→   833→   833→    </AnimatePresence>
+   834→   834→   834→  );
+   835→   835→   835→}
+   836→   836→   836→
+   837→   837→   837→/* ═══════════════════════════════════════════════════
+   838→   838→   838→   BREATHER MESSAGE (Sticky note)
+   839→   839→   839→   ═══════════════════════════════════════════════════ */
+   840→   840→   840→function BreatherMessage() {
+   841→   841→   841→  const messages = [
+   842→   842→   842→    { title: "You're doing great", body: "The fact that you're here, remembering the simple times, means you still have that spark. Life gets heavy — that's okay. Take it one day at a time.", emoji: "💛" },
+   843→   843→   843→    { title: "You were enough then", body: "Back when your biggest worry was getting home before dark. You didn't need to prove anything. You were enough just being you. You still are.", emoji: "🌿" },
+   844→   844→   844→    { title: "Slow down", body: "The world tells you to hustle, grind, achieve. But some of the best moments of your life happened when you were doing absolutely nothing. Remember that.", emoji: "☕" },
+   845→   845→   845→    { title: "You're still that kid", body: "Inside every stressed adult is a kid who lit up at the sound of the ice cream truck, who believed in magic, who laughed until their stomach hurt. That kid is still in you.", emoji: "✨" },
+   846→   846→   846→    { title: "Breathe", body: "Close your eyes. Take a deep breath. You've survived 100% of your worst days. You're stronger than you think, and it's okay to rest.", emoji: "🍃" },
+   847→   847→   847→  ];
+   848→   848→   848→  const [idx, setIdx] = useState(0);
+   849→   849→   849→  useEffect(() => {
+   850→   850→   850→    const t = setInterval(() => setIdx((i) => (i + 1) % messages.length), 12000);
+   851→   851→   851→    return () => clearInterval(t);
+   852→   852→   852→  }, [messages.length]);
+   853→   853→   853→
+   854→   854→   854→  return (
+   855→   855→   855→    <AnimatePresence mode="wait">
+   856→   856→   856→      <motion.div
+   857→   857→   857→        key={idx}
+   858→   858→   858→        initial={{ opacity: 0, y: 15 }}
+   859→   859→   859→        animate={{ opacity: 1, y: 0 }}
+   860→   860→   860→        exit={{ opacity: 0, y: -15 }}
+   861→   861→   861→        transition={{ duration: 0.6 }}
+   862→   862→   862→        className="flex justify-center"
+   863→   863→   863→      >
+   864→   864→   864→        <div
+   865→   865→   865→          className="max-w-md p-5 rounded-sm overflow-hidden"
+   866→   866→   866→          style={{
+   867→   867→   867→            background: 'linear-gradient(135deg, #fff9c4, #fff176)',
+   868→   868→   868→            boxShadow: '0 3px 10px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)',
+   869→   869→   869→          }}
+   870→   870→   870→        >
+   871→   871→   871→          <span className="text-2xl block mb-2">{messages[idx].emoji}</span>
+   872→   872→   872→          <h3 className="text-base font-black text-[#5c4033]">{messages[idx].title}</h3>
+   873→   873→   873→          <p className="text-xs text-[#7a5c3e] mt-1.5 leading-relaxed">{messages[idx].body}</p>
+   874→   874→   874→        </div>
+   875→   875→   875→      </motion.div>
+   876→   876→   876→    </AnimatePresence>
+   877→   877→   877→  );
+   878→   878→   878→}
+   879→   879→   879→
+   880→   880→   880→/* ═══════════════════════════════════════════════════
+   881→   881→   881→   DASHBOARD
+   882→   882→   882→   ═══════════════════════════════════════════════════ */
+   883→   883→   883→function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => void }) {
+   884→   884→   884→  const decadeKey = getDecadeForYear(birthYear);
+   885→   885→   885→  const data = nostalgiaData[decadeKey];
+   886→   886→   886→  const [activeTab, setActiveTab] = useState('memories');
+   887→   887→   887→  const [activeCategory, setActiveCategory] = useState('all');
+   888→   888→   888→
+   889→   889→   889→  const categoryMap: Record<string, { label: string; icon: React.ReactNode; items: NostalgiaItem[] }> = {
+   890→   890→   890→    cartoons: { label: 'Cartoons', icon: <Film className="h-4 w-4" />, items: data.cartoons },
+   891→   891→   891→    toys: { label: 'Toys', icon: <Star className="h-4 w-4" />, items: data.toys },
+   892→   892→   892→    music: { label: 'Music', icon: <Music className="h-4 w-4" />, items: data.music },
+   893→   893→   893→    movies: { label: 'Movies', icon: <Film className="h-4 w-4" />, items: data.movies },
+   894→   894→   894→    snacks: { label: 'Snacks', icon: <Heart className="h-4 w-4" />, items: data.snacks },
+   895→   895→   895→    games: { label: 'Games', icon: <Gamepad2 className="h-4 w-4" />, items: data.games },
+   896→   896→   896→    trends: { label: 'Trends', icon: <Sparkles className="h-4 w-4" />, items: data.trends },
+   897→   897→   897→    school: { label: 'School Life', icon: <BookOpen className="h-4 w-4" />, items: data.schoolLife },
+   898→   898→   898→    tech: { label: 'Tech', icon: <Monitor className="h-4 w-4" />, items: data.tech },
+   899→   899→   899→  };
+   900→   900→   900→
+   901→   901→   901→  const tabs = [
+   902→   902→   902→    { id: 'memories', label: 'Memories', icon: <Sparkles className="h-4 w-4" /> },
+   903→   903→   903→    { id: 'games', label: 'Play Games', icon: <Gamepad2 className="h-4 w-4" /> },
+   904→   904→   904→    { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
+   905→   905→   905→  ];
+   906→   906→   906→
+   907→   907→   907→  return (
+   908→   908→   908→    <div className="min-h-screen flex flex-col">
+   909→   909→   909→      {/* Header - wood grain */}
+   910→   910→   910→      <header className="sticky top-0 z-30 sk-wood px-2 py-0">
+   911→   911→   911→        <div className="max-w-5xl mx-auto py-2.5 flex items-center justify-between">
+   912→   912→   912→          <div className="flex items-center gap-3">
+   913→   913→   913→            <button onClick={onBack} className="sk-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
+   914→   914→   914→              <ArrowLeft className="h-3.5 w-3.5" /> Back
+   915→   915→   915→            </button>
+   916→   916→   916→            <div className="h-4 w-px bg-[#a08868]" />
+   917→   917→   917→            <h2 className="font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+   918→   918→   918→              Rewind
+   919→   919→   919→            </h2>
+   920→   920→   920→          </div>
+   921→   921→   921→          <div className="sk-vhs-label text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
+   922→   922→   922→            {data.decade} &middot; Born {birthYear}
+   923→   923→   923→          </div>
+   924→   924→   924→        </div>
+   925→   925→   925→      </header>
+   926→   926→   926→
+   927→   927→   927→      <main className="flex-1 sk-cork min-h-0">
+   928→   928→   928→        <div className="max-w-5xl mx-auto px-3 md:px-4 py-5 pb-20">
+   929→   929→   929→          {/* Hero */}
+   930→   930→   930→          <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
+   931→   931→   931→            <div className="sk-paper rounded-xl p-5 text-center sk-noise relative overflow-hidden">
+   932→   932→   932→              <h1 className="text-3xl md:text-4xl font-black mb-1" style={{ color: data.color, textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}>
+   933→   933→   933→                {data.decade}
+   934→   934→   934→              </h1>
+   935→   935→   935→              <p className="text-sm text-[#8b7355] font-medium">{data.tagline}</p>
+   936→   936→   936→            </div>
+   937→   937→   937→          </motion.section>
+   938→   938→   938→
+   939→   939→   939→          {/* Quote */}
+   940→   940→   940→          <section className="mb-6">
+   941→   941→   941→            <QuoteBanner quotes={data.quotes} />
+   942→   942→   942→          </section>
+   943→   943→   943→
+   944→   944→   944→          {/* Tab bar - metal */}
+   945→   945→   945→          <div className="sk-metal rounded-xl p-1 mb-6 flex gap-1 shadow-[0_3px_8px_rgba(0,0,0,0.2)]">
+   946→   946→   946→            {tabs.map(tab => (
+   947→   947→   947→              <button
+   948→   948→   948→                key={tab.id}
+   949→   949→   949→                onClick={() => setActiveTab(tab.id)}
+   950→   950→   950→                className={`flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer ${
+   951→   951→   951→                  activeTab === tab.id
+   952→   952→   952→                    ? 'sk-paper shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] text-[#3d2b1f]'
+   953→   953→   953→                    : 'text-[#6b6b6b] hover:text-[#3d2b1f] hover:bg-white/20'
+   954→   954→   954→                }`}
+   955→   955→   955→              >
+   956→   956→   956→                {tab.icon}
+   957→   957→   957→                <span className="hidden sm:inline">{tab.label}</span>
+   958→   958→   958→              </button>
+   959→   959→   959→            ))}
+   960→   960→   960→          </div>
+   961→   961→   961→
+   962→   962→   962→          {/* ═══ MEMORIES TAB ═══ */}
+   963→   963→   963→          {activeTab === 'memories' && (
+   964→   964→   964→            <AnimatePresence mode="wait">
+   965→   965→   965→              <motion.div key="memories" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   966→   966→   966→                <section className="mb-6"><BreatherMessage /></section>
+   967→   967→   967→
+   968→   968→   968→                <section className="mb-8">
+   969→   969→   969→                  <h2 className="text-sm font-black text-[#5c4033] uppercase tracking-widest mb-3 flex items-center gap-2">
+   970→   970→   970→                    <Star className="h-4 w-4" style={{ color: data.color }} /> Remember This?
+   971→   971→   971→                  </h2>
+   972→   972→   972→                  <EraSpotlight data={data} />
+   973→   973→   973→                </section>
+   974→   974→   974→
+   975→   975→   975→                <div className="flex flex-wrap gap-2 mb-4">
+   976→   976→   976→                  <button
+   977→   977→   977→                    onClick={() => setActiveCategory('all')}
+   978→   978→   978→                    className={`sk-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${activeCategory === 'all' ? 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] bg-[#d4c5a9]' : ''}`}
+   979→   979→   979→                  >
+   980→   980→   980→                    All
+   981→   981→   981→                  </button>
+   982→   982→   982→                  {Object.entries(categoryMap).map(([key, cat]) => (
+   983→   983→   983→                    <button
+   984→   984→   984→                      key={key}
+   985→   985→   985→                      onClick={() => setActiveCategory(key)}
+   986→   986→   986→                      className={`sk-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1 ${activeCategory === key ? 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] bg-[#d4c5a9]' : ''}`}
+   987→   987→   987→                    >
+   988→   988→   988→                      {cat.icon}
+   989→   989→   989→                      <span className="hidden sm:inline">{cat.label}</span>
+   990→   990→   990→                    </button>
+   991→   991→   991→                  ))}
+   992→   992→   992→                </div>
+   993→   993→   993→
+   994→   994→   994→                {activeCategory === 'all' ? (
+   995→   995→   995→                  Object.entries(categoryMap).map(([key, cat]) => (
+   996→   996→   996→                    <div key={key} className="mb-8 last:mb-0">
+   997→   997→   997→                      <h3 className="text-xs font-black text-[#8b7355] uppercase tracking-widest mb-3 flex items-center gap-2">
+   998→   998→   998→                        {cat.icon} {cat.label}
+   999→   999→   999→                      </h3>
+  1000→  1000→  1000→                      <CategoryGrid items={cat.items} color={data.color} />
+  1001→  1001→  1001→                    </div>
+  1002→  1002→  1002→                  ))
+  1003→  1003→  1003→                ) : (
+  1004→  1004→  1004→                  <CategoryGrid items={categoryMap[activeCategory].items} color={data.color} />
+  1005→  1005→  1005→                )}
+  1006→  1006→  1006→              </motion.div>
+  1007→  1007→  1007→            </AnimatePresence>
+  1008→  1008→  1008→          )}
+  1009→  1009→  1009→
+  1010→  1010→  1010→          {/* ═══ GAMES TAB ═══ */}
+  1011→  1011→  1011→          {activeTab === 'games' && (
+  1012→  1012→  1012→            <AnimatePresence mode="wait">
+  1013→  1013→  1013→              <motion.div key="games" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+  1014→  1014→  1014→                <div className="text-center mb-5">
+  1015→  1015→  1015→                  <p className="text-sm text-[#5c4033] font-medium">Take a break from the rush. Play some games from the heart.</p>
+  1016→  1016→  1016→                </div>
+  1017→  1017→  1017→                <div className="space-y-6">
+  1018→  1018→  1018→                  <MemoryMatchGame data={data} />
+  1019→  1019→  1019→                  <GuessTheYearGame data={data} />
+  1020→  1020→  1020→                  <WhackGame data={data} />
+  1021→  1021→  1021→                </div>
+  1022→  1022→  1022→              </motion.div>
+  1023→  1023→  1023→            </AnimatePresence>
+  1024→  1024→  1024→          )}
+  1025→  1025→  1025→
+  1026→  1026→  1026→          {/* ═══ TIMELINE TAB ═══ */}
+  1027→  1027→  1027→          {activeTab === 'timeline' && (
+  1028→  1028→  1028→            <AnimatePresence mode="wait">
+  1029→  1029→  1029→              <motion.div key="timeline" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+  1030→  1030→  1030→                <h2 className="text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
+  1031→  1031→  1031→                  <Clock className="h-4 w-4" style={{ color: data.color }} /> Your Life Timeline
+  1032→  1032→  1032→                </h2>
+  1033→  1033→  1033→                <PersonalTimeline birthYear={birthYear} />
+  1034→  1034→  1034→
+  1035→  1035→  1035→                <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mt-10">
+  1036→  1036→  1036→                  <div className="sk-paper rounded-xl p-6 sk-noise relative overflow-hidden max-w-md mx-auto">
+  1037→  1037→  1037→                    <motion.div
+  1038→  1038→  1038→                      animate={{ rotate: [0, 8, -8, 0] }}
+  1039→  1039→  1039→                      transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+  1040→  1040→  1040→                      className="text-5xl mb-3"
+  1041→  1041→  1041→                    >🫂</motion.div>
+  1042→  1042→  1042→                    <h3 className="text-lg font-black text-[#3d2b1f] mb-2">You made it through.</h3>
+  1043→  1043→  1043→                    <p className="text-xs text-[#8b7355] leading-relaxed">
+  1044→  1044→  1044→                      Every memory on this page is a piece of who you are. The world moves fast, but your roots are deep. You came from simpler times, and that strength lives in you still. Take care of yourself.
+  1045→  1045→  1045→                    </p>
+  1046→  1046→  1046→                    <button onClick={onBack} className="sk-btn px-5 py-2.5 rounded-lg font-bold mt-4 cursor-pointer inline-flex items-center gap-2">
+  1047→  1047→  1047→                      <RefreshCw className="h-4 w-4" /> Start Over
+  1048→  1048→  1048→                    </button>
+  1049→  1049→  1049→                  </div>
+  1050→  1050→  1050→                </motion.div>
+  1051→  1051→  1051→              </motion.div>
+  1052→  1052→  1052→            </AnimatePresence>
+  1053→  1053→  1053→          )}
+  1054→  1054→  1054→        </div>
+  1055→  1055→  1055→      </main>
+  1056→  1056→  1056→
+  1057→  1057→  1057→      <footer className="sk-leather px-4 py-3 mt-auto">
+  1058→  1058→  1058→        <div className="max-w-5xl mx-auto text-center">
+  1059→  1059→  1059→          <p className="text-[10px] text-[#d4a574] font-medium" style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}>
+  1060→  1060→  1060→            Rewind — because you&apos;re human, not a machine. Take it easy.
+  1061→  1061→  1061→          </p>
+  1062→  1062→  1062→        </div>
+  1063→  1063→  1063→      </footer>
+  1064→  1064→  1064→    </div>
+  1065→  1065→  1065→  );
+  1066→  1066→  1066→}
+  1067→  1067→  1067→
+  1068→  1068→  1068→/* ═══════════════════════════════════════════════════
+  1069→  1069→  1069→   APP ROOT
+  1070→  1070→  1070→   ═══════════════════════════════════════════════════ */
+  1071→  1071→  1071→export default function Home() {
+  1072→  1072→  1072→  const [birthYear, setBirthYear] = useState<number | null>(null);
+  1073→  1073→  1073→
+  1074→  1074→  1074→  const handleSubmit = useCallback((year: number) => {
+  1075→  1075→  1075→    setBirthYear(year);
+  1076→  1076→  1076→    window.scrollTo({ top: 0, behavior: 'smooth' });
+  1077→  1077→  1077→  }, []);
+  1078→  1078→  1078→
+  1079→  1079→  1079→  const handleBack = useCallback(() => {
+  1080→  1080→  1080→    setBirthYear(null);
+  1081→  1081→  1081→  }, []);
+  1082→  1082→  1082→
+  1083→  1083→  1083→  return (
+  1084→  1084→  1084→    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(180deg, #f5edd6 0%, #ede0c8 40%, #e8d8b8 100%)' }} data-rewind-top>
+  1085→  1085→  1085→      <AnimatePresence mode="wait">
+  1086→  1086→  1086→        {birthYear === null ? (
+  1087→  1087→  1087→          <motion.div
+  1088→  1088→  1088→            key="hero"
+  1089→  1089→  1089→            initial={{ opacity: 0 }}
+  1090→  1090→  1090→            animate={{ opacity: 1 }}
+  1091→  1091→  1091→            exit={{ opacity: 0, y: -20 }}
+  1092→  1092→  1092→            transition={{ duration: 0.4 }}
+  1093→  1093→  1093→          >
+  1094→  1094→  1094→            <HeroSection onSubmit={handleSubmit} />
+  1095→  1095→  1095→          </motion.div>
+  1096→  1096→  1096→        ) : (
+  1097→  1097→  1097→          <motion.div
+  1098→  1098→  1098→            key="dashboard"
+  1099→  1099→  1099→            initial={{ opacity: 0, y: 20 }}
+  1100→  1100→  1100→            animate={{ opacity: 1, y: 0 }}
+  1101→  1101→  1101→            exit={{ opacity: 0 }}
+  1102→  1102→  1102→            transition={{ duration: 0.5 }}
+  1103→  1103→  1103→            className="flex flex-col min-h-screen"
+  1104→  1104→  1104→          >
+  1105→  1105→  1105→            <Dashboard birthYear={birthYear} onBack={handleBack} />
+  1106→  1106→  1106→          </motion.div>
+  1107→  1107→  1107→        )}
+  1108→  1108→  1108→      </AnimatePresence>
+  1109→  1109→  1109→    </div>
+  1110→  1110→  1110→  );
+  1111→  1111→  1111→}

@@ -1,0 +1,1111 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
+     7→  ChevronRight, Sparkles, ArrowLeft, RefreshCw,
+     8→  RotateCcw, Play, Timer, CheckCircle2, XCircle,
+     9→} from 'lucide-react';
+    10→import { Button } from '@/components/ui/button';
+    11→import { Badge } from '@/components/ui/badge';
+    12→import {
+    13→  nostalgiaData, getDecadeForYear, getPersonalTimeline,
+    14→  type DecadeData, type NostalgiaItem,
+    15→} from '@/lib/nostalgia-data';
+    16→
+    17→/* ═══════════════════════════════════════════════════
+    18→   DUST MOTES (hydration-safe, uses useEffect)
+    19→   ═══════════════════════════════════════════════════ */
+    20→function DustMotes() {
+    21→  const [mounted, setMounted] = useState(false);
+    22→
+    23→  useEffect(() => {
+    24→    setMounted(true);
+    25→  }, []);
+    26→
+    27→  const motes = useMemo(() => {
+    28→    if (!mounted) return [];
+    29→    const colors = ['#c4956a', '#8b5e3c', '#d4a574', '#e8c9a0', '#b8845a'];
+    30→    return Array.from({ length: 25 }, (_, i) => ({
+    31→      id: i,
+    32→      w: 2 + Math.random() * 6,
+    33→      h: 2 + Math.random() * 6,
+    34→      l: Math.random() * 100,
+    35→      t: Math.random() * 100,
+    36→      bg: colors[i % 5],
+    37→      delay: Math.random() * 25,
+    38→      dur: 20 + Math.random() * 20,
+    39→    }));
+    40→  }, [mounted]);
+    41→
+    42→  return (
+    43→    <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden>
+    44→      {motes.map((m) => (
+    45→        <span
+    46→          key={m.id}
+    47→          className="absolute rounded-full opacity-15 animate-[float_25s_infinite_linear]"
+    48→          style={{
+    49→            width: `${m.w}px`,
+    50→            height: `${m.h}px`,
+    51→            left: `${m.l}%`,
+    52→            top: `${m.t}%`,
+    53→            background: m.bg,
+    54→            animationDelay: `${m.delay}s`,
+    55→            animationDuration: `${m.dur}s`,
+    56→          }}
+    57→        />
+    58→      ))}
+    59→    </div>
+    60→  );
+    61→}
+    62→
+    63→/* ═══════════════════════════════════════════════════
+    64→   GAME 1: MEMORY MATCH (simple show/hide, no 3D)
+    65→   ═══════════════════════════════════════════════════ */
+    66→interface MatchCard {
+    67→  id: number;
+    68→  emoji: string;
+    69→  label: string;
+    70→  isFlipped: boolean;
+    71→  isMatched: boolean;
+    72→}
+    73→
+    74→function shuffle<T>(arr: T[]): T[] {
+    75→  const a = [...arr];
+    76→  for (let i = a.length - 1; i > 0; i--) {
+    77→    const j = Math.floor(Math.random() * (i + 1));
+    78→    [a[i], a[j]] = [a[j], a[i]];
+    79→  }
+    80→  return a;
+    81→}
+    82→
+    83→function MemoryMatchGame({ data }: { data: DecadeData }) {
+    84→  const [cards, setCards] = useState<MatchCard[]>([]);
+    85→  const [flippedIds, setFlippedIds] = useState<number[]>([]);
+    86→  const [moves, setMoves] = useState(0);
+    87→  const [matches, setMatches] = useState(0);
+    88→  const [gameWon, setGameWon] = useState(false);
+    89→  const lockRef = useRef(false);
+    90→
+    91→  // Initialize cards client-side only to avoid SSR hydration mismatch from Math.random()
+    92→  useEffect(() => {
+    93→    const pool = [...data.cartoons, ...data.toys, ...data.snacks, ...data.games];
+    94→    const picked = shuffle(pool).slice(0, 6);
+    95→    const initial: MatchCard[] = picked.flatMap((item, i) => [
+    96→      { id: i * 2, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+    97→      { id: i * 2 + 1, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+    98→    ]);
+    99→    // Deferred init to avoid calling setState synchronously in effect body
+   100→    const id = requestAnimationFrame(() => setCards(shuffle(initial)));
+   101→    return () => cancelAnimationFrame(id);
+   102→  }, [data]);
+   103→
+   104→  const resetGame = useCallback(() => {
+   105→    const pool = [...data.cartoons, ...data.toys, ...data.snacks, ...data.games];
+   106→    const picked = shuffle(pool).slice(0, 6);
+   107→    const fresh: MatchCard[] = picked.flatMap((item, i) => [
+   108→      { id: i * 2, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+   109→      { id: i * 2 + 1, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+   110→    ]);
+   111→    setCards(shuffle(fresh));
+   112→    setFlippedIds([]);
+   113→    setMoves(0);
+   114→    setMatches(0);
+   115→    setGameWon(false);
+   116→    lockRef.current = false;
+   117→  }, [data]);
+   118→
+   119→  const handleFlip = useCallback((id: number) => {
+   120→    if (lockRef.current) return;
+   121→    const card = cards.find(c => c.id === id);
+   122→    if (!card || card.isFlipped || card.isMatched) return;
+   123→    if (flippedIds.includes(id)) return;
+   124→    if (flippedIds.length >= 2) return;
+   125→
+   126→    const newFlipped = [...flippedIds, id];
+   127→    setCards(prev => prev.map(c => c.id === id ? { ...c, isFlipped: true } : c));
+   128→    setFlippedIds(newFlipped);
+   129→
+   130→    if (newFlipped.length === 2) {
+   131→      setMoves(m => m + 1);
+   132→      lockRef.current = true;
+   133→      const first = cards.find(c => c.id === newFlipped[0])!;
+   134→      const second = cards.find(c => c.id === newFlipped[1])!;
+   135→
+   136→      if (first.label === second.label) {
+   137→        setTimeout(() => {
+   138→          setCards(prev => prev.map(c =>
+   139→            c.id === first.id || c.id === second.id ? { ...c, isMatched: true, isFlipped: true } : c
+   140→          ));
+   141→          setMatches(m => {
+   142→            const newM = m + 1;
+   143→            if (newM === 6) setGameWon(true);
+   144→            return newM;
+   145→          });
+   146→          setFlippedIds([]);
+   147→          lockRef.current = false;
+   148→        }, 400);
+   149→      } else {
+   150→        setTimeout(() => {
+   151→          setCards(prev => prev.map(c =>
+   152→            c.id === first.id || c.id === second.id ? { ...c, isFlipped: false } : c
+   153→          ));
+   154→          setFlippedIds([]);
+   155→          lockRef.current = false;
+   156→        }, 900);
+   157→      }
+   158→    }
+   159→  }, [cards, flippedIds]);
+   160→
+   161→  return (
+   162→    <div className="sk-paper p-5 rounded-lg sk-noise relative overflow-hidden">
+   163→      <div className="flex items-center justify-between mb-4">
+   164→        <h4 className="font-bold text-base text-[#5c4033] flex items-center gap-2">
+   165→          <span className="text-xl">🃏</span> Memory Match
+   166→        </h4>
+   167→        <div className="flex items-center gap-3 text-xs font-semibold text-[#8b7355]">
+   168→          <span className="sk-inset px-2 py-1 rounded">Moves: {moves}</span>
+   169→          <span className="sk-inset px-2 py-1 rounded">Pairs: {matches}/6</span>
+   170→          <button onClick={resetGame} className="sk-btn px-3 py-1 rounded text-xs cursor-pointer">
+   171→            <RotateCcw className="h-3 w-3 inline mr-1" />Reset
+   172→          </button>
+   173→        </div>
+   174→      </div>
+   175→
+   176→      {gameWon && (
+   177→        <motion.div
+   178→          initial={{ scale: 0.8, opacity: 0 }}
+   179→          animate={{ scale: 1, opacity: 1 }}
+   180→          className="absolute inset-0 bg-[#faf6eb]/95 z-10 flex flex-col items-center justify-center rounded-lg"
+   181→        >
+   182→          <span className="text-5xl mb-2">🎉</span>
+   183→          <p className="text-lg font-bold text-[#5c4033]">You found them all!</p>
+   184→          <p className="text-sm text-[#8b7355] mb-3">Completed in {moves} moves</p>
+   185→          <button onClick={resetGame} className="sk-btn px-5 py-2 rounded-lg font-semibold cursor-pointer">
+   186→            Play Again
+   187→          </button>
+   188→        </motion.div>
+   189→      )}
+   190→
+   191→      <div className="grid grid-cols-4 gap-2">
+   192→        {cards.map((card) => {
+   193→          const showFront = card.isFlipped || card.isMatched;
+   194→          return (
+   195→            <button
+   196→              key={card.id}
+   197→              onClick={() => handleFlip(card.id)}
+   198→              className="aspect-square rounded-md transition-all duration-300 cursor-pointer border-2 flex flex-col items-center justify-center p-1"
+   199→              disabled={card.isMatched}
+   200→              style={{
+   201→                background: showFront
+   202→                  ? '#faf6eb'
+   203→                  : 'linear-gradient(135deg, #7a4f30, #8b5e3c, #6b4226)',
+   204→                borderColor: showFront
+   205→                  ? (card.isMatched ? '#a8d08d' : data.color + '80')
+   206→                  : '#5c4033',
+   207→                boxShadow: showFront
+   208→                  ? '0 2px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'
+   209→                  : '0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+   210→                opacity: card.isMatched ? 0.6 : 1,
+   211→              }}
+   212→            >
+   213→              {showFront ? (
+   214→                <>
+   215→                  <span className="text-2xl md:text-3xl">{card.emoji}</span>
+   216→                  <span className="text-[7px] md:text-[9px] font-bold text-[#5c4033] mt-0.5 text-center leading-tight" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.label}</span>
+   217→                </>
+   218→              ) : (
+   219→                <span className="text-xl text-[#d4a574] font-bold">?</span>
+   220→              )}
+   221→            </button>
+   222→          );
+   223→        })}
+   224→      </div>
+   225→    </div>
+   226→  );
+   227→}
+   228→
+   229→/* ═══════════════════════════════════════════════════
+   230→   GAME 2: GUESS THE YEAR
+   231→   ═══════════════════════════════════════════════════ */
+   232→interface TriviaQ {
+   233→  question: string;
+   234→  emoji: string;
+   235→  correct: number;
+   236→  options: string[];
+   237→}
+   238→
+   239→function buildTrivia(data: DecadeData): TriviaQ[] {
+   240→  const decadeStart = parseInt(data.years.split('–')[0]);
+   241→  const qs: TriviaQ[] = [];
+   242→  const all = [...data.cartoons, ...data.toys, ...data.music, ...data.movies, ...data.snacks, ...data.games, ...data.tech, ...data.trends];
+   243→  const shuffled = shuffle(all).slice(0, 8);
+   244→
+   245→  for (const item of shuffled) {
+   246→    const realYear = decadeStart + Math.floor(Math.random() * 8) + 1;
+   247→    const wrongYears = [
+   248→      Math.max(1970, realYear - 3 - Math.floor(Math.random() * 5)),
+   249→      Math.min(2019, realYear + 2 + Math.floor(Math.random() * 5)),
+   250→      Math.max(1970, realYear - 6 - Math.floor(Math.random() * 4)),
+   251→    ].filter(y => y !== realYear).slice(0, 3);
+   252→    while (wrongYears.length < 3) wrongYears.push(Math.max(1970, realYear + 7));
+   253→    const options = shuffle([realYear, ...wrongYears.slice(0, 3)]);
+   254→    qs.push({
+   255→      question: `When did "${item.title}" first become popular?`,
+   256→      emoji: item.emoji,
+   257→      correct: options.indexOf(realYear),
+   258→      options: options.map(String),
+   259→    });
+   260→  }
+   261→  return qs;
+   262→}
+   263→
+   264→function GuessTheYearGame({ data }: { data: DecadeData }) {
+   265→  const [questions, setQuestions] = useState<TriviaQ[]>([]);
+   266→  const [qIdx, setQIdx] = useState(0);
+   267→  const [score, setScore] = useState(0);
+   268→  const [selected, setSelected] = useState<number | null>(null);
+   269→  const [showResult, setShowResult] = useState(false);
+   270→  const [done, setDone] = useState(false);
+   271→
+   272→  useEffect(() => {
+   273→    setQuestions(buildTrivia(data));
+   274→  }, [data]);
+   275→
+   276→  const q = questions[qIdx];
+   277→
+   278→  const handleAnswer = (optIdx: number) => {
+   279→    if (showResult || !q) return;
+   280→    setSelected(optIdx);
+   281→    setShowResult(true);
+   282→    if (optIdx === q.correct) setScore(s => s + 1);
+   283→    setTimeout(() => {
+   284→      if (qIdx + 1 < questions.length) {
+   285→        setQIdx(i => i + 1);
+   286→        setSelected(null);
+   287→        setShowResult(false);
+   288→      } else {
+   289→        setDone(true);
+   290→      }
+   291→    }, 1500);
+   292→  };
+   293→
+   294→  const resetGame = () => {
+   295→    const fresh = buildTrivia(data);
+   296→    setQuestions(fresh);
+   297→    setQIdx(0); setScore(0); setSelected(null); setShowResult(false); setDone(false);
+   298→  };
+   299→
+   300→  if (!q && !done) return <div className="sk-paper p-5 rounded-lg sk-noise text-center text-sm text-[#8b7355]">Loading...</div>;
+   301→
+   302→  if (done) {
+   303→    const pct = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
+   304→    return (
+   305→      <div className="sk-paper p-5 rounded-lg sk-noise relative overflow-hidden">
+   306→        <div className="text-center py-4">
+   307→          <span className="text-5xl mb-3 block">{pct >= 70 ? '🏆' : pct >= 40 ? '👏' : '😅'}</span>
+   308→          <p className="text-lg font-bold text-[#5c4033]">Game Over!</p>
+   309→          <p className="text-sm text-[#8b7355] mt-1">You scored {score}/{questions.length} ({pct}%)</p>
+   310→          <p className="text-xs text-[#8b7355] mt-2 italic">
+   311→            {pct >= 70 ? "You truly remember your era!" : pct >= 40 ? "Not bad — some things fade with time" : "Hey, it's been a while! No shame in that."}
+   312→          </p>
+   313→          <button onClick={resetGame} className="sk-btn px-5 py-2 rounded-lg font-semibold mt-4 cursor-pointer">
+   314→            <RotateCcw className="h-3 w-3 inline mr-1" />Play Again
+   315→          </button>
+   316→        </div>
+   317→      </div>
+   318→    );
+   319→  }
+   320→
+   321→  return (
+   322→    <div className="sk-paper p-5 rounded-lg sk-noise relative overflow-hidden">
+   323→      <div className="flex items-center justify-between mb-4">
+   324→        <h4 className="font-bold text-base text-[#5c4033] flex items-center gap-2">
+   325→          <span className="text-xl">📅</span> Guess the Year
+   326→        </h4>
+   327→        <div className="flex items-center gap-2 text-xs font-semibold text-[#8b7355]">
+   328→          <span className="sk-inset px-2 py-1 rounded">{qIdx + 1}/{questions.length}</span>
+   329→          <span className="sk-inset px-2 py-1 rounded">Score: {score}</span>
+   330→        </div>
+   331→      </div>
+   332→
+   333→      {/* Progress bar */}
+   334→      <div className="w-full h-2 sk-wood rounded-full mb-4 overflow-hidden">
+   335→        <div
+   336→          className="h-full bg-gradient-to-r from-[#8b5e3c] to-[#c4956a] rounded-full transition-all duration-500"
+   337→          style={{ width: `${((qIdx) / questions.length) * 100}%` }}
+   338→        />
+   339→      </div>
+   340→
+   341→      <div className="text-center mb-4">
+   342→        <span className="text-5xl block mb-2">{q.emoji}</span>
+   343→        <p className="text-sm font-semibold text-[#5c4033]">{q.question}</p>
+   344→      </div>
+   345→
+   346→      <div className="grid grid-cols-2 gap-2">
+   347→        {q.options.map((opt, i) => {
+   348→          let cls = 'sk-paper p-3 rounded-lg text-center font-bold text-sm cursor-pointer transition-all duration-200 border-2 ';
+   349→          if (showResult) {
+   350→            if (i === q.correct) cls += 'border-green-500 bg-green-50 sk-sticker';
+   351→            else if (i === selected) cls += 'border-red-400 bg-red-50 opacity-60';
+   352→            else cls += 'border-[#d4c5a9] opacity-40';
+   353→          } else {
+   354→            cls += 'border-[#d4c5a9] hover:border-[#8b5e3c] hover:shadow-md active:translate-y-0.5';
+   355→          }
+   356→          return (
+   357→            <button key={`${qIdx}-${i}`} onClick={() => handleAnswer(i)} className={cls} disabled={showResult}>
+   358→              {opt}
+   359→            </button>
+   360→          );
+   361→        })}
+   362→      </div>
+   363→
+   364→      {showResult && (
+   365→        <motion.div
+   366→          initial={{ opacity: 0, y: 5 }}
+   367→          animate={{ opacity: 1, y: 0 }}
+   368→          className="text-center mt-3 text-xs font-semibold flex items-center justify-center gap-1"
+   369→        >
+   370→          {selected === q.correct ? (
+   371→            <><CheckCircle2 className="h-4 w-4 text-green-600" /><span className="text-green-700">Correct! You remembered!</span></>
+   372→          ) : (
+   373→            <><XCircle className="h-4 w-4 text-red-500" /><span className="text-red-600">It was {q.options[q.correct]}</span></>
+   374→          )}
+   375→        </motion.div>
+   376→      )}
+   377→    </div>
+   378→  );
+   379→}
+   380→
+   381→/* ═══════════════════════════════════════════════════
+   382→   GAME 3: TAP THE MEMORY (Reaction Game)
+   383→   ═══════════════════════════════════════════════════ */
+   384→function WhackGame({ data }: { data: DecadeData }) {
+   385→  const GRID = 9;
+   386→  const allItems = useMemo(() => [
+   387→    ...data.toys, ...data.snacks, ...data.cartoons, ...data.games,
+   388→  ], [data]);
+   389→
+   390→  const [grid, setGrid] = useState<(NostalgiaItem | null)[]>(Array(GRID).fill(null));
+   391→  const [score, setScore] = useState(0);
+   392→  const [timeLeft, setTimeLeft] = useState(20);
+   393→  const [gameActive, setGameActive] = useState(false);
+   394→  const [gameOver, setGameOver] = useState(false);
+   395→  const [feedback, setFeedback] = useState<string | null>(null);
+   396→  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   397→  const spawnRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   398→  const gridRef = useRef<(NostalgiaItem | null)[]>(Array(GRID).fill(null));
+   399→
+   400→  const spawnItem = useCallback(() => {
+   401→    const empty = gridRef.current.reduce<number[]>((acc, v, i) => v === null ? [...acc, i] : acc, []);
+   402→    if (empty.length === 0) return;
+   403→    const pos = empty[Math.floor(Math.random() * empty.length)];
+   404→    const item = allItems[Math.floor(Math.random() * allItems.length)];
+   405→    const newGrid = [...gridRef.current];
+   406→    newGrid[pos] = item;
+   407→    gridRef.current = newGrid;
+   408→    setGrid([...newGrid]);
+   409→    setTimeout(() => {
+   410→      if (gridRef.current[pos] === item) {
+   411→        const g = [...gridRef.current]; g[pos] = null; gridRef.current = g; setGrid([...g]);
+   412→      }
+   413→    }, 1200);
+   414→  }, [allItems]);
+   415→
+   416→  const startGame = useCallback(() => {
+   417→    const fresh = Array(GRID).fill(null);
+   418→    gridRef.current = fresh;
+   419→    setGrid([...fresh]);
+   420→    setScore(0); setTimeLeft(20); setGameOver(false); setGameActive(true);
+   421→
+   422→    timerRef.current = setInterval(() => {
+   423→      setTimeLeft(t => {
+   424→        if (t <= 1) {
+   425→          if (timerRef.current) clearInterval(timerRef.current);
+   426→          if (spawnRef.current) clearInterval(spawnRef.current);
+   427→          setGameActive(false); setGameOver(true);
+   428→          return 0;
+   429→        }
+   430→        return t - 1;
+   431→      });
+   432→    }, 1000);
+   433→    spawnRef.current = setInterval(spawnItem, 700);
+   434→  }, [spawnItem]);
+   435→
+   436→  useEffect(() => {
+   437→    return () => {
+   438→      if (timerRef.current) clearInterval(timerRef.current);
+   439→      if (spawnRef.current) clearInterval(spawnRef.current);
+   440→    };
+   441→  }, []);
+   442→
+   443→  const handleWhack = (idx: number) => {
+   444→    if (!gameActive || !grid[idx]) return;
+   445→    setScore(s => s + 10);
+   446→    setFeedback('+10');
+   447→    const g = [...gridRef.current]; g[idx] = null; gridRef.current = g; setGrid([...g]);
+   448→    setTimeout(() => setFeedback(null), 300);
+   449→  };
+   450→
+   451→  const handleMiss = () => {
+   452→    if (!gameActive) return;
+   453→    setFeedback('Miss!');
+   454→    setTimeout(() => setFeedback(null), 300);
+   455→  };
+   456→
+   457→  return (
+   458→    <div className="sk-paper p-5 rounded-lg sk-noise relative overflow-hidden">
+   459→      <div className="flex items-center justify-between mb-4">
+   460→        <h4 className="font-bold text-base text-[#5c4033] flex items-center gap-2">
+   461→          <span className="text-xl">🔨</span> Tap the Memory
+   462→        </h4>
+   463→        <div className="flex items-center gap-2 text-xs font-semibold text-[#8b7355]">
+   464→          <span className="sk-inset px-2 py-1 rounded flex items-center gap-1">
+   465→            <Timer className="h-3 w-3" />{timeLeft}s
+   466→          </span>
+   467→          <span className="sk-inset px-2 py-1 rounded">{score}pts</span>
+   468→        </div>
+   469→      </div>
+   470→
+   471→      {!gameActive && !gameOver && (
+   472→        <div className="text-center py-6">
+   473→          <p className="text-sm text-[#8b7355] mb-4">Tap nostalgic items as they pop up! You have 20 seconds.</p>
+   474→          <button onClick={startGame} className="sk-btn px-6 py-3 rounded-xl font-bold text-base cursor-pointer flex items-center gap-2 mx-auto">
+   475→            <Play className="h-5 w-5" /> Start Game
+   476→          </button>
+   477→        </div>
+   478→      )}
+   479→
+   480→      {gameOver && (
+   481→        <div className="text-center py-4">
+   482→          <span className="text-5xl mb-2 block">{score >= 80 ? '🏆' : score >= 40 ? '🎉' : '💪'}</span>
+   483→          <p className="text-lg font-bold text-[#5c4033]">Time&apos;s Up!</p>
+   484→          <p className="text-sm text-[#8b7355] mt-1">Score: {score} points</p>
+   485→          <button onClick={startGame} className="sk-btn px-5 py-2 rounded-lg font-semibold mt-3 cursor-pointer">
+   486→            <RotateCcw className="h-3 w-3 inline mr-1" />Play Again
+   487→          </button>
+   488→        </div>
+   489→      )}
+   490→
+   491→      {gameActive && (
+   492→        <div className="grid grid-cols-3 gap-2 select-none">
+   493→          {grid.map((item, i) => (
+   494→            <button
+   495→              key={i}
+   496→              onClick={() => item ? handleWhack(i) : handleMiss()}
+   497→              className="aspect-square rounded-lg transition-all duration-150 cursor-pointer border-2 flex items-center justify-center"
+   498→              style={{
+   499→                background: item
+   500→                  ? `linear-gradient(135deg, ${data.color}18, ${data.color}30)`
+   501→                  : 'linear-gradient(135deg, #e8dcc8, #d4c5a9)',
+   502→                borderColor: item ? `${data.color}60` : '#c4b594',
+   503→                boxShadow: item
+   504→                  ? `0 2px 8px ${data.color}30, inset 0 1px 0 rgba(255,255,255,0.3)`
+   505→                  : 'inset 0 2px 4px rgba(0,0,0,0.08)',
+   506→                transform: item ? 'scale(1.05)' : 'scale(1)',
+   507→              }}
+   508→            >
+   509→              {item && (
+   510→                <motion.span
+   511→                  initial={{ scale: 0 }}
+   512→                  animate={{ scale: 1 }}
+   513→                  className="text-3xl md:text-4xl"
+   514→                >
+   515→                  {item.emoji}
+   516→                </motion.span>
+   517→              )}
+   518→            </button>
+   519→          ))}
+   520→        </div>
+   521→      )}
+   522→
+   523→      {feedback && (
+   524→        <motion.div
+   525→          key={feedback}
+   526→          initial={{ opacity: 0, y: 10 }}
+   527→          animate={{ opacity: 1, y: 0 }}
+   528→          className="absolute bottom-3 left-1/2 -translate-x-1/2"
+   529→        >
+   530→          <span className={`text-xs font-bold px-3 py-1 rounded-full sk-btn ${feedback === 'Miss!' ? 'opacity-50' : ''}`}>
+   531→            {feedback}
+   532→          </span>
+   533→        </motion.div>
+   534→      )}
+   535→    </div>
+   536→  );
+   537→}
+   538→
+   539→/* ═══════════════════════════════════════════════════
+   540→   HERO / LANDING (SKEUOMORPHIC)
+   541→   ═══════════════════════════════════════════════════ */
+   542→function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
+   543→  const [year, setYear] = useState('');
+   544→  const [hoveredDecade, setHoveredDecade] = useState<string | null>(null);
+   545→  const [tapeRotate] = useState(() => -2 + Math.random() * 4);
+   546→
+   547→  const handleSubmit = () => {
+   548→    const y = parseInt(year);
+   549→    if (y >= 1970 && y <= 2019) onSubmit(y);
+   550→  };
+   551→
+   552→  const decades = Object.values(nostalgiaData);
+   553→
+   554→  return (
+   555→    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative">
+   556→      <DustMotes />
+   557→
+   558→      <motion.div
+   559→        initial={{ opacity: 0, y: 30 }}
+   560→        animate={{ opacity: 1, y: 0 }}
+   561→        transition={{ duration: 0.8 }}
+   562→        className="text-center mb-8 z-10"
+   563→      >
+   564→        <motion.div
+   565→          animate={{ rotate: [0, 3, -3, 0] }}
+   566→          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+   567→          className="text-6xl md:text-8xl mb-3"
+   568→          style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
+   569→        >
+   570→          📼
+   571→        </motion.div>
+   572→        <h1
+   573→          className="text-5xl md:text-7xl font-black tracking-tight mb-3 text-transparent bg-clip-text"
+   574→          style={{
+   575→            backgroundImage: 'linear-gradient(180deg, #5c4033 0%, #8b5e3c 40%, #c4956a 100%)',
+   576→            filter: 'drop-shadow(0 2px 1px rgba(255,255,255,0.4))',
+   577→          }}
+   578→        >
+   579→          Rewind
+   580→        </h1>
+   581→        <p className="text-base md:text-lg text-[#8b7355] max-w-md mx-auto leading-relaxed">
+   582→          Take a trip back to the days when life was simple.
+   583→          <br className="hidden md:block" />
+   584→          Remember who you were before the world told you who to be.
+   585→        </p>
+   586→      </motion.div>
+   587→
+   588→      <motion.div
+   589→        initial={{ opacity: 0, scale: 0.9, rotate: -1 }}
+   590→        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+   591→        transition={{ duration: 0.7, delay: 0.2, type: 'spring' }}
+   592→        className="z-10 w-full max-w-sm"
+   593→      >
+   594→        <div className="sk-paper rounded-lg p-6 sk-tape relative overflow-hidden sk-noise" style={{ '--tape-rotate': `${tapeRotate}deg` } as React.CSSProperties}>
+   595→          <label className="block text-sm font-bold text-[#5c4033] mb-3 text-center tracking-wide uppercase">
+   596→            When were you born?
+   597→          </label>
+   598→          <div className="flex gap-2">
+   599→            <input
+   600→              type="number"
+   601→              min={1970}
+   602→              max={2019}
+   603→              placeholder="e.g. 1992"
+   604→              value={year}
+   605→              onChange={(e) => setYear(e.target.value)}
+   606→              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+   607→              className="sk-inset flex-1 text-center text-2xl font-bold rounded-lg p-3 text-[#5c4033] focus:outline-none transition-shadow focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),0_0_0_2px_#8b5e3c]"
+   608→              aria-label="Birth year"
+   609→            />
+   610→          </div>
+   611→          <button
+   612→            onClick={handleSubmit}
+   613→            className="sk-leather w-full mt-4 text-[#faf6eb] font-bold text-lg py-3.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] flex items-center justify-center gap-2"
+   614→          >
+   615→            <Clock className="h-5 w-5" />
+   616→            Take Me Back
+   617→          </button>
+   618→          <p className="text-xs text-center text-[#8b7355] mt-3 font-medium">
+   619→            1970 – 2019 &nbsp;·&nbsp; Your memories, your era
+   620→          </p>
+   621→        </div>
+   622→      </motion.div>
+   623→
+   624→      <motion.div
+   625→        initial={{ opacity: 0 }}
+   626→        animate={{ opacity: 1 }}
+   627→        transition={{ delay: 0.8 }}
+   628→        className="flex flex-wrap justify-center gap-3 mt-8 z-10 max-w-lg"
+   629→      >
+   630→        {decades.map((d, i) => (
+   631→          <motion.button
+   632→            key={d.decade}
+   633→            onMouseEnter={() => setHoveredDecade(d.decade)}
+   634→            onMouseLeave={() => setHoveredDecade(null)}
+   635→            onClick={() => {
+   636→              const y = parseInt(d.years.split('–')[0]);
+   637→              setYear(String(y));
+   638→              onSubmit(y);
+   639→            }}
+   640→            whileHover={{ scale: 1.08, y: -3 }}
+   641→            whileTap={{ scale: 0.95 }}
+   642→            className="sk-paper rounded-lg px-4 py-2 text-sm font-bold cursor-pointer transition-all duration-200 relative overflow-hidden sk-noise"
+   643→            style={{
+   644→              borderColor: hoveredDecade === d.decade ? d.color : '#c4b594',
+   645→              color: hoveredDecade === d.decade ? '#5c4033' : '#8b7355',
+   646→              boxShadow: hoveredDecade === d.decade
+   647→                ? `0 4px 16px ${d.color}40, 0 1px 3px rgba(0,0,0,0.1)`
+   648→                : '0 2px 6px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.06)',
+   649→            }}
+   650→          >
+   651→            {d.decade}
+   652→          </motion.button>
+   653→        ))}
+   654→      </motion.div>
+   655→
+   656→      <motion.p
+   657→        initial={{ opacity: 0 }}
+   658→        animate={{ opacity: 1 }}
+   659→        transition={{ delay: 1.2 }}
+   660→        className="text-center text-[#8b7355] text-sm mt-8 z-10 max-w-sm leading-relaxed"
+   661→      >
+   662→        Everybody is running for jobs, money, markets…
+   663→        <br />but you&apos;re still <span className="font-extrabold text-[#5c4033]">human</span>. Take a breath. Remember the good days.
+   664→      </motion.p>
+   665→    </div>
+   666→  );
+   667→}
+   668→
+   669→/* ═══════════════════════════════════════════════════
+   670→   QUOTE BANNER
+   671→   ═══════════════════════════════════════════════════ */
+   672→function QuoteBanner({ quotes }: { quotes: string[] }) {
+   673→  const [idx, setIdx] = useState(0);
+   674→  useEffect(() => {
+   675→    const t = setInterval(() => setIdx((i) => (i + 1) % quotes.length), 8000);
+   676→    return () => clearInterval(t);
+   677→  }, [quotes.length]);
+   678→
+   679→  return (
+   680→    <AnimatePresence mode="wait">
+   681→      <motion.div
+   682→        key={idx}
+   683→        initial={{ opacity: 0, y: 10 }}
+   684→        animate={{ opacity: 1, y: 0 }}
+   685→        exit={{ opacity: 0, y: -10 }}
+   686→        transition={{ duration: 0.5 }}
+   687→        className="sk-lined p-4 rounded-lg italic text-[#5c4033] text-sm md:text-base text-center"
+   688→      >
+   689→        &ldquo;{quotes[idx]}&rdquo;
+   690→      </motion.div>
+   691→    </AnimatePresence>
+   692→  );
+   693→}
+   694→
+   695→/* ═══════════════════════════════════════════════════
+   696→   MEMORY CARD (Polaroid)
+   697→   ═══════════════════════════════════════════════════ */
+   698→function MemoryCard({ item, color, index }: { item: NostalgiaItem; color: string; index: number }) {
+   699→  const [rot] = useState(() => -2 + Math.random() * 4);
+   700→  return (
+   701→    <motion.div
+   702→      initial={{ opacity: 0, scale: 0.9 }}
+   703→      whileInView={{ opacity: 1, scale: 1 }}
+   704→      viewport={{ once: true, margin: '-20px' }}
+   705→      transition={{ duration: 0.4, delay: index * 0.04 }}
+   706→    >
+   707→      <div
+   708→        className="sk-polaroid rounded-sm transition-all duration-300 cursor-default relative overflow-hidden sk-noise"
+   709→        style={{ '--rotate': `${rot}deg` } as React.CSSProperties}
+   710→      >
+   711→        <div
+   712→          className="h-20 flex items-center justify-center rounded-sm"
+   713→          style={{ background: `linear-gradient(135deg, ${color}15, ${color}08)` }}
+   714→        >
+   715→          <span className="text-4xl drop-shadow-sm">{item.emoji}</span>
+   716→        </div>
+   717→        <div className="pt-2 pb-1 px-1">
+   718→          <h4 className="font-extrabold text-xs text-[#3d2b1f] leading-tight">{item.title}</h4>
+   719→          <p className="text-[10px] text-[#8b7355] mt-0.5 leading-relaxed line-clamp-2">{item.description}</p>
+   720→        </div>
+   721→      </div>
+   722→    </motion.div>
+   723→  );
+   724→}
+   725→
+   726→/* ═══════════════════════════════════════════════════
+   727→   CATEGORY GRID
+   728→   ═══════════════════════════════════════════════════ */
+   729→function CategoryGrid({ items, color }: { items: NostalgiaItem[]; color: string }) {
+   730→  return (
+   731→    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   732→      {items.map((item, i) => (
+   733→        <MemoryCard key={item.title} item={item} color={color} index={i} />
+   734→      ))}
+   735→    </div>
+   736→  );
+   737→}
+   738→
+   739→/* ═══════════════════════════════════════════════════
+   740→   PERSONAL TIMELINE
+   741→   ═══════════════════════════════════════════════════ */
+   742→function PersonalTimeline({ birthYear }: { birthYear: number }) {
+   743→  const timeline = getPersonalTimeline(birthYear);
+   744→  return (
+   745→    <div className="space-y-4">
+   746→      {timeline.map((entry, i) => {
+   747→        const d = nostalgiaData[entry.decade];
+   748→        return (
+   749→          <motion.div
+   750→            key={entry.decade}
+   751→            initial={{ opacity: 0, x: -20 }}
+   752→            whileInView={{ opacity: 1, x: 0 }}
+   753→            viewport={{ once: true }}
+   754→            transition={{ delay: i * 0.15 }}
+   755→          >
+   756→            <div className="sk-paper rounded-lg p-4 flex items-center gap-4 sk-noise relative overflow-hidden" style={{ '--tape-rotate': `${-3 + i * 2}deg` } as React.CSSProperties}>
+   757→              <div
+   758→                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg flex-shrink-0"
+   759→                style={{
+   760→                  background: `linear-gradient(135deg, ${d.color}, ${d.color}cc)`,
+   761→                  boxShadow: `0 3px 8px ${d.color}50, inset 0 1px 0 rgba(255,255,255,0.3)`,
+   762→                }}
+   763→              >
+   764→                {entry.age.replace('Age ', '')}
+   765→              </div>
+   766→              <div className="flex-1 min-w-0">
+   767→                <div className="flex items-center gap-2">
+   768→                  <span className="font-extrabold text-sm text-[#3d2b1f]">{entry.decade}</span>
+   769→                  <span className="sk-vhs-label text-[10px] font-bold text-[#8b7355] px-2 py-0.5 rounded">{entry.age}</span>
+   770→                </div>
+   771→                <p className="text-xs text-[#8b7355] mt-0.5">{entry.label}</p>
+   772→              </div>
+   773→              <ChevronRight className="h-4 w-4 text-[#b8a888]" />
+   774→            </div>
+   775→          </motion.div>
+   776→        );
+   777→      })}
+   778→    </div>
+   779→  );
+   780→}
+   781→
+   782→/* ═══════════════════════════════════════════════════
+   783→   ERA SPOTLIGHT (VHS Tape)
+   784→   ═══════════════════════════════════════════════════ */
+   785→function EraSpotlight({ data }: { data: DecadeData }) {
+   786→  const [spotIdx, setSpotIdx] = useState(0);
+   787→  const allItems = useMemo(() => [
+   788→    ...data.cartoons, ...data.toys, ...data.music, ...data.movies,
+   789→    ...data.snacks, ...data.games, ...data.trends, ...data.schoolLife, ...data.tech,
+   790→  ], [data]);
+   791→  const spot = allItems[spotIdx % allItems.length];
+   792→
+   793→  useEffect(() => {
+   794→    const t = setInterval(() => setSpotIdx((i) => i + 1), 5000);
+   795→    return () => clearInterval(t);
+   796→  }, [allItems.length]);
+   797→
+   798→  return (
+   799→    <AnimatePresence mode="wait">
+   800→      <motion.div
+   801→        key={spotIdx}
+   802→        initial={{ opacity: 0, scale: 0.95 }}
+   803→        animate={{ opacity: 1, scale: 1 }}
+   804→        exit={{ opacity: 0, scale: 0.95 }}
+   805→        transition={{ duration: 0.5 }}
+   806→      >
+   807→        <div className="sk-paper-aged rounded-xl p-5 sk-noise relative overflow-hidden">
+   808→          <div className="absolute top-0 left-0 right-0 h-10 sk-wood rounded-t-xl flex items-center px-4">
+   809→            <div className="flex gap-1.5">
+   810→              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+   811→              <span className="w-2.5 h-2.5 rounded-full bg-[#d4a574] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+   812→              <span className="w-2.5 h-2.5 rounded-full bg-green-600 shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
+   813→            </div>
+   814→            <span className="ml-auto text-[10px] font-bold text-[#faf6eb] tracking-widest uppercase">REC</span>
+   815→          </div>
+   816→          <div className="pt-12 text-center">
+   817→            <motion.span
+   818→              animate={{ scale: [1, 1.1, 1] }}
+   819→              transition={{ duration: 2, repeat: Infinity }}
+   820→              className="text-7xl block mb-3"
+   821→              style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }}
+   822→            >
+   823→              {spot.emoji}
+   824→            </motion.span>
+   825→            <span className="sk-vhs-label text-[10px] font-bold text-[#8b7355] px-3 py-1 rounded inline-block mb-2">
+   826→              {spot.category} &middot; {data.decade}
+   827→            </span>
+   828→            <h3 className="text-xl font-black text-[#3d2b1f]">{spot.title}</h3>
+   829→            <p className="text-sm text-[#8b7355] mt-2 leading-relaxed max-w-sm mx-auto">{spot.description}</p>
+   830→          </div>
+   831→        </div>
+   832→      </motion.div>
+   833→    </AnimatePresence>
+   834→  );
+   835→}
+   836→
+   837→/* ═══════════════════════════════════════════════════
+   838→   BREATHER MESSAGE (Sticky note)
+   839→   ═══════════════════════════════════════════════════ */
+   840→function BreatherMessage() {
+   841→  const messages = [
+   842→    { title: "You're doing great", body: "The fact that you're here, remembering the simple times, means you still have that spark. Life gets heavy — that's okay. Take it one day at a time.", emoji: "💛" },
+   843→    { title: "You were enough then", body: "Back when your biggest worry was getting home before dark. You didn't need to prove anything. You were enough just being you. You still are.", emoji: "🌿" },
+   844→    { title: "Slow down", body: "The world tells you to hustle, grind, achieve. But some of the best moments of your life happened when you were doing absolutely nothing. Remember that.", emoji: "☕" },
+   845→    { title: "You're still that kid", body: "Inside every stressed adult is a kid who lit up at the sound of the ice cream truck, who believed in magic, who laughed until their stomach hurt. That kid is still in you.", emoji: "✨" },
+   846→    { title: "Breathe", body: "Close your eyes. Take a deep breath. You've survived 100% of your worst days. You're stronger than you think, and it's okay to rest.", emoji: "🍃" },
+   847→  ];
+   848→  const [idx, setIdx] = useState(0);
+   849→  useEffect(() => {
+   850→    const t = setInterval(() => setIdx((i) => (i + 1) % messages.length), 12000);
+   851→    return () => clearInterval(t);
+   852→  }, [messages.length]);
+   853→
+   854→  return (
+   855→    <AnimatePresence mode="wait">
+   856→      <motion.div
+   857→        key={idx}
+   858→        initial={{ opacity: 0, y: 15 }}
+   859→        animate={{ opacity: 1, y: 0 }}
+   860→        exit={{ opacity: 0, y: -15 }}
+   861→        transition={{ duration: 0.6 }}
+   862→        className="flex justify-center"
+   863→      >
+   864→        <div
+   865→          className="max-w-md p-5 rounded-sm overflow-hidden"
+   866→          style={{
+   867→            background: 'linear-gradient(135deg, #fff9c4, #fff176)',
+   868→            boxShadow: '0 3px 10px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)',
+   869→          }}
+   870→        >
+   871→          <span className="text-2xl block mb-2">{messages[idx].emoji}</span>
+   872→          <h3 className="text-base font-black text-[#5c4033]">{messages[idx].title}</h3>
+   873→          <p className="text-xs text-[#7a5c3e] mt-1.5 leading-relaxed">{messages[idx].body}</p>
+   874→        </div>
+   875→      </motion.div>
+   876→    </AnimatePresence>
+   877→  );
+   878→}
+   879→
+   880→/* ═══════════════════════════════════════════════════
+   881→   DASHBOARD
+   882→   ═══════════════════════════════════════════════════ */
+   883→function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => void }) {
+   884→  const decadeKey = getDecadeForYear(birthYear);
+   885→  const data = nostalgiaData[decadeKey];
+   886→  const [activeTab, setActiveTab] = useState('memories');
+   887→  const [activeCategory, setActiveCategory] = useState('all');
+   888→
+   889→  const categoryMap: Record<string, { label: string; icon: React.ReactNode; items: NostalgiaItem[] }> = {
+   890→    cartoons: { label: 'Cartoons', icon: <Film className="h-4 w-4" />, items: data.cartoons },
+   891→    toys: { label: 'Toys', icon: <Star className="h-4 w-4" />, items: data.toys },
+   892→    music: { label: 'Music', icon: <Music className="h-4 w-4" />, items: data.music },
+   893→    movies: { label: 'Movies', icon: <Film className="h-4 w-4" />, items: data.movies },
+   894→    snacks: { label: 'Snacks', icon: <Heart className="h-4 w-4" />, items: data.snacks },
+   895→    games: { label: 'Games', icon: <Gamepad2 className="h-4 w-4" />, items: data.games },
+   896→    trends: { label: 'Trends', icon: <Sparkles className="h-4 w-4" />, items: data.trends },
+   897→    school: { label: 'School Life', icon: <BookOpen className="h-4 w-4" />, items: data.schoolLife },
+   898→    tech: { label: 'Tech', icon: <Monitor className="h-4 w-4" />, items: data.tech },
+   899→  };
+   900→
+   901→  const tabs = [
+   902→    { id: 'memories', label: 'Memories', icon: <Sparkles className="h-4 w-4" /> },
+   903→    { id: 'games', label: 'Play Games', icon: <Gamepad2 className="h-4 w-4" /> },
+   904→    { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
+   905→  ];
+   906→
+   907→  return (
+   908→    <div className="min-h-screen flex flex-col">
+   909→      {/* Header - wood grain */}
+   910→      <header className="sticky top-0 z-30 sk-wood px-2 py-0">
+   911→        <div className="max-w-5xl mx-auto py-2.5 flex items-center justify-between">
+   912→          <div className="flex items-center gap-3">
+   913→            <button onClick={onBack} className="sk-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
+   914→              <ArrowLeft className="h-3.5 w-3.5" /> Back
+   915→            </button>
+   916→            <div className="h-4 w-px bg-[#a08868]" />
+   917→            <h2 className="font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+   918→              Rewind
+   919→            </h2>
+   920→          </div>
+   921→          <div className="sk-vhs-label text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
+   922→            {data.decade} &middot; Born {birthYear}
+   923→          </div>
+   924→        </div>
+   925→      </header>
+   926→
+   927→      <main className="flex-1 sk-cork min-h-0">
+   928→        <div className="max-w-5xl mx-auto px-3 md:px-4 py-5 pb-20">
+   929→          {/* Hero */}
+   930→          <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
+   931→            <div className="sk-paper rounded-xl p-5 text-center sk-noise relative overflow-hidden">
+   932→              <h1 className="text-3xl md:text-4xl font-black mb-1" style={{ color: data.color, textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}>
+   933→                {data.decade}
+   934→              </h1>
+   935→              <p className="text-sm text-[#8b7355] font-medium">{data.tagline}</p>
+   936→            </div>
+   937→          </motion.section>
+   938→
+   939→          {/* Quote */}
+   940→          <section className="mb-6">
+   941→            <QuoteBanner quotes={data.quotes} />
+   942→          </section>
+   943→
+   944→          {/* Tab bar - metal */}
+   945→          <div className="sk-metal rounded-xl p-1 mb-6 flex gap-1 shadow-[0_3px_8px_rgba(0,0,0,0.2)]">
+   946→            {tabs.map(tab => (
+   947→              <button
+   948→                key={tab.id}
+   949→                onClick={() => setActiveTab(tab.id)}
+   950→                className={`flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer ${
+   951→                  activeTab === tab.id
+   952→                    ? 'sk-paper shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] text-[#3d2b1f]'
+   953→                    : 'text-[#6b6b6b] hover:text-[#3d2b1f] hover:bg-white/20'
+   954→                }`}
+   955→              >
+   956→                {tab.icon}
+   957→                <span className="hidden sm:inline">{tab.label}</span>
+   958→              </button>
+   959→            ))}
+   960→          </div>
+   961→
+   962→          {/* ═══ MEMORIES TAB ═══ */}
+   963→          {activeTab === 'memories' && (
+   964→            <AnimatePresence mode="wait">
+   965→              <motion.div key="memories" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   966→                <section className="mb-6"><BreatherMessage /></section>
+   967→
+   968→                <section className="mb-8">
+   969→                  <h2 className="text-sm font-black text-[#5c4033] uppercase tracking-widest mb-3 flex items-center gap-2">
+   970→                    <Star className="h-4 w-4" style={{ color: data.color }} /> Remember This?
+   971→                  </h2>
+   972→                  <EraSpotlight data={data} />
+   973→                </section>
+   974→
+   975→                <div className="flex flex-wrap gap-2 mb-4">
+   976→                  <button
+   977→                    onClick={() => setActiveCategory('all')}
+   978→                    className={`sk-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${activeCategory === 'all' ? 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] bg-[#d4c5a9]' : ''}`}
+   979→                  >
+   980→                    All
+   981→                  </button>
+   982→                  {Object.entries(categoryMap).map(([key, cat]) => (
+   983→                    <button
+   984→                      key={key}
+   985→                      onClick={() => setActiveCategory(key)}
+   986→                      className={`sk-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1 ${activeCategory === key ? 'shadow-[inset_0_2px_4px_rgba(0,0,0,0.15)] bg-[#d4c5a9]' : ''}`}
+   987→                    >
+   988→                      {cat.icon}
+   989→                      <span className="hidden sm:inline">{cat.label}</span>
+   990→                    </button>
+   991→                  ))}
+   992→                </div>
+   993→
+   994→                {activeCategory === 'all' ? (
+   995→                  Object.entries(categoryMap).map(([key, cat]) => (
+   996→                    <div key={key} className="mb-8 last:mb-0">
+   997→                      <h3 className="text-xs font-black text-[#8b7355] uppercase tracking-widest mb-3 flex items-center gap-2">
+   998→                        {cat.icon} {cat.label}
+   999→                      </h3>
+  1000→                      <CategoryGrid items={cat.items} color={data.color} />
+  1001→                    </div>
+  1002→                  ))
+  1003→                ) : (
+  1004→                  <CategoryGrid items={categoryMap[activeCategory].items} color={data.color} />
+  1005→                )}
+  1006→              </motion.div>
+  1007→            </AnimatePresence>
+  1008→          )}
+  1009→
+  1010→          {/* ═══ GAMES TAB ═══ */}
+  1011→          {activeTab === 'games' && (
+  1012→            <AnimatePresence mode="wait">
+  1013→              <motion.div key="games" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+  1014→                <div className="text-center mb-5">
+  1015→                  <p className="text-sm text-[#5c4033] font-medium">Take a break from the rush. Play some games from the heart.</p>
+  1016→                </div>
+  1017→                <div className="space-y-6">
+  1018→                  <MemoryMatchGame data={data} />
+  1019→                  <GuessTheYearGame data={data} />
+  1020→                  <WhackGame data={data} />
+  1021→                </div>
+  1022→              </motion.div>
+  1023→            </AnimatePresence>
+  1024→          )}
+  1025→
+  1026→          {/* ═══ TIMELINE TAB ═══ */}
+  1027→          {activeTab === 'timeline' && (
+  1028→            <AnimatePresence mode="wait">
+  1029→              <motion.div key="timeline" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+  1030→                <h2 className="text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
+  1031→                  <Clock className="h-4 w-4" style={{ color: data.color }} /> Your Life Timeline
+  1032→                </h2>
+  1033→                <PersonalTimeline birthYear={birthYear} />
+  1034→
+  1035→                <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mt-10">
+  1036→                  <div className="sk-paper rounded-xl p-6 sk-noise relative overflow-hidden max-w-md mx-auto">
+  1037→                    <motion.div
+  1038→                      animate={{ rotate: [0, 8, -8, 0] }}
+  1039→                      transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+  1040→                      className="text-5xl mb-3"
+  1041→                    >🫂</motion.div>
+  1042→                    <h3 className="text-lg font-black text-[#3d2b1f] mb-2">You made it through.</h3>
+  1043→                    <p className="text-xs text-[#8b7355] leading-relaxed">
+  1044→                      Every memory on this page is a piece of who you are. The world moves fast, but your roots are deep. You came from simpler times, and that strength lives in you still. Take care of yourself.
+  1045→                    </p>
+  1046→                    <button onClick={onBack} className="sk-btn px-5 py-2.5 rounded-lg font-bold mt-4 cursor-pointer inline-flex items-center gap-2">
+  1047→                      <RefreshCw className="h-4 w-4" /> Start Over
+  1048→                    </button>
+  1049→                  </div>
+  1050→                </motion.div>
+  1051→              </motion.div>
+  1052→            </AnimatePresence>
+  1053→          )}
+  1054→        </div>
+  1055→      </main>
+  1056→
+  1057→      <footer className="sk-leather px-4 py-3 mt-auto">
+  1058→        <div className="max-w-5xl mx-auto text-center">
+  1059→          <p className="text-[10px] text-[#d4a574] font-medium" style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}>
+  1060→            Rewind — because you&apos;re human, not a machine. Take it easy.
+  1061→          </p>
+  1062→        </div>
+  1063→      </footer>
+  1064→    </div>
+  1065→  );
+  1066→}
+  1067→
+  1068→/* ═══════════════════════════════════════════════════
+  1069→   APP ROOT
+  1070→   ═══════════════════════════════════════════════════ */
+  1071→export default function Home() {
+  1072→  const [birthYear, setBirthYear] = useState<number | null>(null);
+  1073→
+  1074→  const handleSubmit = useCallback((year: number) => {
+  1075→    setBirthYear(year);
+  1076→    window.scrollTo({ top: 0, behavior: 'smooth' });
+  1077→  }, []);
+  1078→
+  1079→  const handleBack = useCallback(() => {
+  1080→    setBirthYear(null);
+  1081→  }, []);
+  1082→
+  1083→  return (
+  1084→    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(180deg, #f5edd6 0%, #ede0c8 40%, #e8d8b8 100%)' }} data-rewind-top>
+  1085→      <AnimatePresence mode="wait">
+  1086→        {birthYear === null ? (
+  1087→          <motion.div
+  1088→            key="hero"
+  1089→            initial={{ opacity: 0 }}
+  1090→            animate={{ opacity: 1 }}
+  1091→            exit={{ opacity: 0, y: -20 }}
+  1092→            transition={{ duration: 0.4 }}
+  1093→          >
+  1094→            <HeroSection onSubmit={handleSubmit} />
+  1095→          </motion.div>
+  1096→        ) : (
+  1097→          <motion.div
+  1098→            key="dashboard"
+  1099→            initial={{ opacity: 0, y: 20 }}
+  1100→            animate={{ opacity: 1, y: 0 }}
+  1101→            exit={{ opacity: 0 }}
+  1102→            transition={{ duration: 0.5 }}
+  1103→            className="flex flex-col min-h-screen"
+  1104→          >
+  1105→            <Dashboard birthYear={birthYear} onBack={handleBack} />
+  1106→          </motion.div>
+  1107→        )}
+  1108→      </AnimatePresence>
+  1109→    </div>
+  1110→  );
+  1111→}
