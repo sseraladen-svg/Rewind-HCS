@@ -4,37 +4,55 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
-  ChevronRight, Sparkles, ArrowLeft, RefreshCw, Trophy, Zap,
-  RotateCcw, Play, Eye, EyeOff, Timer, CheckCircle2, XCircle,
+  ChevronRight, Sparkles, ArrowLeft, RefreshCw,
+  RotateCcw, Play, Timer, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
   type DecadeData, type NostalgiaItem,
 } from '@/lib/nostalgia-data';
-/* eslint-disable @next/next/no-page-custom-font */
 
 /* ═══════════════════════════════════════════════════
-   SKEUOMORPHIC FLOATING DUST MOTES
+   DUST MOTES (hydration-safe, uses useEffect)
    ═══════════════════════════════════════════════════ */
 function DustMotes() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const motes = useMemo(() => {
+    if (!mounted) return [];
+    const colors = ['#c4956a', '#8b5e3c', '#d4a574', '#e8c9a0', '#b8845a'];
+    return Array.from({ length: 25 }, (_, i) => ({
+      id: i,
+      w: 2 + Math.random() * 6,
+      h: 2 + Math.random() * 6,
+      l: Math.random() * 100,
+      t: Math.random() * 100,
+      bg: colors[i % 5],
+      delay: Math.random() * 25,
+      dur: 20 + Math.random() * 20,
+    }));
+  }, [mounted]);
+
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden>
-      {Array.from({ length: 25 }).map((_, i) => (
+      {motes.map((m) => (
         <span
-          key={i}
+          key={m.id}
           className="absolute rounded-full opacity-15 animate-[float_25s_infinite_linear]"
           style={{
-            width: `${2 + Math.random() * 6}px`,
-            height: `${2 + Math.random() * 6}px`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            background: ['#c4956a', '#8b5e3c', '#d4a574', '#e8c9a0', '#b8845a'][i % 5],
-            animationDelay: `${Math.random() * 25}s`,
-            animationDuration: `${20 + Math.random() * 20}s`,
+            width: `${m.w}px`,
+            height: `${m.h}px`,
+            left: `${m.l}%`,
+            top: `${m.t}%`,
+            background: m.bg,
+            animationDelay: `${m.delay}s`,
+            animationDuration: `${m.dur}s`,
           }}
         />
       ))}
@@ -43,7 +61,7 @@ function DustMotes() {
 }
 
 /* ═══════════════════════════════════════════════════
-   GAME 1: MEMORY MATCH
+   GAME 1: MEMORY MATCH (simple show/hide, no 3D)
    ═══════════════════════════════════════════════════ */
 interface MatchCard {
   id: number;
@@ -53,34 +71,50 @@ interface MatchCard {
   isMatched: boolean;
 }
 
-function MemoryMatchGame({ data }: { data: DecadeData }) {
-  const allItems = useMemo(() => [
-    ...data.cartoons, ...data.toys, ...data.snacks, ...data.games,
-  ], [data]);
-  const shuffled = useMemo(() => {
-    const picked = allItems.sort(() => Math.random() - 0.5).slice(0, 6);
-    const cards: MatchCard[] = picked.flatMap((item, i) => [
-      { id: i * 2, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
-      { id: i * 2 + 1, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
-    ]);
-    return cards.sort(() => Math.random() - 0.5);
-  }, [allItems]);
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
-  const [cards, setCards] = useState<MatchCard[]>(shuffled);
+function MemoryMatchGame({ data }: { data: DecadeData }) {
+  const [cards, setCards] = useState<MatchCard[]>([]);
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [moves, setMoves] = useState(0);
   const [matches, setMatches] = useState(0);
   const [gameWon, setGameWon] = useState(false);
   const lockRef = useRef(false);
 
+  // Initialize cards client-side only to avoid SSR hydration mismatch from Math.random()
+  useEffect(() => {
+    const pool = [...data.cartoons, ...data.toys, ...data.snacks, ...data.games];
+    const picked = shuffle(pool).slice(0, 6);
+    const initial: MatchCard[] = picked.flatMap((item, i) => [
+      { id: i * 2, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+      { id: i * 2 + 1, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+    ]);
+    // Deferred init to avoid calling setState synchronously in effect body
+    const id = requestAnimationFrame(() => setCards(shuffle(initial)));
+    return () => cancelAnimationFrame(id);
+  }, [data]);
+
   const resetGame = useCallback(() => {
-    setCards([...shuffled]);
+    const pool = [...data.cartoons, ...data.toys, ...data.snacks, ...data.games];
+    const picked = shuffle(pool).slice(0, 6);
+    const fresh: MatchCard[] = picked.flatMap((item, i) => [
+      { id: i * 2, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+      { id: i * 2 + 1, emoji: item.emoji, label: item.title, isFlipped: false, isMatched: false },
+    ]);
+    setCards(shuffle(fresh));
     setFlippedIds([]);
     setMoves(0);
     setMatches(0);
     setGameWon(false);
     lockRef.current = false;
-  }, [shuffled]);
+  }, [data]);
 
   const handleFlip = useCallback((id: number) => {
     if (lockRef.current) return;
@@ -96,11 +130,13 @@ function MemoryMatchGame({ data }: { data: DecadeData }) {
     if (newFlipped.length === 2) {
       setMoves(m => m + 1);
       lockRef.current = true;
-      const [first, second] = newFlipped.map(fid => cards.find(c => c.id === fid)!);
+      const first = cards.find(c => c.id === newFlipped[0])!;
+      const second = cards.find(c => c.id === newFlipped[1])!;
+
       if (first.label === second.label) {
         setTimeout(() => {
           setCards(prev => prev.map(c =>
-            c.id === first.id || c.id === second.id ? { ...c, isMatched: true } : c
+            c.id === first.id || c.id === second.id ? { ...c, isMatched: true, isFlipped: true } : c
           ));
           setMatches(m => {
             const newM = m + 1;
@@ -123,7 +159,7 @@ function MemoryMatchGame({ data }: { data: DecadeData }) {
   }, [cards, flippedIds]);
 
   return (
-    <div className="relative sk-paper p-5 rounded-lg sk-noise overflow-hidden">
+    <div className="sk-paper p-5 rounded-lg sk-noise relative overflow-hidden">
       <div className="flex items-center justify-between mb-4">
         <h4 className="font-bold text-base text-[#5c4033] flex items-center gap-2">
           <span className="text-xl">🃏</span> Memory Match
@@ -153,26 +189,38 @@ function MemoryMatchGame({ data }: { data: DecadeData }) {
       )}
 
       <div className="grid grid-cols-4 gap-2">
-        {cards.map((card) => (
-          <button
-            key={card.id}
-            onClick={() => handleFlip(card.id)}
-            className="sk-game-card aspect-square cursor-pointer"
-            disabled={card.isMatched}
-          >
-            <div className={`sk-game-card-inner relative w-full h-full ${card.isFlipped || card.isMatched ? 'flipped' : ''}`}>
-              {/* Back of card - worn leather look */}
-              <div className="sk-game-card-back absolute inset-0 rounded-md sk-leather flex items-center justify-center">
-                <span className="text-xl opacity-40">?</span>
-              </div>
-              {/* Front of card */}
-              <div className={`sk-game-card-front absolute inset-0 rounded-md sk-paper flex flex-col items-center justify-center p-1 transition-opacity ${card.isMatched ? 'opacity-60' : ''}`}>
-                <span className="text-2xl md:text-3xl">{card.emoji}</span>
-                <span className="text-[8px] md:text-[10px] font-bold text-[#5c4033] mt-1 text-center leading-tight line-clamp-1">{card.label}</span>
-              </div>
-            </div>
-          </button>
-        ))}
+        {cards.map((card) => {
+          const showFront = card.isFlipped || card.isMatched;
+          return (
+            <button
+              key={card.id}
+              onClick={() => handleFlip(card.id)}
+              className="aspect-square rounded-md transition-all duration-300 cursor-pointer border-2 flex flex-col items-center justify-center p-1"
+              disabled={card.isMatched}
+              style={{
+                background: showFront
+                  ? '#faf6eb'
+                  : 'linear-gradient(135deg, #7a4f30, #8b5e3c, #6b4226)',
+                borderColor: showFront
+                  ? (card.isMatched ? '#a8d08d' : data.color + '80')
+                  : '#5c4033',
+                boxShadow: showFront
+                  ? '0 2px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'
+                  : '0 3px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)',
+                opacity: card.isMatched ? 0.6 : 1,
+              }}
+            >
+              {showFront ? (
+                <>
+                  <span className="text-2xl md:text-3xl">{card.emoji}</span>
+                  <span className="text-[7px] md:text-[9px] font-bold text-[#5c4033] mt-0.5 text-center leading-tight" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{card.label}</span>
+                </>
+              ) : (
+                <span className="text-xl text-[#d4a574] font-bold">?</span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -192,7 +240,7 @@ function buildTrivia(data: DecadeData): TriviaQ[] {
   const decadeStart = parseInt(data.years.split('–')[0]);
   const qs: TriviaQ[] = [];
   const all = [...data.cartoons, ...data.toys, ...data.music, ...data.movies, ...data.snacks, ...data.games, ...data.tech, ...data.trends];
-  const shuffled = all.sort(() => Math.random() - 0.5).slice(0, 8);
+  const shuffled = shuffle(all).slice(0, 8);
 
   for (const item of shuffled) {
     const realYear = decadeStart + Math.floor(Math.random() * 8) + 1;
@@ -202,7 +250,7 @@ function buildTrivia(data: DecadeData): TriviaQ[] {
       Math.max(1970, realYear - 6 - Math.floor(Math.random() * 4)),
     ].filter(y => y !== realYear).slice(0, 3);
     while (wrongYears.length < 3) wrongYears.push(Math.max(1970, realYear + 7));
-    const options = [realYear, ...wrongYears.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const options = shuffle([realYear, ...wrongYears.slice(0, 3)]);
     qs.push({
       question: `When did "${item.title}" first become popular?`,
       emoji: item.emoji,
@@ -214,17 +262,21 @@ function buildTrivia(data: DecadeData): TriviaQ[] {
 }
 
 function GuessTheYearGame({ data }: { data: DecadeData }) {
-  const [questions] = useState<TriviaQ[]>(() => buildTrivia(data));
+  const [questions, setQuestions] = useState<TriviaQ[]>([]);
   const [qIdx, setQIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [done, setDone] = useState(false);
 
+  useEffect(() => {
+    setQuestions(buildTrivia(data));
+  }, [data]);
+
   const q = questions[qIdx];
 
   const handleAnswer = (optIdx: number) => {
-    if (showResult) return;
+    if (showResult || !q) return;
     setSelected(optIdx);
     setShowResult(true);
     if (optIdx === q.correct) setScore(s => s + 1);
@@ -239,10 +291,16 @@ function GuessTheYearGame({ data }: { data: DecadeData }) {
     }, 1500);
   };
 
-  const resetGame = () => { setQIdx(0); setScore(0); setSelected(null); setShowResult(false); setDone(false); };
+  const resetGame = () => {
+    const fresh = buildTrivia(data);
+    setQuestions(fresh);
+    setQIdx(0); setScore(0); setSelected(null); setShowResult(false); setDone(false);
+  };
+
+  if (!q && !done) return <div className="sk-paper p-5 rounded-lg sk-noise text-center text-sm text-[#8b7355]">Loading...</div>;
 
   if (done) {
-    const pct = Math.round((score / questions.length) * 100);
+    const pct = questions.length > 0 ? Math.round((score / questions.length) * 100) : 0;
     return (
       <div className="sk-paper p-5 rounded-lg sk-noise relative overflow-hidden">
         <div className="text-center py-4">
@@ -296,7 +354,7 @@ function GuessTheYearGame({ data }: { data: DecadeData }) {
             cls += 'border-[#d4c5a9] hover:border-[#8b5e3c] hover:shadow-md active:translate-y-0.5';
           }
           return (
-            <button key={i} onClick={() => handleAnswer(i)} className={cls} disabled={showResult}>
+            <button key={`${qIdx}-${i}`} onClick={() => handleAnswer(i)} className={cls} disabled={showResult}>
               {opt}
             </button>
           );
@@ -321,21 +379,20 @@ function GuessTheYearGame({ data }: { data: DecadeData }) {
 }
 
 /* ═══════════════════════════════════════════════════
-   GAME 3: WHACK-A-MEMORY (Reaction Game)
+   GAME 3: TAP THE MEMORY (Reaction Game)
    ═══════════════════════════════════════════════════ */
 function WhackGame({ data }: { data: DecadeData }) {
+  const GRID = 9;
   const allItems = useMemo(() => [
     ...data.toys, ...data.snacks, ...data.cartoons, ...data.games,
   ], [data]);
 
-  const GRID = 9;
   const [grid, setGrid] = useState<(NostalgiaItem | null)[]>(Array(GRID).fill(null));
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
   const [gameActive, setGameActive] = useState(false);
-  const [misses, setMisses] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [showFeedback, setShowFeedback] = useState<{ id: number; hit: boolean } | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spawnRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const gridRef = useRef<(NostalgiaItem | null)[]>(Array(GRID).fill(null));
@@ -349,40 +406,30 @@ function WhackGame({ data }: { data: DecadeData }) {
     newGrid[pos] = item;
     gridRef.current = newGrid;
     setGrid([...newGrid]);
-
-    // Auto-remove after a delay
     setTimeout(() => {
       if (gridRef.current[pos] === item) {
-        const g = [...gridRef.current];
-        g[pos] = null;
-        gridRef.current = g;
-        setGrid([...g]);
+        const g = [...gridRef.current]; g[pos] = null; gridRef.current = g; setGrid([...g]);
       }
     }, 1200);
   }, [allItems]);
 
   const startGame = useCallback(() => {
-    setScore(0);
-    setMisses(0);
-    setTimeLeft(20);
-    setGameOver(false);
-    setGameActive(true);
-    gridRef.current = Array(GRID).fill(null);
-    setGrid(Array(GRID).fill(null));
+    const fresh = Array(GRID).fill(null);
+    gridRef.current = fresh;
+    setGrid([...fresh]);
+    setScore(0); setTimeLeft(20); setGameOver(false); setGameActive(true);
 
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
-          clearInterval(timerRef.current!);
-          clearInterval(spawnRef.current!);
-          setGameActive(false);
-          setGameOver(true);
+          if (timerRef.current) clearInterval(timerRef.current);
+          if (spawnRef.current) clearInterval(spawnRef.current);
+          setGameActive(false); setGameOver(true);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-
     spawnRef.current = setInterval(spawnItem, 700);
   }, [spawnItem]);
 
@@ -396,19 +443,15 @@ function WhackGame({ data }: { data: DecadeData }) {
   const handleWhack = (idx: number) => {
     if (!gameActive || !grid[idx]) return;
     setScore(s => s + 10);
-    setShowFeedback({ id: Date.now(), hit: true });
-    const g = [...gridRef.current];
-    g[idx] = null;
-    gridRef.current = g;
-    setGrid([...g]);
-    setTimeout(() => setShowFeedback(null), 300);
+    setFeedback('+10');
+    const g = [...gridRef.current]; g[idx] = null; gridRef.current = g; setGrid([...g]);
+    setTimeout(() => setFeedback(null), 300);
   };
 
   const handleMiss = () => {
     if (!gameActive) return;
-    setMisses(m => m + 1);
-    setShowFeedback({ id: Date.now(), hit: false });
-    setTimeout(() => setShowFeedback(null), 300);
+    setFeedback('Miss!');
+    setTimeout(() => setFeedback(null), 300);
   };
 
   return (
@@ -446,17 +489,12 @@ function WhackGame({ data }: { data: DecadeData }) {
       )}
 
       {gameActive && (
-        <div
-          className="grid grid-cols-3 gap-2 select-none"
-          onPointerDown={(e) => {
-            if (e.target === e.currentTarget) handleMiss();
-          }}
-        >
+        <div className="grid grid-cols-3 gap-2 select-none">
           {grid.map((item, i) => (
             <button
               key={i}
               onClick={() => item ? handleWhack(i) : handleMiss()}
-              className="aspect-square rounded-lg transition-all duration-150 cursor-pointer border-2 overflow-hidden"
+              className="aspect-square rounded-lg transition-all duration-150 cursor-pointer border-2 flex items-center justify-center"
               style={{
                 background: item
                   ? `linear-gradient(135deg, ${data.color}18, ${data.color}30)`
@@ -470,10 +508,9 @@ function WhackGame({ data }: { data: DecadeData }) {
             >
               {item && (
                 <motion.span
-                  initial={{ scale: 0, rotate: -20 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0 }}
-                  className="text-3xl md:text-4xl block"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="text-3xl md:text-4xl"
                 >
                   {item.emoji}
                 </motion.span>
@@ -483,16 +520,15 @@ function WhackGame({ data }: { data: DecadeData }) {
         </div>
       )}
 
-      {showFeedback && (
+      {feedback && (
         <motion.div
-          key={showFeedback.id}
+          key={feedback}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
           className="absolute bottom-3 left-1/2 -translate-x-1/2"
         >
-          <span className={`text-xs font-bold px-3 py-1 rounded-full sk-btn ${showFeedback.hit ? '' : 'opacity-50'}`}>
-            {showFeedback.hit ? '+10' : 'Miss!'}
+          <span className={`text-xs font-bold px-3 py-1 rounded-full sk-btn ${feedback === 'Miss!' ? 'opacity-50' : ''}`}>
+            {feedback}
           </span>
         </motion.div>
       )}
@@ -528,7 +564,7 @@ function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
         <motion.div
           animate={{ rotate: [0, 3, -3, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-6xl md:text-8xl mb-3 drop-shadow-lg"
+          className="text-6xl md:text-8xl mb-3"
           style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
         >
           📼
@@ -549,7 +585,6 @@ function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
         </p>
       </motion.div>
 
-      {/* Main card - Polaroid / paper style */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9, rotate: -1 }}
         animate={{ opacity: 1, scale: 1, rotate: 0 }}
@@ -586,7 +621,6 @@ function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
         </div>
       </motion.div>
 
-      {/* Decade chips - pinned to cork board */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -607,13 +641,12 @@ function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
             whileTap={{ scale: 0.95 }}
             className="sk-paper rounded-lg px-4 py-2 text-sm font-bold cursor-pointer transition-all duration-200 relative overflow-hidden sk-noise"
             style={{
-              '--rotate': `${-3 + i * 1.5}deg`,
               borderColor: hoveredDecade === d.decade ? d.color : '#c4b594',
               color: hoveredDecade === d.decade ? '#5c4033' : '#8b7355',
               boxShadow: hoveredDecade === d.decade
                 ? `0 4px 16px ${d.color}40, 0 1px 3px rgba(0,0,0,0.1)`
                 : '0 2px 6px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.06)',
-            } as React.CSSProperties}
+            }}
           >
             {d.decade}
           </motion.button>
@@ -634,7 +667,7 @@ function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
 }
 
 /* ═══════════════════════════════════════════════════
-   QUOTE BANNER (Typewriter paper style)
+   QUOTE BANNER
    ═══════════════════════════════════════════════════ */
 function QuoteBanner({ quotes }: { quotes: string[] }) {
   const [idx, setIdx] = useState(0);
@@ -660,14 +693,14 @@ function QuoteBanner({ quotes }: { quotes: string[] }) {
 }
 
 /* ═══════════════════════════════════════════════════
-   MEMORY CARD (Polaroid style)
+   MEMORY CARD (Polaroid)
    ═══════════════════════════════════════════════════ */
 function MemoryCard({ item, color, index }: { item: NostalgiaItem; color: string; index: number }) {
-  const rot = -2 + Math.random() * 4;
+  const [rot] = useState(() => -2 + Math.random() * 4);
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9, rotate: -3 }}
-      whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+      initial={{ opacity: 0, scale: 0.9 }}
+      whileInView={{ opacity: 1, scale: 1 }}
       viewport={{ once: true, margin: '-20px' }}
       transition={{ duration: 0.4, delay: index * 0.04 }}
     >
@@ -691,7 +724,7 @@ function MemoryCard({ item, color, index }: { item: NostalgiaItem; color: string
 }
 
 /* ═══════════════════════════════════════════════════
-   CATEGORY GRID (Cork board pinned cards)
+   CATEGORY GRID
    ═══════════════════════════════════════════════════ */
 function CategoryGrid({ items, color }: { items: NostalgiaItem[]; color: string }) {
   return (
@@ -704,14 +737,14 @@ function CategoryGrid({ items, color }: { items: NostalgiaItem[]; color: string 
 }
 
 /* ═══════════════════════════════════════════════════
-   PERSONAL TIMELINE (Tape strip cards)
+   PERSONAL TIMELINE
    ═══════════════════════════════════════════════════ */
 function PersonalTimeline({ birthYear }: { birthYear: number }) {
   const timeline = getPersonalTimeline(birthYear);
   return (
     <div className="space-y-4">
       {timeline.map((entry, i) => {
-        const data = nostalgiaData[entry.decade];
+        const d = nostalgiaData[entry.decade];
         return (
           <motion.div
             key={entry.decade}
@@ -724,8 +757,8 @@ function PersonalTimeline({ birthYear }: { birthYear: number }) {
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg flex-shrink-0"
                 style={{
-                  background: `linear-gradient(135deg, ${data.color}, ${data.color}cc)`,
-                  boxShadow: `0 3px 8px ${data.color}50, inset 0 1px 0 rgba(255,255,255,0.3)`,
+                  background: `linear-gradient(135deg, ${d.color}, ${d.color}cc)`,
+                  boxShadow: `0 3px 8px ${d.color}50, inset 0 1px 0 rgba(255,255,255,0.3)`,
                 }}
               >
                 {entry.age.replace('Age ', '')}
@@ -747,7 +780,7 @@ function PersonalTimeline({ birthYear }: { birthYear: number }) {
 }
 
 /* ═══════════════════════════════════════════════════
-   ERA SPOTLIGHT (VHS Tape style)
+   ERA SPOTLIGHT (VHS Tape)
    ═══════════════════════════════════════════════════ */
 function EraSpotlight({ data }: { data: DecadeData }) {
   const [spotIdx, setSpotIdx] = useState(0);
@@ -766,22 +799,20 @@ function EraSpotlight({ data }: { data: DecadeData }) {
     <AnimatePresence mode="wait">
       <motion.div
         key={spotIdx}
-        initial={{ opacity: 0, scale: 0.95, rotate: -1 }}
-        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.5 }}
       >
         <div className="sk-paper-aged rounded-xl p-5 sk-noise relative overflow-hidden">
-          {/* VHS tape top decoration */}
           <div className="absolute top-0 left-0 right-0 h-10 sk-wood rounded-t-xl flex items-center px-4">
             <div className="flex gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
               <span className="w-2.5 h-2.5 rounded-full bg-[#d4a574] shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
               <span className="w-2.5 h-2.5 rounded-full bg-green-600 shadow-[inset_0_-1px_1px_rgba(0,0,0,0.3)]" />
             </div>
-            <span className="ml-auto text-[10px] font-bold text-[#faf6eb] tracking-widest uppercase">REC ●</span>
+            <span className="ml-auto text-[10px] font-bold text-[#faf6eb] tracking-widest uppercase">REC</span>
           </div>
-
           <div className="pt-12 text-center">
             <motion.span
               animate={{ scale: [1, 1.1, 1] }}
@@ -804,7 +835,7 @@ function EraSpotlight({ data }: { data: DecadeData }) {
 }
 
 /* ═══════════════════════════════════════════════════
-   BREATHER MESSAGE (Sticky note style)
+   BREATHER MESSAGE (Sticky note)
    ═══════════════════════════════════════════════════ */
 function BreatherMessage() {
   const messages = [
@@ -815,29 +846,26 @@ function BreatherMessage() {
     { title: "Breathe", body: "Close your eyes. Take a deep breath. You've survived 100% of your worst days. You're stronger than you think, and it's okay to rest.", emoji: "🍃" },
   ];
   const [idx, setIdx] = useState(0);
-
   useEffect(() => {
     const t = setInterval(() => setIdx((i) => (i + 1) % messages.length), 12000);
     return () => clearInterval(t);
   }, [messages.length]);
 
-  const noteRotate = -1 + Math.random() * 2;
-
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={idx}
-        initial={{ opacity: 0, y: 15, rotate: -3 }}
-        animate={{ opacity: 1, y: 0, rotate: noteRotate }}
-        exit={{ opacity: 0, y: -15, rotate: 3 }}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -15 }}
         transition={{ duration: 0.6 }}
+        className="flex justify-center"
       >
         <div
-          className="mx-auto max-w-md p-5 rounded-sm relative overflow-hidden"
+          className="max-w-md p-5 rounded-sm overflow-hidden"
           style={{
             background: 'linear-gradient(135deg, #fff9c4, #fff176)',
             boxShadow: '0 3px 10px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)',
-            transform: `rotate(${noteRotate}deg)`,
           }}
         >
           <span className="text-2xl block mb-2">{messages[idx].emoji}</span>
@@ -850,7 +878,7 @@ function BreatherMessage() {
 }
 
 /* ═══════════════════════════════════════════════════
-   DASHBOARD (Full Skeuomorphic)
+   DASHBOARD
    ═══════════════════════════════════════════════════ */
 function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => void }) {
   const decadeKey = getDecadeForYear(birthYear);
@@ -878,26 +906,19 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Sticky header - wood grain */}
+      {/* Header - wood grain */}
       <header className="sticky top-0 z-30 sk-wood px-2 py-0">
         <div className="max-w-5xl mx-auto py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="sk-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back
+            <button onClick={onBack} className="sk-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back
             </button>
             <div className="h-4 w-px bg-[#a08868]" />
             <h2 className="font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-              📼 Rewind
+              Rewind
             </h2>
           </div>
-          <div
-            className="sk-vhs-label text-[10px] font-bold px-3 py-1 rounded"
-            style={{ color: data.color, borderColor: data.color }}
-          >
+          <div className="sk-vhs-label text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
             {data.decade} &middot; Born {birthYear}
           </div>
         </div>
@@ -908,13 +929,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           {/* Hero */}
           <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
             <div className="sk-paper rounded-xl p-5 text-center sk-noise relative overflow-hidden">
-              <h1
-                className="text-3xl md:text-4xl font-black mb-1"
-                style={{
-                  color: data.color,
-                  textShadow: `0 1px 0 rgba(255,255,255,0.3)`,
-                }}
-              >
+              <h1 className="text-3xl md:text-4xl font-black mb-1" style={{ color: data.color, textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}>
                 {data.decade}
               </h1>
               <p className="text-sm text-[#8b7355] font-medium">{data.tagline}</p>
@@ -926,7 +941,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             <QuoteBanner quotes={data.quotes} />
           </section>
 
-          {/* Main tab bar - metal / embossed */}
+          {/* Tab bar - metal */}
           <div className="sk-metal rounded-xl p-1 mb-6 flex gap-1 shadow-[0_3px_8px_rgba(0,0,0,0.2)]">
             {tabs.map(tab => (
               <button
@@ -948,12 +963,8 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           {activeTab === 'memories' && (
             <AnimatePresence mode="wait">
               <motion.div key="memories" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                {/* Breather */}
-                <section className="mb-6">
-                  <BreatherMessage />
-                </section>
+                <section className="mb-6"><BreatherMessage /></section>
 
-                {/* Spotlight */}
                 <section className="mb-8">
                   <h2 className="text-sm font-black text-[#5c4033] uppercase tracking-widest mb-3 flex items-center gap-2">
                     <Star className="h-4 w-4" style={{ color: data.color }} /> Remember This?
@@ -961,7 +972,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                   <EraSpotlight data={data} />
                 </section>
 
-                {/* Category filter chips */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   <button
                     onClick={() => setActiveCategory('all')}
@@ -981,7 +991,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                   ))}
                 </div>
 
-                {/* Content */}
                 {activeCategory === 'all' ? (
                   Object.entries(categoryMap).map(([key, cat]) => (
                     <div key={key} className="mb-8 last:mb-0">
@@ -1003,9 +1012,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             <AnimatePresence mode="wait">
               <motion.div key="games" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="text-center mb-5">
-                  <p className="text-sm text-[#5c4033] font-medium">
-                    Take a break from the rush. Play some games from the heart. 🎮
-                  </p>
+                  <p className="text-sm text-[#5c4033] font-medium">Take a break from the rush. Play some games from the heart.</p>
                 </div>
                 <div className="space-y-6">
                   <MemoryMatchGame data={data} />
@@ -1025,31 +1032,19 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                 </h2>
                 <PersonalTimeline birthYear={birthYear} />
 
-                {/* Closing message */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  className="text-center mt-10"
-                >
+                <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mt-10">
                   <div className="sk-paper rounded-xl p-6 sk-noise relative overflow-hidden max-w-md mx-auto">
                     <motion.div
                       animate={{ rotate: [0, 8, -8, 0] }}
                       transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
                       className="text-5xl mb-3"
-                    >
-                      🫂
-                    </motion.div>
+                    >🫂</motion.div>
                     <h3 className="text-lg font-black text-[#3d2b1f] mb-2">You made it through.</h3>
                     <p className="text-xs text-[#8b7355] leading-relaxed">
                       Every memory on this page is a piece of who you are. The world moves fast, but your roots are deep. You came from simpler times, and that strength lives in you still. Take care of yourself.
                     </p>
-                    <button
-                      onClick={() => onBack()}
-                      className="sk-btn px-5 py-2.5 rounded-lg font-bold mt-4 cursor-pointer inline-flex items-center gap-2"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Start Over
+                    <button onClick={onBack} className="sk-btn px-5 py-2.5 rounded-lg font-bold mt-4 cursor-pointer inline-flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4" /> Start Over
                     </button>
                   </div>
                 </motion.div>
@@ -1059,7 +1054,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         </div>
       </main>
 
-      {/* Footer - leather */}
       <footer className="sk-leather px-4 py-3 mt-auto">
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-[10px] text-[#d4a574] font-medium" style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}>
