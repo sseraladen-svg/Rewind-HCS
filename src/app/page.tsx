@@ -17,200 +17,86 @@ import NostalgiaFeatures from '@/components/NostalgiaFeatures';
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
 
 /* ═══════════════════════════════════════════════════
-   REWIND INTRO — VHS / CRT AUTHENTIC BOOT LOADING
-   Phases: Blackout → CRT turn-on → VHS static → REWIND title →
-           Boot lines → Loading bar → CRT turn-off
+   CRT BOOT LOADING SCREEN (original VHS/CRT style)
    ═══════════════════════════════════════════════════ */
 function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
-  const [phase, setPhase] = useState<
-    'blackout' | 'crt-on' | 'static' | 'title' | 'boot' | 'bar' | 'crt-off'
-  >('blackout');
   const [visibleLines, setVisibleLines] = useState(0);
-  const [trackingY, setTrackingY] = useState(-10);
+  const [fadingOut, setFadingOut] = useState(false);
+  const [showBar, setShowBar] = useState(false);
 
   const bootLines = useMemo(() => [
-    'INITIALIZING NOSTALGIA BUFFER...',
-    'LOADING CHILDHOOD MEMORIES...',
-    'DUSTING OFF THE VHS TAPES...',
-    'WARMING UP THE CRT DISPLAY...',
-    'SEARCHING FOR GOOD TIMES...',
-    'INDEXING MIXTAPE TRACKS...',
-    'POLISHING POLAROID PHOTOS...',
-    'REWINDING CASSETTE DECK...',
-    'READY.',
+    '> Initializing nostalgia buffer...',
+    '> Loading childhood memories...',
+    '> Dusting off the VHS tapes...',
+    '> Warming up the CRT display...',
+    '> Searching for good times...',
+    '> Indexing mixtape tracks...',
+    '> Polishing polaroid photos...',
+    '> Rewinding cassette deck...',
+    '> Ready.',
   ], []);
 
   useEffect(() => {
-    const t: ReturnType<typeof setTimeout>[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // Phase 1: Blackout (500ms — screen is off)
-    t.push(setTimeout(() => setPhase('crt-on'), 500));
-
-    // Phase 2: CRT turn-on (800ms — bright line expands)
-    t.push(setTimeout(() => setPhase('static'), 1300));
-
-    // Phase 3: VHS static noise flash (700ms)
-    t.push(setTimeout(() => setPhase('title'), 2000));
-
-    // Phase 4: REWIND title display (1800ms)
-    t.push(setTimeout(() => setPhase('boot'), 3800));
-
-    // Phase 5: Boot lines appear one by one (500ms each × 9 = 4500ms)
+    // Reveal boot lines one by one at 500ms intervals
     bootLines.forEach((_, i) => {
-      t.push(setTimeout(() => setVisibleLines(i + 1), 3800 + 500 * (i + 1)));
+      timers.push(setTimeout(() => {
+        setVisibleLines(i + 1);
+      }, 500 * (i + 1)));
     });
 
-    // Phase 6: Show loading bar after all lines
-    const barStart = 3800 + 500 * (bootLines.length + 1);
-    t.push(setTimeout(() => setPhase('bar'), barStart));
+    // Show progress bar after all lines
+    const barStart = 500 * (bootLines.length + 1);
+    timers.push(setTimeout(() => setShowBar(true), barStart));
 
-    // Phase 7: CRT turn-off after bar fills (3s animation)
-    const offStart = barStart + 3200;
-    t.push(setTimeout(() => setPhase('crt-off'), offStart));
-    t.push(setTimeout(onDone, offStart + 1100));
+    // Fade out (CRT turn-off) after bar fills (3s animation)
+    const fadeStart = barStart + 3200;
+    timers.push(setTimeout(() => setFadingOut(true), fadeStart));
+    timers.push(setTimeout(onDone, fadeStart + 1000));
 
-    return () => t.forEach(clearTimeout);
+    return () => timers.forEach(clearTimeout);
   }, [bootLines, onDone]);
-
-  // VHS tracking line — slow scroll down the screen
-  useEffect(() => {
-    if (phase !== 'title' && phase !== 'boot' && phase !== 'bar') return;
-    const interval = setInterval(() => {
-      setTrackingY(y => (y > 105 ? -10 : y + 0.4));
-    }, 50);
-    return () => clearInterval(interval);
-  }, [phase]);
-
-  const isOff = phase === 'crt-off';
-  const showContent = phase === 'title' || phase === 'boot' || phase === 'bar';
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden ${isOff ? 'crt-fadeout' : ''}`}
-      style={{ background: '#0a0804' }}
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center ${fadingOut ? 'crt-fadeout' : ''}`}
+      style={{
+        background: '#1a1208',
+      }}
     >
-      {/* ══ Phase: CRT TURN-ON ══ */}
-      {phase === 'crt-on' && (
-        <div className="absolute inset-0 flex items-center justify-center crt-turn-on">
-          <div className="w-full h-[2px] bg-[#c4956a]" style={{
-            boxShadow: '0 0 20px 4px rgba(196,149,106,0.6), 0 0 60px 10px rgba(196,149,106,0.2)',
-          }} />
-        </div>
-      )}
+      {/* CRT scanlines overlay */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px)',
+      }} />
 
-      {/* ══ Phase: VHS STATIC NOISE ══ */}
-      {phase === 'static' && (
-        <div className="absolute inset-0 vhs-static" />
-      )}
+      {/* CRT screen glow */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'radial-gradient(ellipse at center, rgba(196,149,106,0.03) 0%, transparent 70%)',
+      }} />
 
-      {/* ══ CRT scanlines (always on during content phases) ══ */}
-      {showContent && (
-        <>
-          {/* Scanlines */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-          }} />
-          {/* Phosphor glow */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'radial-gradient(ellipse at center, rgba(196,149,106,0.04) 0%, transparent 65%)',
-          }} />
-          {/* VHS tracking line */}
-          <div className="absolute left-0 right-0 h-[3px] pointer-events-none" style={{
-            top: `${trackingY}%`,
-            background: 'linear-gradient(90deg, transparent, rgba(196,149,106,0.25), rgba(255,255,255,0.08), rgba(196,149,106,0.25), transparent)',
-            filter: 'blur(1px)',
-            transform: 'translateY(-50%)',
-          }} />
-          {/* Screen edge curvature vignette */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.4) 100%)',
-          }} />
-        </>
-      )}
-
-      {/* ══ Phase: REWIND TITLE ══ */}
-      {phase === 'title' && (
-        <div className="relative z-10 flex flex-col items-center gap-2">
-          {/* VHS play indicator */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="inline-block w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[8px] border-l-[#c4956a]/70" />
-            <span className="old-typewriter text-[10px] tracking-[0.3em] text-[#c4956a]/50 uppercase">
-              Play
-            </span>
-          </div>
-          {/* REWIND title with VHS text glitch effect */}
-          <h1
-            className="vhs-text-reveal old-title text-5xl md:text-7xl font-black tracking-tight text-transparent bg-clip-text"
-            style={{
-              backgroundImage: 'linear-gradient(180deg, #c4956a 0%, #8b5e3c 50%, #5c4033 100%)',
-              textShadow: '0 0 30px rgba(196,149,106,0.3)',
-            }}
+      {/* Boot text lines */}
+      <div className="relative z-10 flex flex-col gap-2 px-8 max-w-md">
+        {bootLines.slice(0, visibleLines).map((line, i) => (
+          <div
+            key={i}
+            className="boot-line"
+            style={{ animationDelay: '0s' }}
           >
-            REWIND
-          </h1>
-          {/* Subtitle with tape counter */}
-          <div className="flex items-center gap-3 mt-3">
-            <div className="flex gap-0.5">
-              <span className="old-typewriter text-[10px] text-[#c4956a]/40">SP</span>
-            </div>
-            <div className="h-px w-12 bg-[#c4956a]/20" />
-            <span className="old-typewriter text-[10px] text-[#c4956a]/40 tracking-widest">
-              00:00:00
-            </span>
-            <div className="h-px w-12 bg-[#c4956a]/20" />
-            <span className="old-typewriter text-[10px] text-[#c4956a]/40">
-              HI-FI
-            </span>
+            {line}
+            {i === visibleLines - 1 && !showBar && (
+              <span className="inline-block w-[2px] h-[1em] bg-[#c4956a]/70 ml-0.5 align-middle" style={{ animation: 'blink-cursor 0.6s step-end infinite' }} />
+            )}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* ══ Phase: BOOT LINES ══ */}
-      {(phase === 'boot' || phase === 'bar') && (
-        <div className="relative z-10 flex flex-col items-center w-full max-w-lg px-8">
-          {/* Header with VHS deck branding */}
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <span className="old-typewriter text-[9px] tracking-[0.2em] text-[#c4956a]/40 uppercase">
-              Rewind VHS System v1.0
-            </span>
-            <div className="flex gap-1 ml-2">
-              <div className="w-1 h-1 rounded-full bg-[#c4956a]/30" />
-              <div className="w-1 h-1 rounded-full bg-[#c4956a]/20" />
-              <div className="w-1 h-1 rounded-full bg-[#c4956a]/10" />
-            </div>
+      {/* Loading bar */}
+      {showBar && (
+        <div className="relative z-10 mt-8">
+          <div className="loading-bar-track">
+            <div className="loading-bar-fill" />
           </div>
-
-          {/* Boot text lines */}
-          <div className="flex flex-col gap-1.5 w-full mb-6">
-            {bootLines.slice(0, visibleLines).map((line, i) => (
-              <div
-                key={i}
-                className="boot-line"
-                style={{ animationDelay: '0s' }}
-              >
-                <span className="text-[#c4956a]/30 mr-2">{String(i + 1).padStart(2, '0')}</span>
-                {line}
-                {i === visibleLines - 1 && phase === 'boot' && (
-                  <span className="inline-block w-[2px] h-[1em] bg-[#c4956a]/70 ml-0.5 align-middle" style={{ animation: 'blink-cursor 0.6s step-end infinite' }} />
-                )}
-                {i < visibleLines - 1 && (
-                  <span className="ml-3 text-[#6b8a5e]/50">OK</span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Loading bar */}
-          {phase === 'bar' && (
-            <div className="flex flex-col items-center w-full">
-              <div className="loading-bar-track">
-                <div className="loading-bar-fill" />
-              </div>
-              <span className="old-typewriter text-[9px] text-[#c4956a]/30 mt-2 tracking-wider">
-                PRESS PLAY ON TAPE
-              </span>
-            </div>
-          )}
         </div>
       )}
     </div>
