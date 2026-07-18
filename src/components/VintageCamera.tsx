@@ -4,8 +4,15 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, Video, X, Download, Trash2, Image as ImageIcon,
-  RotateCcw, SwitchCamera, Zap, Circle, Square,
+  RotateCcw, SwitchCamera, Zap, Circle, Square, Play,
 } from 'lucide-react';
+import {
+  PIPELINE_PRESETS,
+  processFrame,
+  processPreviewFrame,
+  getGateFlickerEV,
+  type PipelineConfig,
+} from '@/lib/image-pipeline';
 
 /* ═══════ TYPES ═══════ */
 interface CapturedItem {
@@ -18,25 +25,26 @@ interface CapturedItem {
 
 type FilterPreset = 'none' | 'sepia70s' | 'faded80s' | 'warm90s' | 'bw60s' | 'polaroid' | 'vhs' | 'kodak';
 
-const FILTERS: Record<FilterPreset, { label: string; emoji: string; css: string }> = {
-  none: { label: 'Raw', emoji: '📷', css: 'none' },
-  sepia70s: { label: "70's Sepia", emoji: '🟤', css: 'sepia(0.5) contrast(1.15) brightness(0.95) saturate(1.1)' },
-  faded80s: { label: "80's Fade", emoji: '🟡', css: 'sepia(0.25) contrast(0.9) brightness(1.08) saturate(0.75) hue-rotate(-8deg)' },
-  warm90s: { label: "90's Warm", emoji: '🟠', css: 'sepia(0.35) contrast(1.1) brightness(1.02) saturate(1.25) hue-rotate(-5deg)' },
-  bw60s: { label: "60's B&W", emoji: '⬛', css: 'grayscale(1) contrast(1.25) brightness(0.9)' },
-  polaroid: { label: 'Polaroid', emoji: '📸', css: 'sepia(0.2) contrast(0.95) brightness(1.12) saturate(1.35) hue-rotate(-3deg)' },
-  vhs: { label: 'VHS', emoji: '📼', css: 'sepia(0.15) contrast(1.2) brightness(0.88) saturate(0.85) hue-rotate(-15deg)' },
-  kodak: { label: 'Kodak', emoji: '🎞️', css: 'sepia(0.1) contrast(1.08) brightness(1.05) saturate(1.5) hue-rotate(5deg)' },
-};
+/* Real-time preview resolution (low for performance) */
+const PREVIEW_W = 360;
+const PREVIEW_H = 202;
+const TARGET_FPS = 24;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
 /* ═══════ VINTAGE CAMERA COMPONENT ═══════ */
 export default function VintageCamera({ onClose }: { onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const captureCanvasRef = useRef<HTMLCanvasElement>(null);   // full-res for capture
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);   // live processed preview
+  const offscreenRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const flashRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number>(0);
+  const lastFrameTimeRef = useRef<number>(0);
+  const frameCountRef = useRef<number>(0);
+  const flickerEvRef = useRef<number>(0);
 
   const [cameraOpen, setCameraOpen] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
@@ -50,8 +58,12 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [shutterAnim, setShutterAnim] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /* ── Get current preset config ── */
+  const currentConfig: PipelineConfig = PIPELINE_PRESETS[filter] || PIPELINE_PRESETS['none'];
 
   /* ── Start Camera ── */
   const startCamera = useCallback(async () => {
@@ -78,6 +90,10 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
 
   /* ── Stop Camera ── */
   const stopCamera = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
@@ -99,196 +115,122 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
     if (cameraOpen) {
       startCamera();
     }
-    return () => {
-      // cleanup on unmount
-    };
+    return () => {};
   }, [facingMode, mode, cameraOpen, startCamera]);
 
-  /* ── Apply vintage canvas filters ── */
-  const applyVintageFilter = useCallback((ctx: CanvasRenderingContext2D, w: number, h: number, preset: FilterPreset) => {
-    if (preset === 'none') return;
+  /* ── Real-time preview loop ── */
+  useEffect(() => {
+    if (!cameraOpen || !videoRef.current || !previewCanvasRef.current) return;
 
-    // Get image data
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
+    // Create offscreen canvas for drawing video frames
+    if (!offscreenRef.current) {
+      offscreenRef.current = document.createElement('canvas');
+    }
+    offscreenRef.current.width = PREVIEW_W;
+    offscreenRef.current.height = PREVIEW_H;
+    const offCtx = offscreenRef.current.getContext('2d', { willReadFrequently: true });
+    if (!offCtx) return;
 
-    // Per-pixel vintage processing
-    for (let i = 0; i < data.length; i += 4) {
-      let r = data[i], g = data[i + 1], b = data[i + 2];
+    const previewCanvas = previewCanvasRef.current;
+    previewCanvas.width = PREVIEW_W;
+    previewCanvas.height = PREVIEW_H;
+    const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
+    if (!previewCtx) return;
 
-      switch (preset) {
-        case 'sepia70s': {
-          // Heavy warm sepia + slightly desaturate
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-          r = gray * 1.15 + 35;
-          g = gray * 1.0 + 15;
-          b = gray * 0.85;
-          // Reduce contrast slightly
-          r = 128 + (r - 128) * 0.92;
-          g = 128 + (g - 128) * 0.92;
-          b = 128 + (b - 128) * 0.92;
-          break;
+    let running = true;
+
+    const renderLoop = (timestamp: number) => {
+      if (!running) return;
+
+      const elapsed = timestamp - lastFrameTimeRef.current;
+      if (elapsed >= FRAME_INTERVAL) {
+        lastFrameTimeRef.current = timestamp - (elapsed % FRAME_INTERVAL);
+        frameCountRef.current++;
+
+        const video = videoRef.current;
+        if (!video || video.readyState < 2) {
+          rafRef.current = requestAnimationFrame(renderLoop);
+          return;
         }
-        case 'faded80s': {
-          // Washed out, lifted blacks, warm shift
-          r = r * 0.88 + 45;
-          g = g * 0.85 + 40;
-          b = b * 0.8 + 50;
-          // Lift shadows (add to dark areas)
-          const lum = (r + g + b) / 3;
-          if (lum < 100) {
-            const lift = (100 - lum) * 0.3;
-            r += lift;
-            g += lift;
-            b += lift + 10;
+
+        // Draw video frame to offscreen canvas (mirrored if front camera)
+        offCtx.save();
+        if (facingMode === 'user') {
+          offCtx.translate(PREVIEW_W, 0);
+          offCtx.scale(-1, 1);
+        }
+        offCtx.drawImage(video, 0, 0, PREVIEW_W, PREVIEW_H);
+        offCtx.restore();
+
+        // Apply lightweight preview pipeline
+        try {
+          processPreviewFrame(offCtx, PREVIEW_W, PREVIEW_H, filter, frameCountRef.current);
+
+          // Gate flicker for video mode
+          if (mode === 'video' && currentConfig.gateFlicker.enabled) {
+            flickerEvRef.current = getGateFlickerEV(currentConfig.gateFlicker.intensity);
+            const imgData = offCtx.getImageData(0, 0, PREVIEW_W, PREVIEW_H);
+            const d = imgData.data;
+            const mult = 1 + flickerEvRef.current * 0.5;
+            for (let i = 0; i < d.length; i += 4) {
+              d[i] = Math.max(0, Math.min(255, Math.round(d[i] * mult)));
+              d[i + 1] = Math.max(0, Math.min(255, Math.round(d[i + 1] * mult)));
+              d[i + 2] = Math.max(0, Math.min(255, Math.round(d[i + 2] * mult)));
+            }
+            offCtx.putImageData(imgData, 0, 0);
           }
-          break;
+        } catch {
+          // silently skip if processing errors (e.g., tab not visible)
         }
-        case 'warm90s': {
-          // Warm golden tones, slightly saturated
-          r = r * 1.08 + 12;
-          g = g * 0.98 + 8;
-          b = b * 0.88;
-          // Warm color cast
-          r = Math.min(255, r + 15);
-          b = Math.max(0, b - 10);
-          break;
-        }
-        case 'bw60s': {
-          // Classic high-contrast B&W with slight grain look
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-          const contrast = 1.25;
-          const newGray = 128 + (gray - 128) * contrast;
-          r = g = b = newGray;
-          // Add subtle random grain
-          const grain = (Math.random() - 0.5) * 12;
-          r += grain; g += grain; b += grain;
-          break;
-        }
-        case 'polaroid': {
-          // Soft, bright, slightly oversaturated with cool shadows
-          r = r * 1.05 + 10;
-          g = g * 1.08 + 8;
-          b = b * 0.95 + 15;
-          // Slight green cast in shadows
-          const lum = (r + g + b) / 3;
-          if (lum < 120) {
-            g = Math.min(255, g + 8);
-            b = Math.max(0, b - 5);
-          }
-          break;
-        }
-        case 'vhs': {
-          // Desaturated, slight color shift, low contrast
-          r = r * 0.85 + 30;
-          g = g * 0.82 + 28;
-          b = b * 0.88 + 25;
-          // Slight purple/magenta shift
-          r = Math.min(255, r + 8);
-          b = Math.min(255, b + 5);
-          // Lower contrast
-          r = 128 + (r - 128) * 0.85;
-          g = 128 + (g - 128) * 0.85;
-          b = 128 + (b - 128) * 0.85;
-          break;
-        }
-        case 'kodak': {
-          // Vibrant, warm, rich
-          r = r * 1.1 + 5;
-          g = g * 1.05 + 5;
-          b = b * 0.92;
-          // Slight warm lift
-          const lum2 = (r + g + b) / 3;
-          if (lum2 > 150) {
-            r = Math.min(255, r * 1.05);
-            g = Math.min(255, g * 0.98);
-          }
-          break;
-        }
+
+        // Copy to visible preview canvas
+        previewCtx.drawImage(offscreenRef.current, 0, 0);
       }
 
-      data[i] = Math.max(0, Math.min(255, r));
-      data[i + 1] = Math.max(0, Math.min(255, g));
-      data[i + 2] = Math.max(0, Math.min(255, b));
-    }
+      rafRef.current = requestAnimationFrame(renderLoop);
+    };
 
-    ctx.putImageData(imageData, 0, 0);
+    rafRef.current = requestAnimationFrame(renderLoop);
 
-    // Add vignette overlay
-    addVignette(ctx, w, h, preset);
+    return () => {
+      running = false;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = 0;
+      }
+    };
+  }, [cameraOpen, filter, facingMode, mode, currentConfig.gateFlicker.enabled, currentConfig.gateFlicker.intensity]);
 
-    // Add film grain overlay
-    if (preset === 'bw60s' || preset === 'vhs' || preset === 'sepia70s') {
-      addGrain(ctx, w, h, preset === 'bw60s' ? 25 : 15);
-    }
-
-    // Add date stamp for some presets
-    if (preset === 'polaroid' || preset === 'sepia70s') {
-      addDateStamp(ctx, w, h);
-    }
-  }, []);
-
-  /* ── Vignette ── */
-  const addVignette = (ctx: CanvasRenderingContext2D, w: number, h: number, preset: FilterPreset) => {
-    const intensity = preset === 'bw60s' ? 0.6 : preset === 'vhs' ? 0.5 : 0.35;
-    const gradient = ctx.createRadialGradient(w / 2, h / 2, w * 0.25, w / 2, h / 2, w * 0.75);
-    gradient.addColorStop(0, 'rgba(0,0,0,0)');
-    gradient.addColorStop(1, `rgba(0,0,0,${intensity})`);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, w, h);
-  };
-
-  /* ── Film Grain ── */
-  const addGrain = (ctx: CanvasRenderingContext2D, w: number, h: number, amount: number) => {
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const noise = (Math.random() - 0.5) * amount;
-      data[i] += noise;
-      data[i + 1] += noise;
-      data[i + 2] += noise;
-    }
-    ctx.putImageData(imageData, 0, 0);
-  };
-
-  /* ── Date Stamp (like old film photos) ── */
-  const addDateStamp = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
-    ctx.save();
-    ctx.font = 'bold 14px "Courier New", monospace';
-    ctx.fillStyle = 'rgba(255, 80, 80, 0.75)';
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 1;
-    ctx.textAlign = 'right';
-    ctx.fillText(dateStr, w - 12, h - 12);
-    ctx.restore();
-  };
-
-  /* ── Capture Photo ── */
+  /* ── Capture Photo (Full Pipeline) ── */
   const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !captureCanvasRef.current) return;
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const canvas = captureCanvasRef.current;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    setProcessing(true);
+
+    // Use full resolution
+    const w = video.videoWidth || 1280;
+    const h = video.videoHeight || 720;
+    canvas.width = w;
+    canvas.height = h;
 
     // Mirror if front camera
     if (facingMode === 'user') {
-      ctx.translate(canvas.width, 0);
+      ctx.translate(w, 0);
       ctx.scale(-1, 1);
     }
-
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Reset transform
+    ctx.drawImage(video, 0, 0, w, h);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Apply vintage filter
-    applyVintageFilter(ctx, canvas.width, canvas.height, filter);
+    // Apply full pipeline
+    try {
+      processFrame(ctx, w, h, filter, { addStamp: true });
+    } catch (e) {
+      console.error('Pipeline error:', e);
+    }
 
     // Flash effect
     setFlash(true);
@@ -298,7 +240,7 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
 
     // Save to gallery
     canvas.toBlob((blob) => {
-      if (!blob) return;
+      if (!blob) { setProcessing(false); return; }
       const url = URL.createObjectURL(blob);
       setGallery(prev => [{
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -307,43 +249,17 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
         timestamp: Date.now(),
         blob,
       }, ...prev]);
+      setProcessing(false);
     }, 'image/jpeg', 0.92);
-  }, [filter, facingMode, applyVintageFilter]);
+  }, [filter, facingMode]);
 
   /* ── Start/Stop Video Recording ── */
   const toggleRecording = useCallback(() => {
     if (!recording && streamRef.current) {
-      // Start recording
       const options = { mimeType: 'video/webm;codecs=vp9' };
-      try {
-        const mediaRecorder = new MediaRecorder(streamRef.current, options);
-        recordedChunksRef.current = [];
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) recordedChunksRef.current.push(e.data);
-        };
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-          const url = URL.createObjectURL(blob);
-          setGallery(prev => [{
-            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            type: 'video',
-            url,
-            timestamp: Date.now(),
-            blob,
-          }, ...prev]);
-          recordedChunksRef.current = [];
-        };
-        mediaRecorder.start(100);
-        mediaRecorderRef.current = mediaRecorder;
-        setRecording(true);
-        setRecordTime(0);
-        recordTimerRef.current = setInterval(() => {
-          setRecordTime(prev => prev + 1);
-        }, 1000);
-      } catch {
-        // Fallback: try vp8
+      const tryStart = (mimeType: string) => {
         try {
-          const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: 'video/webm;codecs=vp8' });
+          const mediaRecorder = new MediaRecorder(streamRef.current!, { mimeType });
           recordedChunksRef.current = [];
           mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) recordedChunksRef.current.push(e.data);
@@ -368,11 +284,15 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
             setRecordTime(prev => prev + 1);
           }, 1000);
         } catch {
-          setCameraError('Video recording not supported in this browser.');
+          if (mimeType.includes('vp9')) {
+            tryStart('video/webm;codecs=vp8');
+          } else {
+            setCameraError('Video recording not supported in this browser.');
+          }
         }
-      }
+      };
+      tryStart(options.mimeType);
     } else if (recording && mediaRecorderRef.current) {
-      // Stop recording
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current = null;
       setRecording(false);
@@ -414,10 +334,21 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
   /* ── Format time ── */
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+  /* ── Pipeline info for HUD ── */
+  const pipelineStages = [
+    currentConfig.chromaticAberration.enabled && 'CA',
+    currentConfig.toneCurve.blackLift > 0 && 'MATTE',
+    currentConfig.contrastReduce > 0 && 'FLAT',
+    currentConfig.antiClarity.enabled && 'SOFT',
+    currentConfig.grain.enabled && 'GRAIN',
+    currentConfig.halation.enabled && 'GLOW',
+    currentConfig.vignette.intensity > 0 && 'VIG',
+  ].filter(Boolean);
+
   return (
     <>
-      {/* Hidden canvas for processing */}
-      <canvas ref={canvasRef} className="hidden" />
+      {/* Hidden canvases */}
+      <canvas ref={captureCanvasRef} className="hidden" />
 
       <AnimatePresence>
         <motion.div
@@ -447,7 +378,10 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                   transition={{ duration: 4, repeat: Infinity }}
                   className="text-6xl mb-4"
                 >📸</motion.div>
-                <p className="old-body text-[#d4a574] mb-6 text-sm">Open the camera to capture memories in vintage style</p>
+                <p className="old-body text-[#d4a574] mb-2 text-sm">Open the camera to capture memories in vintage style</p>
+                <p className="old-typewriter text-[10px] text-[#8b7355] mb-6">
+                  Full image processing pipeline: chromatic aberration, tone curves, Perlin grain, halation glow
+                </p>
                 <button onClick={startCamera} className="sk-btn old-btn px-6 py-3 rounded-xl font-bold text-base cursor-pointer flex items-center gap-2 mx-auto">
                   <Camera className="h-5 w-5" /> Open Camera
                 </button>
@@ -466,23 +400,36 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
 
             {cameraOpen && (
               <>
-                {/* Video Feed */}
+                {/* Hidden video source (never shown directly) */}
                 <video
                   ref={videoRef}
-                  className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 ${facingMode === 'user' ? '-scale-x-100' : ''}`}
-                  style={{ filter: FILTERS[filter].css }}
+                  className="hidden"
                   playsInline
                   muted
                 />
 
-                {/* Vignette overlay on viewfinder */}
-                <div className="absolute inset-0 pointer-events-none" style={{
-                  background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)',
-                }} />
+                {/* Real-time processed canvas preview */}
+                <canvas
+                  ref={previewCanvasRef}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{
+                    imageRendering: 'auto', // smooth upscaling for that vintage soft look
+                  }}
+                />
 
-                {/* Scanline overlay */}
-                <div className="absolute inset-0 pointer-events-none opacity-10" style={{
-                  background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
+                {/* Halation glow overlay (CSS-based, adds dreamy ambient light) */}
+                {currentConfig.halation.enabled && (
+                  <div
+                    className="absolute inset-0 pointer-events-none mix-blend-screen"
+                    style={{
+                      background: `radial-gradient(ellipse at 50% 50%, rgba(255,240,200,${currentConfig.halation.intensity * 0.06}) 0%, transparent 70%)`,
+                    }}
+                  />
+                )}
+
+                {/* Scanline overlay (VHS era feel) */}
+                <div className="absolute inset-0 pointer-events-none opacity-[0.07]" style={{
+                  background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)',
                 }} />
 
                 {/* Film border overlay - viewfinder frame */}
@@ -516,12 +463,49 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                   </motion.div>
                 )}
 
-                {/* Filter label */}
-                <div className="absolute top-4 right-4 sk-vhs-label px-2 py-1 rounded z-10">
-                  <span className="old-typewriter text-[10px] font-bold text-[#5c4033]">
-                    {FILTERS[filter].emoji} {FILTERS[filter].label}
+                {/* Filter label + Pipeline HUD */}
+                <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+                  <div className="sk-vhs-label px-2 py-1 rounded">
+                    <span className="old-typewriter text-[10px] font-bold text-[#5c4033]">
+                      {currentConfig.emoji} {currentConfig.name}
+                    </span>
+                  </div>
+                  {/* Pipeline stages HUD */}
+                  {pipelineStages.length > 0 && (
+                    <div className="sk-vhs-label px-2 py-0.5 rounded opacity-70">
+                      <span className="old-typewriter text-[7px] text-[#8b7355] tracking-wider">
+                        {pipelineStages.join(' · ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Gate flicker indicator (video mode) */}
+                {mode === 'video' && currentConfig.gateFlicker.enabled && (
+                  <div className="absolute bottom-4 left-4 sk-vhs-label px-2 py-0.5 rounded opacity-60 z-10">
+                    <span className="old-typewriter text-[7px] text-[#8b7355]">
+                      GATE FLICKER: {flickerEvRef.current >= 0 ? '+' : ''}{flickerEvRef.current.toFixed(3)} EV
+                    </span>
+                  </div>
+                )}
+
+                {/* FPS counter (subtle) */}
+                <div className="absolute bottom-4 right-4 opacity-40 z-10">
+                  <span className="old-typewriter text-[7px] text-[#8b7355]">
+                    {TARGET_FPS}fps · {PREVIEW_W}x{PREVIEW_H} preview
                   </span>
                 </div>
+
+                {/* Processing indicator */}
+                {processing && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-12 h-12 border-2 border-[#d4a574] border-t-transparent rounded-full"
+                    />
+                  </div>
+                )}
 
                 {/* Flash effect */}
                 <AnimatePresence>
@@ -563,23 +547,37 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                   className="overflow-hidden sk-paper-aged"
                 >
                   <div className="px-3 py-3">
-                    <p className="old-label text-[10px] text-[#8b7355] mb-2">CHOOSE FILM TYPE</p>
+                    <p className="old-label text-[10px] text-[#8b7355] mb-1">CHOOSE FILM TYPE</p>
+                    <p className="old-typewriter text-[7px] text-[#a89070] mb-2">
+                      Each preset applies a unique processing pipeline: tone curves, grain, optical effects
+                    </p>
                     <div className="flex gap-2 overflow-x-auto pb-1 sk-scrollbar">
-                      {(Object.entries(FILTERS) as [FilterPreset, typeof FILTERS[FilterPreset]][]).map(([key, f]) => (
+                      {(Object.entries(PIPELINE_PRESETS) as [string, PipelineConfig][]).map(([key, cfg]) => (
                         <button
                           key={key}
-                          onClick={() => setFilter(key)}
+                          onClick={() => setFilter(key as FilterPreset)}
                           className={`flex-shrink-0 w-16 rounded-lg p-1.5 text-center transition-all cursor-pointer ${
                             filter === key
                               ? 'sk-leather shadow-lg scale-105'
                               : 'sk-btn hover:scale-105'
                           }`}
                         >
-                          <div className="text-xl mb-0.5">{f.emoji}</div>
+                          <div className="text-xl mb-0.5">{cfg.emoji}</div>
                           <div className="old-typewriter text-[8px] font-bold truncate"
                             style={{ color: filter === key ? '#faf6eb' : '#5c4033' }}>
-                            {f.label}
+                            {cfg.name}
                           </div>
+                          {/* Mini pipeline badge */}
+                          {filter === key && (
+                            <div className="old-typewriter text-[5px] text-[#d4a574] mt-0.5 leading-tight">
+                              {[
+                                cfg.chromaticAberration.enabled && 'CA',
+                                cfg.grain.enabled && 'Grain',
+                                cfg.halation.enabled && 'Glow',
+                                cfg.antiClarity.enabled && 'Soft',
+                              ].filter(Boolean).join(' ')}
+                            </div>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -612,7 +610,6 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                           </div>
                         </div>
                       )}
-                      {/* Polaroid-style mini frame indicator */}
                       <div className="absolute top-0.5 left-0.5 w-2 h-2 rounded-full bg-white/60" />
                     </button>
                   ))}
@@ -639,20 +636,18 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
 
             {/* Shutter / Record button */}
             <div className="relative">
-              {/* Outer ring - vintage style */}
               <div className="w-20 h-20 rounded-full p-1.5" style={{
                 background: 'linear-gradient(145deg, #a08868, #6b5a40)',
                 boxShadow: '0 3px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
               }}>
-                {/* Inner ring */}
                 <div className="w-full h-full rounded-full p-1" style={{
                   background: 'linear-gradient(145deg, #3d2b1f, #2a1f14)',
                   boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
                 }}>
-                  {/* Shutter button */}
                   <button
                     onClick={mode === 'photo' ? capturePhoto : toggleRecording}
-                    className={`w-full h-full rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 ${
+                    disabled={processing}
+                    className={`w-full h-full rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 disabled:opacity-50 ${
                       recording ? 'animate-pulse' : ''
                     }`}
                     style={{
@@ -667,7 +662,13 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                       transform: recording ? 'scale(0.9)' : 'scale(1)',
                     }}
                   >
-                    {mode === 'photo' ? (
+                    {processing ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                        className="w-6 h-6 border-2 border-[#5c4033] border-t-transparent rounded-full"
+                      />
+                    ) : mode === 'photo' ? (
                       <Camera className="h-7 w-7 text-[#5c4033]" />
                     ) : (
                       recording ? (
@@ -679,7 +680,6 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                   </button>
                 </div>
               </div>
-              {/* Textured grip dots around button */}
               <div className="absolute -inset-3 rounded-full opacity-20" style={{
                 border: '2px dashed #a08868',
               }} />
@@ -738,7 +738,6 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
               </button>
             </div>
 
-            {/* Date stamp */}
             <div className="absolute top-4 left-4 z-10">
               <span className="old-typewriter text-xs text-[#d4a574]/70">
                 {new Date(viewItem.timestamp).toLocaleDateString('en-US', {
@@ -748,7 +747,6 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
               </span>
             </div>
 
-            {/* Content */}
             <div className="max-w-lg w-full mx-4">
               {viewItem.type === 'photo' ? (
                 <div className="sk-polaroid mx-auto max-w-sm" style={{ '--rotate': `${-1 + Math.random() * 2}deg` } as React.CSSProperties}>
@@ -756,7 +754,6 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                     src={viewItem.url}
                     alt="Captured memory"
                     className="w-full h-auto rounded-sm"
-                    style={{ filter: 'contrast(1.05)' }}
                   />
                   <p className="old-handwritten text-xs text-[#8b7355] text-center mt-2 px-2">
                     A moment captured with love
@@ -768,7 +765,7 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
                     src={viewItem.url}
                     controls
                     className="w-full rounded"
-                    style={{ filter: FILTERS[filter].css === 'none' ? 'sepia(0.15) contrast(1.1) brightness(0.92)' : FILTERS[filter].css }}
+                    style={{ filter: PIPELINE_PRESETS[filter]?.cssPreview || 'none' }}
                   />
                   <div className="text-center mt-2">
                     <span className="old-typewriter text-[10px] text-[#d4a574]/70">VHS Recording</span>
@@ -777,29 +774,26 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
               )}
             </div>
 
-            {/* Navigation */}
             <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
               {gallery.length > 1 && (
-                <>
-                  {(() => {
-                    const idx = gallery.findIndex(i => i.id === viewItem.id);
-                    const prevItem = gallery[(idx + 1) % gallery.length];
-                    const nextItem = gallery[(idx - 1 + gallery.length) % gallery.length];
-                    return (
-                      <>
-                        <button onClick={() => setViewItem(prevItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
-                          ◀ Prev
-                        </button>
-                        <span className="old-typewriter text-xs text-[#8b7355] self-center">
-                          {gallery.findIndex(i => i.id === viewItem.id) + 1} / {gallery.length}
-                        </span>
-                        <button onClick={() => setViewItem(nextItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
-                          Next ▶
-                        </button>
-                      </>
-                    );
-                  })()}
-                </>
+                (() => {
+                  const idx = gallery.findIndex(i => i.id === viewItem.id);
+                  const prevItem = gallery[(idx + 1) % gallery.length];
+                  const nextItem = gallery[(idx - 1 + gallery.length) % gallery.length];
+                  return (
+                    <>
+                      <button onClick={() => setViewItem(prevItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+                        ◀ Prev
+                      </button>
+                      <span className="old-typewriter text-xs text-[#8b7355] self-center">
+                        {idx + 1} / {gallery.length}
+                      </span>
+                      <button onClick={() => setViewItem(nextItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+                        Next ▶
+                      </button>
+                    </>
+                  );
+                })()
               )}
             </div>
           </motion.div>

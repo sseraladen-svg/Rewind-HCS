@@ -1,0 +1,810 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useRef, useCallback, useEffect } from 'react';
+     4→     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→     5→import {
+     6→     6→  Camera, Video, X, Download, Trash2, Image as ImageIcon,
+     7→     7→  RotateCcw, SwitchCamera, Zap, Circle, Square,
+     8→     8→} from 'lucide-react';
+     9→     9→
+    10→    10→/* ═══════ TYPES ═══════ */
+    11→    11→interface CapturedItem {
+    12→    12→  id: string;
+    13→    13→  type: 'photo' | 'video';
+    14→    14→  url: string;
+    15→    15→  timestamp: number;
+    16→    16→  blob?: Blob;
+    17→    17→}
+    18→    18→
+    19→    19→type FilterPreset = 'none' | 'sepia70s' | 'faded80s' | 'warm90s' | 'bw60s' | 'polaroid' | 'vhs' | 'kodak';
+    20→    20→
+    21→    21→const FILTERS: Record<FilterPreset, { label: string; emoji: string; css: string }> = {
+    22→    22→  none: { label: 'Raw', emoji: '📷', css: 'none' },
+    23→    23→  sepia70s: { label: "70's Sepia", emoji: '🟤', css: 'sepia(0.5) contrast(1.15) brightness(0.95) saturate(1.1)' },
+    24→    24→  faded80s: { label: "80's Fade", emoji: '🟡', css: 'sepia(0.25) contrast(0.9) brightness(1.08) saturate(0.75) hue-rotate(-8deg)' },
+    25→    25→  warm90s: { label: "90's Warm", emoji: '🟠', css: 'sepia(0.35) contrast(1.1) brightness(1.02) saturate(1.25) hue-rotate(-5deg)' },
+    26→    26→  bw60s: { label: "60's B&W", emoji: '⬛', css: 'grayscale(1) contrast(1.25) brightness(0.9)' },
+    27→    27→  polaroid: { label: 'Polaroid', emoji: '📸', css: 'sepia(0.2) contrast(0.95) brightness(1.12) saturate(1.35) hue-rotate(-3deg)' },
+    28→    28→  vhs: { label: 'VHS', emoji: '📼', css: 'sepia(0.15) contrast(1.2) brightness(0.88) saturate(0.85) hue-rotate(-15deg)' },
+    29→    29→  kodak: { label: 'Kodak', emoji: '🎞️', css: 'sepia(0.1) contrast(1.08) brightness(1.05) saturate(1.5) hue-rotate(5deg)' },
+    30→    30→};
+    31→    31→
+    32→    32→/* ═══════ VINTAGE CAMERA COMPONENT ═══════ */
+    33→    33→export default function VintageCamera({ onClose }: { onClose: () => void }) {
+    34→    34→  const videoRef = useRef<HTMLVideoElement>(null);
+    35→    35→  const canvasRef = useRef<HTMLCanvasElement>(null);
+    36→    36→  const streamRef = useRef<MediaStream | null>(null);
+    37→    37→  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    38→    38→  const recordedChunksRef = useRef<Blob[]>([]);
+    39→    39→  const flashRef = useRef<HTMLDivElement>(null);
+    40→    40→
+    41→    41→  const [cameraOpen, setCameraOpen] = useState(false);
+    42→    42→  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+    43→    43→  const [mode, setMode] = useState<'photo' | 'video'>('photo');
+    44→    44→  const [filter, setFilter] = useState<FilterPreset>('sepia70s');
+    45→    45→  const [recording, setRecording] = useState(false);
+    46→    46→  const [recordTime, setRecordTime] = useState(0);
+    47→    47→  const [flash, setFlash] = useState(false);
+    48→    48→  const [gallery, setGallery] = useState<CapturedItem[]>([]);
+    49→    49→  const [viewItem, setViewItem] = useState<CapturedItem | null>(null);
+    50→    50→  const [cameraError, setCameraError] = useState<string | null>(null);
+    51→    51→  const [showFilters, setShowFilters] = useState(false);
+    52→    52→  const [shutterAnim, setShutterAnim] = useState(false);
+    53→    53→
+    54→    54→  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    55→    55→
+    56→    56→  /* ── Start Camera ── */
+    57→    57→  const startCamera = useCallback(async () => {
+    58→    58→    try {
+    59→    59→      if (streamRef.current) {
+    60→    60→        streamRef.current.getTracks().forEach(t => t.stop());
+    61→    61→      }
+    62→    62→      const stream = await navigator.mediaDevices.getUserMedia({
+    63→    63→        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+    64→    64→        audio: mode === 'video',
+    65→    65→      });
+    66→    66→      streamRef.current = stream;
+    67→    67→      if (videoRef.current) {
+    68→    68→        videoRef.current.srcObject = stream;
+    69→    69→        await videoRef.current.play();
+    70→    70→      }
+    71→    71→      setCameraOpen(true);
+    72→    72→      setCameraError(null);
+    73→    73→    } catch (err) {
+    74→    74→      console.error('Camera error:', err);
+    75→    75→      setCameraError('Camera access denied or not available. Please allow camera permissions.');
+    76→    76→    }
+    77→    77→  }, [facingMode, mode]);
+    78→    78→
+    79→    79→  /* ── Stop Camera ── */
+    80→    80→  const stopCamera = useCallback(() => {
+    81→    81→    if (streamRef.current) {
+    82→    82→      streamRef.current.getTracks().forEach(t => t.stop());
+    83→    83→      streamRef.current = null;
+    84→    84→    }
+    85→    85→    setCameraOpen(false);
+    86→    86→    if (recordTimerRef.current) {
+    87→    87→      clearInterval(recordTimerRef.current);
+    88→    88→      recordTimerRef.current = null;
+    89→    89→    }
+    90→    90→  }, []);
+    91→    91→
+    92→    92→  /* ── Switch Camera ── */
+    93→    93→  const handleSwitchCamera = useCallback(() => {
+    94→    94→    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+    95→    95→  }, []);
+    96→    96→
+    97→    97→  /* ── Restart on facing/mode change ── */
+    98→    98→  useEffect(() => {
+    99→    99→    if (cameraOpen) {
+   100→   100→      startCamera();
+   101→   101→    }
+   102→   102→    return () => {
+   103→   103→      // cleanup on unmount
+   104→   104→    };
+   105→   105→  }, [facingMode, mode, cameraOpen, startCamera]);
+   106→   106→
+   107→   107→  /* ── Apply vintage canvas filters ── */
+   108→   108→  const applyVintageFilter = useCallback((ctx: CanvasRenderingContext2D, w: number, h: number, preset: FilterPreset) => {
+   109→   109→    if (preset === 'none') return;
+   110→   110→
+   111→   111→    // Get image data
+   112→   112→    const imageData = ctx.getImageData(0, 0, w, h);
+   113→   113→    const data = imageData.data;
+   114→   114→
+   115→   115→    // Per-pixel vintage processing
+   116→   116→    for (let i = 0; i < data.length; i += 4) {
+   117→   117→      let r = data[i], g = data[i + 1], b = data[i + 2];
+   118→   118→
+   119→   119→      switch (preset) {
+   120→   120→        case 'sepia70s': {
+   121→   121→          // Heavy warm sepia + slightly desaturate
+   122→   122→          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+   123→   123→          r = gray * 1.15 + 35;
+   124→   124→          g = gray * 1.0 + 15;
+   125→   125→          b = gray * 0.85;
+   126→   126→          // Reduce contrast slightly
+   127→   127→          r = 128 + (r - 128) * 0.92;
+   128→   128→          g = 128 + (g - 128) * 0.92;
+   129→   129→          b = 128 + (b - 128) * 0.92;
+   130→   130→          break;
+   131→   131→        }
+   132→   132→        case 'faded80s': {
+   133→   133→          // Washed out, lifted blacks, warm shift
+   134→   134→          r = r * 0.88 + 45;
+   135→   135→          g = g * 0.85 + 40;
+   136→   136→          b = b * 0.8 + 50;
+   137→   137→          // Lift shadows (add to dark areas)
+   138→   138→          const lum = (r + g + b) / 3;
+   139→   139→          if (lum < 100) {
+   140→   140→            const lift = (100 - lum) * 0.3;
+   141→   141→            r += lift;
+   142→   142→            g += lift;
+   143→   143→            b += lift + 10;
+   144→   144→          }
+   145→   145→          break;
+   146→   146→        }
+   147→   147→        case 'warm90s': {
+   148→   148→          // Warm golden tones, slightly saturated
+   149→   149→          r = r * 1.08 + 12;
+   150→   150→          g = g * 0.98 + 8;
+   151→   151→          b = b * 0.88;
+   152→   152→          // Warm color cast
+   153→   153→          r = Math.min(255, r + 15);
+   154→   154→          b = Math.max(0, b - 10);
+   155→   155→          break;
+   156→   156→        }
+   157→   157→        case 'bw60s': {
+   158→   158→          // Classic high-contrast B&W with slight grain look
+   159→   159→          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+   160→   160→          const contrast = 1.25;
+   161→   161→          const newGray = 128 + (gray - 128) * contrast;
+   162→   162→          r = g = b = newGray;
+   163→   163→          // Add subtle random grain
+   164→   164→          const grain = (Math.random() - 0.5) * 12;
+   165→   165→          r += grain; g += grain; b += grain;
+   166→   166→          break;
+   167→   167→        }
+   168→   168→        case 'polaroid': {
+   169→   169→          // Soft, bright, slightly oversaturated with cool shadows
+   170→   170→          r = r * 1.05 + 10;
+   171→   171→          g = g * 1.08 + 8;
+   172→   172→          b = b * 0.95 + 15;
+   173→   173→          // Slight green cast in shadows
+   174→   174→          const lum = (r + g + b) / 3;
+   175→   175→          if (lum < 120) {
+   176→   176→            g = Math.min(255, g + 8);
+   177→   177→            b = Math.max(0, b - 5);
+   178→   178→          }
+   179→   179→          break;
+   180→   180→        }
+   181→   181→        case 'vhs': {
+   182→   182→          // Desaturated, slight color shift, low contrast
+   183→   183→          r = r * 0.85 + 30;
+   184→   184→          g = g * 0.82 + 28;
+   185→   185→          b = b * 0.88 + 25;
+   186→   186→          // Slight purple/magenta shift
+   187→   187→          r = Math.min(255, r + 8);
+   188→   188→          b = Math.min(255, b + 5);
+   189→   189→          // Lower contrast
+   190→   190→          r = 128 + (r - 128) * 0.85;
+   191→   191→          g = 128 + (g - 128) * 0.85;
+   192→   192→          b = 128 + (b - 128) * 0.85;
+   193→   193→          break;
+   194→   194→        }
+   195→   195→        case 'kodak': {
+   196→   196→          // Vibrant, warm, rich
+   197→   197→          r = r * 1.1 + 5;
+   198→   198→          g = g * 1.05 + 5;
+   199→   199→          b = b * 0.92;
+   200→   200→          // Slight warm lift
+   201→   201→          const lum2 = (r + g + b) / 3;
+   202→   202→          if (lum2 > 150) {
+   203→   203→            r = Math.min(255, r * 1.05);
+   204→   204→            g = Math.min(255, g * 0.98);
+   205→   205→          }
+   206→   206→          break;
+   207→   207→        }
+   208→   208→      }
+   209→   209→
+   210→   210→      data[i] = Math.max(0, Math.min(255, r));
+   211→   211→      data[i + 1] = Math.max(0, Math.min(255, g));
+   212→   212→      data[i + 2] = Math.max(0, Math.min(255, b));
+   213→   213→    }
+   214→   214→
+   215→   215→    ctx.putImageData(imageData, 0, 0);
+   216→   216→
+   217→   217→    // Add vignette overlay
+   218→   218→    addVignette(ctx, w, h, preset);
+   219→   219→
+   220→   220→    // Add film grain overlay
+   221→   221→    if (preset === 'bw60s' || preset === 'vhs' || preset === 'sepia70s') {
+   222→   222→      addGrain(ctx, w, h, preset === 'bw60s' ? 25 : 15);
+   223→   223→    }
+   224→   224→
+   225→   225→    // Add date stamp for some presets
+   226→   226→    if (preset === 'polaroid' || preset === 'sepia70s') {
+   227→   227→      addDateStamp(ctx, w, h);
+   228→   228→    }
+   229→   229→  }, []);
+   230→   230→
+   231→   231→  /* ── Vignette ── */
+   232→   232→  const addVignette = (ctx: CanvasRenderingContext2D, w: number, h: number, preset: FilterPreset) => {
+   233→   233→    const intensity = preset === 'bw60s' ? 0.6 : preset === 'vhs' ? 0.5 : 0.35;
+   234→   234→    const gradient = ctx.createRadialGradient(w / 2, h / 2, w * 0.25, w / 2, h / 2, w * 0.75);
+   235→   235→    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+   236→   236→    gradient.addColorStop(1, `rgba(0,0,0,${intensity})`);
+   237→   237→    ctx.fillStyle = gradient;
+   238→   238→    ctx.fillRect(0, 0, w, h);
+   239→   239→  };
+   240→   240→
+   241→   241→  /* ── Film Grain ── */
+   242→   242→  const addGrain = (ctx: CanvasRenderingContext2D, w: number, h: number, amount: number) => {
+   243→   243→    const imageData = ctx.getImageData(0, 0, w, h);
+   244→   244→    const data = imageData.data;
+   245→   245→    for (let i = 0; i < data.length; i += 4) {
+   246→   246→      const noise = (Math.random() - 0.5) * amount;
+   247→   247→      data[i] += noise;
+   248→   248→      data[i + 1] += noise;
+   249→   249→      data[i + 2] += noise;
+   250→   250→    }
+   251→   251→    ctx.putImageData(imageData, 0, 0);
+   252→   252→  };
+   253→   253→
+   254→   254→  /* ── Date Stamp (like old film photos) ── */
+   255→   255→  const addDateStamp = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+   256→   256→    const now = new Date();
+   257→   257→    const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+   258→   258→    ctx.save();
+   259→   259→    ctx.font = 'bold 14px "Courier New", monospace';
+   260→   260→    ctx.fillStyle = 'rgba(255, 80, 80, 0.75)';
+   261→   261→    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+   262→   262→    ctx.shadowBlur = 1;
+   263→   263→    ctx.textAlign = 'right';
+   264→   264→    ctx.fillText(dateStr, w - 12, h - 12);
+   265→   265→    ctx.restore();
+   266→   266→  };
+   267→   267→
+   268→   268→  /* ── Capture Photo ── */
+   269→   269→  const capturePhoto = useCallback(() => {
+   270→   270→    if (!videoRef.current || !canvasRef.current) return;
+   271→   271→    const video = videoRef.current;
+   272→   272→    const canvas = canvasRef.current;
+   273→   273→    const ctx = canvas.getContext('2d');
+   274→   274→    if (!ctx) return;
+   275→   275→
+   276→   276→    canvas.width = video.videoWidth;
+   277→   277→    canvas.height = video.videoHeight;
+   278→   278→
+   279→   279→    // Mirror if front camera
+   280→   280→    if (facingMode === 'user') {
+   281→   281→      ctx.translate(canvas.width, 0);
+   282→   282→      ctx.scale(-1, 1);
+   283→   283→    }
+   284→   284→
+   285→   285→    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+   286→   286→
+   287→   287→    // Reset transform
+   288→   288→    ctx.setTransform(1, 0, 0, 1, 0, 0);
+   289→   289→
+   290→   290→    // Apply vintage filter
+   291→   291→    applyVintageFilter(ctx, canvas.width, canvas.height, filter);
+   292→   292→
+   293→   293→    // Flash effect
+   294→   294→    setFlash(true);
+   295→   295→    setShutterAnim(true);
+   296→   296→    setTimeout(() => setFlash(false), 200);
+   297→   297→    setTimeout(() => setShutterAnim(false), 300);
+   298→   298→
+   299→   299→    // Save to gallery
+   300→   300→    canvas.toBlob((blob) => {
+   301→   301→      if (!blob) return;
+   302→   302→      const url = URL.createObjectURL(blob);
+   303→   303→      setGallery(prev => [{
+   304→   304→        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+   305→   305→        type: 'photo',
+   306→   306→        url,
+   307→   307→        timestamp: Date.now(),
+   308→   308→        blob,
+   309→   309→      }, ...prev]);
+   310→   310→    }, 'image/jpeg', 0.92);
+   311→   311→  }, [filter, facingMode, applyVintageFilter]);
+   312→   312→
+   313→   313→  /* ── Start/Stop Video Recording ── */
+   314→   314→  const toggleRecording = useCallback(() => {
+   315→   315→    if (!recording && streamRef.current) {
+   316→   316→      // Start recording
+   317→   317→      const options = { mimeType: 'video/webm;codecs=vp9' };
+   318→   318→      try {
+   319→   319→        const mediaRecorder = new MediaRecorder(streamRef.current, options);
+   320→   320→        recordedChunksRef.current = [];
+   321→   321→        mediaRecorder.ondataavailable = (e) => {
+   322→   322→          if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+   323→   323→        };
+   324→   324→        mediaRecorder.onstop = () => {
+   325→   325→          const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+   326→   326→          const url = URL.createObjectURL(blob);
+   327→   327→          setGallery(prev => [{
+   328→   328→            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+   329→   329→            type: 'video',
+   330→   330→            url,
+   331→   331→            timestamp: Date.now(),
+   332→   332→            blob,
+   333→   333→          }, ...prev]);
+   334→   334→          recordedChunksRef.current = [];
+   335→   335→        };
+   336→   336→        mediaRecorder.start(100);
+   337→   337→        mediaRecorderRef.current = mediaRecorder;
+   338→   338→        setRecording(true);
+   339→   339→        setRecordTime(0);
+   340→   340→        recordTimerRef.current = setInterval(() => {
+   341→   341→          setRecordTime(prev => prev + 1);
+   342→   342→        }, 1000);
+   343→   343→      } catch {
+   344→   344→        // Fallback: try vp8
+   345→   345→        try {
+   346→   346→          const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: 'video/webm;codecs=vp8' });
+   347→   347→          recordedChunksRef.current = [];
+   348→   348→          mediaRecorder.ondataavailable = (e) => {
+   349→   349→            if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+   350→   350→          };
+   351→   351→          mediaRecorder.onstop = () => {
+   352→   352→            const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+   353→   353→            const url = URL.createObjectURL(blob);
+   354→   354→            setGallery(prev => [{
+   355→   355→              id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+   356→   356→              type: 'video',
+   357→   357→              url,
+   358→   358→              timestamp: Date.now(),
+   359→   359→              blob,
+   360→   360→            }, ...prev]);
+   361→   361→            recordedChunksRef.current = [];
+   362→   362→          };
+   363→   363→          mediaRecorder.start(100);
+   364→   364→          mediaRecorderRef.current = mediaRecorder;
+   365→   365→          setRecording(true);
+   366→   366→          setRecordTime(0);
+   367→   367→          recordTimerRef.current = setInterval(() => {
+   368→   368→            setRecordTime(prev => prev + 1);
+   369→   369→          }, 1000);
+   370→   370→        } catch {
+   371→   371→          setCameraError('Video recording not supported in this browser.');
+   372→   372→        }
+   373→   373→      }
+   374→   374→    } else if (recording && mediaRecorderRef.current) {
+   375→   375→      // Stop recording
+   376→   376→      mediaRecorderRef.current.stop();
+   377→   377→      mediaRecorderRef.current = null;
+   378→   378→      setRecording(false);
+   379→   379→      if (recordTimerRef.current) {
+   380→   380→        clearInterval(recordTimerRef.current);
+   381→   381→        recordTimerRef.current = null;
+   382→   382→      }
+   383→   383→    }
+   384→   384→  }, [recording]);
+   385→   385→
+   386→   386→  /* ── Delete from gallery ── */
+   387→   387→  const deleteItem = useCallback((id: string) => {
+   388→   388→    setGallery(prev => {
+   389→   389→      const item = prev.find(i => i.id === id);
+   390→   390→      if (item) URL.revokeObjectURL(item.url);
+   391→   391→      return prev.filter(i => i.id !== id);
+   392→   392→    });
+   393→   393→  }, []);
+   394→   394→
+   395→   395→  /* ── Download ── */
+   396→   396→  const downloadItem = useCallback((item: CapturedItem) => {
+   397→   397→    const a = document.createElement('a');
+   398→   398→    a.href = item.url;
+   399→   399→    a.download = `rewind_${item.type}_${new Date(item.timestamp).toISOString().replace(/[:.]/g, '-')}.${item.type === 'photo' ? 'jpg' : 'webm'}`;
+   400→   400→    document.body.appendChild(a);
+   401→   401→    a.click();
+   402→   402→    document.body.removeChild(a);
+   403→   403→  }, []);
+   404→   404→
+   405→   405→  /* ── Cleanup on close ── */
+   406→   406→  useEffect(() => {
+   407→   407→    return () => {
+   408→   408→      stopCamera();
+   409→   409→      gallery.forEach(item => URL.revokeObjectURL(item.url));
+   410→   410→    };
+   411→   411→  // eslint-disable-next-line react-hooks/exhaustive-deps
+   412→   412→  }, []);
+   413→   413→
+   414→   414→  /* ── Format time ── */
+   415→   415→  const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+   416→   416→
+   417→   417→  return (
+   418→   418→    <>
+   419→   419→      {/* Hidden canvas for processing */}
+   420→   420→      <canvas ref={canvasRef} className="hidden" />
+   421→   421→
+   422→   422→      <AnimatePresence>
+   423→   423→        <motion.div
+   424→   424→          initial={{ opacity: 0 }}
+   425→   425→          animate={{ opacity: 1 }}
+   426→   426→          exit={{ opacity: 0 }}
+   427→   427→          className="fixed inset-0 z-50 flex flex-col"
+   428→   428→          style={{ background: '#1a1208' }}
+   429→   429→        >
+   430→   430→          {/* ═══ HEADER - Camera Top Bar ═══ */}
+   431→   431→          <div className="sk-leather px-3 py-2.5 flex items-center justify-between z-10">
+   432→   432→            <button onClick={() => { stopCamera(); onClose(); }} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1 text-[#faf6eb]">
+   433→   433→              <X className="h-4 w-4" /> Close
+   434→   434→            </button>
+   435→   435→            <h2 className="old-title font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+   436→   436→              📷 Vintage Camera
+   437→   437→            </h2>
+   438→   438→            <div className="w-16" />
+   439→   439→          </div>
+   440→   440→
+   441→   441→          {/* ═══ VIEWFINDER ═══ */}
+   442→   442→          <div className="flex-1 relative overflow-hidden flex items-center justify-center">
+   443→   443→            {!cameraOpen && !cameraError && (
+   444→   444→              <div className="text-center px-6">
+   445→   445→                <motion.div
+   446→   446→                  animate={{ rotate: [0, 5, -5, 0] }}
+   447→   447→                  transition={{ duration: 4, repeat: Infinity }}
+   448→   448→                  className="text-6xl mb-4"
+   449→   449→                >📸</motion.div>
+   450→   450→                <p className="old-body text-[#d4a574] mb-6 text-sm">Open the camera to capture memories in vintage style</p>
+   451→   451→                <button onClick={startCamera} className="sk-btn old-btn px-6 py-3 rounded-xl font-bold text-base cursor-pointer flex items-center gap-2 mx-auto">
+   452→   452→                  <Camera className="h-5 w-5" /> Open Camera
+   453→   453→                </button>
+   454→   454→              </div>
+   455→   455→            )}
+   456→   456→
+   457→   457→            {cameraError && (
+   458→   458→              <div className="text-center px-6">
+   459→   459→                <div className="text-5xl mb-4">😵</div>
+   460→   460→                <p className="old-body text-[#d4a574] mb-4 text-sm">{cameraError}</p>
+   461→   461→                <button onClick={startCamera} className="sk-btn old-btn px-5 py-2.5 rounded-lg font-bold cursor-pointer flex items-center gap-2 mx-auto">
+   462→   462→                  <RotateCcw className="h-4 w-4" /> Try Again
+   463→   463→                </button>
+   464→   464→              </div>
+   465→   465→            )}
+   466→   466→
+   467→   467→            {cameraOpen && (
+   468→   468→              <>
+   469→   469→                {/* Video Feed */}
+   470→   470→                <video
+   471→   471→                  ref={videoRef}
+   472→   472→                  className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 ${facingMode === 'user' ? '-scale-x-100' : ''}`}
+   473→   473→                  style={{ filter: FILTERS[filter].css }}
+   474→   474→                  playsInline
+   475→   475→                  muted
+   476→   476→                />
+   477→   477→
+   478→   478→                {/* Vignette overlay on viewfinder */}
+   479→   479→                <div className="absolute inset-0 pointer-events-none" style={{
+   480→   480→                  background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)',
+   481→   481→                }} />
+   482→   482→
+   483→   483→                {/* Scanline overlay */}
+   484→   484→                <div className="absolute inset-0 pointer-events-none opacity-10" style={{
+   485→   485→                  background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px)',
+   486→   486→                }} />
+   487→   487→
+   488→   488→                {/* Film border overlay - viewfinder frame */}
+   489→   489→                <div className="absolute inset-0 pointer-events-none border-[6px] border-[#1a1208] rounded-none" />
+   490→   490→
+   491→   491→                {/* Corner brackets */}
+   492→   492→                <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-[#d4a574]/50 pointer-events-none" />
+   493→   493→                <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-[#d4a574]/50 pointer-events-none" />
+   494→   494→                <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-[#d4a574]/50 pointer-events-none" />
+   495→   495→                <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-[#d4a574]/50 pointer-events-none" />
+   496→   496→
+   497→   497→                {/* Center crosshair */}
+   498→   498→                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+   499→   499→                  <div className="w-px h-6 bg-[#d4a574]/30" />
+   500→   500→                  <div className="h-px w-6 bg-[#d4a574]/30 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+   501→   501→                </div>
+   502→   502→
+   503→   503→                {/* Recording indicator */}
+   504→   504→                {recording && (
+   505→   505→                  <motion.div
+   506→   506→                    initial={{ opacity: 0, scale: 0.8 }}
+   507→   507→                    animate={{ opacity: 1, scale: 1 }}
+   508→   508→                    className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 sk-vhs-label px-3 py-1 rounded-full z-10"
+   509→   509→                  >
+   510→   510→                    <motion.div
+   511→   511→                      animate={{ opacity: [1, 0.3, 1] }}
+   512→   512→                      transition={{ duration: 1, repeat: Infinity }}
+   513→   513→                      className="w-2.5 h-2.5 rounded-full bg-red-500"
+   514→   514→                    />
+   515→   515→                    <span className="old-typewriter text-xs font-bold text-red-600">REC {formatTime(recordTime)}</span>
+   516→   516→                  </motion.div>
+   517→   517→                )}
+   518→   518→
+   519→   519→                {/* Filter label */}
+   520→   520→                <div className="absolute top-4 right-4 sk-vhs-label px-2 py-1 rounded z-10">
+   521→   521→                  <span className="old-typewriter text-[10px] font-bold text-[#5c4033]">
+   522→   522→                    {FILTERS[filter].emoji} {FILTERS[filter].label}
+   523→   523→                  </span>
+   524→   524→                </div>
+   525→   525→
+   526→   526→                {/* Flash effect */}
+   527→   527→                <AnimatePresence>
+   528→   528→                  {flash && (
+   529→   529→                    <motion.div
+   530→   530→                      initial={{ opacity: 0.9 }}
+   531→   531→                      animate={{ opacity: 0 }}
+   532→   532→                      exit={{ opacity: 0 }}
+   533→   533→                      transition={{ duration: 0.2 }}
+   534→   534→                      className="absolute inset-0 bg-white z-20 pointer-events-none"
+   535→   535→                    />
+   536→   536→                  )}
+   537→   537→                </AnimatePresence>
+   538→   538→
+   539→   539→                {/* Shutter animation */}
+   540→   540→                <AnimatePresence>
+   541→   541→                  {shutterAnim && (
+   542→   542→                    <motion.div
+   543→   543→                      initial={{ scaleY: 0 }}
+   544→   544→                      animate={{ scaleY: 1 }}
+   545→   545→                      exit={{ scaleY: 1, opacity: 0 }}
+   546→   546→                      transition={{ duration: 0.15 }}
+   547→   547→                      className="absolute inset-x-0 top-0 bottom-0 bg-black z-20 origin-top pointer-events-none"
+   548→   548→                    />
+   549→   549→                  )}
+   550→   550→                </AnimatePresence>
+   551→   551→              </>
+   552→   552→            )}
+   553→   553→          </div>
+   554→   554→
+   555→   555→          {/* ═══ FILTER STRIP ═══ */}
+   556→   556→          {cameraOpen && (
+   557→   557→            <AnimatePresence>
+   558→   558→              {showFilters && (
+   559→   559→                <motion.div
+   560→   560→                  initial={{ height: 0, opacity: 0 }}
+   561→   561→                  animate={{ height: 'auto', opacity: 1 }}
+   562→   562→                  exit={{ height: 0, opacity: 0 }}
+   563→   563→                  className="overflow-hidden sk-paper-aged"
+   564→   564→                >
+   565→   565→                  <div className="px-3 py-3">
+   566→   566→                    <p className="old-label text-[10px] text-[#8b7355] mb-2">CHOOSE FILM TYPE</p>
+   567→   567→                    <div className="flex gap-2 overflow-x-auto pb-1 sk-scrollbar">
+   568→   568→                      {(Object.entries(FILTERS) as [FilterPreset, typeof FILTERS[FilterPreset]][]).map(([key, f]) => (
+   569→   569→                        <button
+   570→   570→                          key={key}
+   571→   571→                          onClick={() => setFilter(key)}
+   572→   572→                          className={`flex-shrink-0 w-16 rounded-lg p-1.5 text-center transition-all cursor-pointer ${
+   573→   573→                            filter === key
+   574→   574→                              ? 'sk-leather shadow-lg scale-105'
+   575→   575→                              : 'sk-btn hover:scale-105'
+   576→   576→                          }`}
+   577→   577→                        >
+   578→   578→                          <div className="text-xl mb-0.5">{f.emoji}</div>
+   579→   579→                          <div className="old-typewriter text-[8px] font-bold truncate"
+   580→   580→                            style={{ color: filter === key ? '#faf6eb' : '#5c4033' }}>
+   581→   581→                            {f.label}
+   582→   582→                          </div>
+   583→   583→                        </button>
+   584→   584→                      ))}
+   585→   585→                    </div>
+   586→   586→                  </div>
+   587→   587→                </motion.div>
+   588→   588→              )}
+   589→   589→            </AnimatePresence>
+   590→   590→          )}
+   591→   591→
+   592→   592→          {/* ═══ GALLERY ═══ */}
+   593→   593→          {gallery.length > 0 && (
+   594→   594→            <div className="sk-paper-aged border-t border-[#c4b594]">
+   595→   595→              <div className="px-3 py-2">
+   596→   596→                <p className="old-label text-[10px] text-[#8b7355] mb-2">GALLERY ({gallery.length})</p>
+   597→   597→                <div className="flex gap-2 overflow-x-auto pb-1 sk-scrollbar">
+   598→   598→                  {gallery.map(item => (
+   599→   599→                    <button
+   600→   600→                      key={item.id}
+   601→   601→                      onClick={() => setViewItem(item)}
+   602→   602→                      className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 border-[#c4b594] relative cursor-pointer hover:scale-105 transition-transform"
+   603→   603→                      style={{ '--rotate': `${-2 + Math.random() * 4}deg` } as React.CSSProperties}
+   604→   604→                    >
+   605→   605→                      {item.type === 'photo' ? (
+   606→   606→                        <img src={item.url} alt="" className="w-full h-full object-cover" />
+   607→   607→                      ) : (
+   608→   608→                        <div className="w-full h-full bg-[#2a1f14] flex items-center justify-center relative">
+   609→   609→                          <Play className="h-5 w-5 text-[#d4a574]" />
+   610→   610→                          <div className="absolute bottom-0.5 right-1 old-typewriter text-[7px] text-[#d4a574] bg-black/50 px-1 rounded">
+   611→   611→                            VID
+   612→   612→                          </div>
+   613→   613→                        </div>
+   614→   614→                      )}
+   615→   615→                      {/* Polaroid-style mini frame indicator */}
+   616→   616→                      <div className="absolute top-0.5 left-0.5 w-2 h-2 rounded-full bg-white/60" />
+   617→   617→                    </button>
+   618→   618→                  ))}
+   619→   619→                </div>
+   620→   620→              </div>
+   621→   621→            </div>
+   622→   622→          )}
+   623→   623→
+   624→   624→          {/* ═══ CONTROLS BAR ═══ */}
+   625→   625→          <div className="sk-wood px-4 py-3 flex items-center justify-around">
+   626→   626→            {/* Gallery toggle */}
+   627→   627→            <button
+   628→   628→              onClick={() => gallery.length > 0 && setViewItem(gallery[0])}
+   629→   629→              className="relative cursor-pointer p-2"
+   630→   630→              disabled={gallery.length === 0}
+   631→   631→            >
+   632→   632→              <ImageIcon className="h-6 w-6 text-[#d4a574]" />
+   633→   633→              {gallery.length > 0 && (
+   634→   634→                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] old-typewriter font-bold rounded-full w-4 h-4 flex items-center justify-center">
+   635→   635→                  {gallery.length}
+   636→   636→                </span>
+   637→   637→              )}
+   638→   638→            </button>
+   639→   639→
+   640→   640→            {/* Shutter / Record button */}
+   641→   641→            <div className="relative">
+   642→   642→              {/* Outer ring - vintage style */}
+   643→   643→              <div className="w-20 h-20 rounded-full p-1.5" style={{
+   644→   644→                background: 'linear-gradient(145deg, #a08868, #6b5a40)',
+   645→   645→                boxShadow: '0 3px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+   646→   646→              }}>
+   647→   647→                {/* Inner ring */}
+   648→   648→                <div className="w-full h-full rounded-full p-1" style={{
+   649→   649→                  background: 'linear-gradient(145deg, #3d2b1f, #2a1f14)',
+   650→   650→                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+   651→   651→                }}>
+   652→   652→                  {/* Shutter button */}
+   653→   653→                  <button
+   654→   654→                    onClick={mode === 'photo' ? capturePhoto : toggleRecording}
+   655→   655→                    className={`w-full h-full rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 ${
+   656→   656→                      recording ? 'animate-pulse' : ''
+   657→   657→                    }`}
+   658→   658→                    style={{
+   659→   659→                      background: recording
+   660→   660→                        ? 'linear-gradient(145deg, #c0392b, #922b21)'
+   661→   661→                        : mode === 'photo'
+   662→   662→                          ? 'linear-gradient(145deg, #f0e6d3, #d4c5a9)'
+   663→   663→                          : 'linear-gradient(145deg, #e74c3c, #c0392b)',
+   664→   664→                      boxShadow: recording
+   665→   665→                        ? '0 0 15px rgba(231,76,60,0.6), inset 0 1px 0 rgba(255,255,255,0.2)'
+   666→   666→                        : '0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)',
+   667→   667→                      transform: recording ? 'scale(0.9)' : 'scale(1)',
+   668→   668→                    }}
+   669→   669→                  >
+   670→   670→                    {mode === 'photo' ? (
+   671→   671→                      <Camera className="h-7 w-7 text-[#5c4033]" />
+   672→   672→                    ) : (
+   673→   673→                      recording ? (
+   674→   674→                        <Square className="h-6 w-6 text-white fill-white" />
+   675→   675→                      ) : (
+   676→   676→                        <Circle className="h-7 w-7 text-white fill-white" />
+   677→   677→                      )
+   678→   678→                    )}
+   679→   679→                  </button>
+   680→   680→                </div>
+   681→   681→              </div>
+   682→   682→              {/* Textured grip dots around button */}
+   683→   683→              <div className="absolute -inset-3 rounded-full opacity-20" style={{
+   684→   684→                border: '2px dashed #a08868',
+   685→   685→              }} />
+   686→   686→            </div>
+   687→   687→
+   688→   688→            {/* Switch camera / Mode toggle */}
+   689→   689→            <div className="flex flex-col items-center gap-1">
+   690→   690→              <button onClick={handleSwitchCamera} className="cursor-pointer p-2">
+   691→   691→                <SwitchCamera className="h-6 w-6 text-[#d4a574]" />
+   692→   692→              </button>
+   693→   693→              <button
+   694→   694→                onClick={() => { setMode(m => m === 'photo' ? 'video' : 'photo'); if (recording) toggleRecording(); }}
+   695→   695→                className="cursor-pointer p-1"
+   696→   696→              >
+   697→   697→                {mode === 'photo' ? (
+   698→   698→                  <Video className="h-4 w-4 text-[#d4a574]" />
+   699→   699→                ) : (
+   700→   700→                  <Camera className="h-4 w-4 text-[#d4a574]" />
+   701→   701→                )}
+   702→   702→              </button>
+   703→   703→            </div>
+   704→   704→          </div>
+   705→   705→
+   706→   706→          {/* Filter toggle button */}
+   707→   707→          {cameraOpen && (
+   708→   708→            <button
+   709→   709→              onClick={() => setShowFilters(f => !f)}
+   710→   710→              className="sk-vhs-label old-btn text-[10px] font-bold px-3 py-1.5 rounded cursor-pointer flex items-center gap-1.5 mx-auto mb-2"
+   711→   711→              style={{ color: showFilters ? '#c0392b' : '#5c4033' }}
+   712→   712→            >
+   713→   713→              <Zap className="h-3 w-3" />
+   714→   714→              {showFilters ? 'Hide Filters' : 'Film Filters'}
+   715→   715→            </button>
+   716→   716→          )}
+   717→   717→        </motion.div>
+   718→   718→      </AnimatePresence>
+   719→   719→
+   720→   720→      {/* ═══ FULLSCREEN VIEWER ═══ */}
+   721→   721→      <AnimatePresence>
+   722→   722→        {viewItem && (
+   723→   723→          <motion.div
+   724→   724→            initial={{ opacity: 0 }}
+   725→   725→            animate={{ opacity: 1 }}
+   726→   726→            exit={{ opacity: 0 }}
+   727→   727→            className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center"
+   728→   728→          >
+   729→   729→            <div className="absolute top-3 right-3 z-10 flex gap-2">
+   730→   730→              <button onClick={() => downloadItem(viewItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   731→   731→                <Download className="h-4 w-4 inline mr-1" /> Save
+   732→   732→              </button>
+   733→   733→              <button onClick={() => deleteItem(viewItem.id)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-red-400">
+   734→   734→                <Trash2 className="h-4 w-4 inline mr-1" /> Delete
+   735→   735→              </button>
+   736→   736→              <button onClick={() => setViewItem(null)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   737→   737→                <X className="h-4 w-4" />
+   738→   738→              </button>
+   739→   739→            </div>
+   740→   740→
+   741→   741→            {/* Date stamp */}
+   742→   742→            <div className="absolute top-4 left-4 z-10">
+   743→   743→              <span className="old-typewriter text-xs text-[#d4a574]/70">
+   744→   744→                {new Date(viewItem.timestamp).toLocaleDateString('en-US', {
+   745→   745→                  year: 'numeric', month: 'short', day: 'numeric',
+   746→   746→                  hour: '2-digit', minute: '2-digit',
+   747→   747→                })}
+   748→   748→              </span>
+   749→   749→            </div>
+   750→   750→
+   751→   751→            {/* Content */}
+   752→   752→            <div className="max-w-lg w-full mx-4">
+   753→   753→              {viewItem.type === 'photo' ? (
+   754→   754→                <div className="sk-polaroid mx-auto max-w-sm" style={{ '--rotate': `${-1 + Math.random() * 2}deg` } as React.CSSProperties}>
+   755→   755→                  <img
+   756→   756→                    src={viewItem.url}
+   757→   757→                    alt="Captured memory"
+   758→   758→                    className="w-full h-auto rounded-sm"
+   759→   759→                    style={{ filter: 'contrast(1.05)' }}
+   760→   760→                  />
+   761→   761→                  <p className="old-handwritten text-xs text-[#8b7355] text-center mt-2 px-2">
+   762→   762→                    A moment captured with love
+   763→   763→                  </p>
+   764→   764→                </div>
+   765→   765→              ) : (
+   766→   766→                <div className="sk-tv-screen rounded-lg overflow-hidden p-1">
+   767→   767→                  <video
+   768→   768→                    src={viewItem.url}
+   769→   769→                    controls
+   770→   770→                    className="w-full rounded"
+   771→   771→                    style={{ filter: FILTERS[filter].css === 'none' ? 'sepia(0.15) contrast(1.1) brightness(0.92)' : FILTERS[filter].css }}
+   772→   772→                  />
+   773→   773→                  <div className="text-center mt-2">
+   774→   774→                    <span className="old-typewriter text-[10px] text-[#d4a574]/70">VHS Recording</span>
+   775→   775→                  </div>
+   776→   776→                </div>
+   777→   777→              )}
+   778→   778→            </div>
+   779→   779→
+   780→   780→            {/* Navigation */}
+   781→   781→            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
+   782→   782→              {gallery.length > 1 && (
+   783→   783→                <>
+   784→   784→                  {(() => {
+   785→   785→                    const idx = gallery.findIndex(i => i.id === viewItem.id);
+   786→   786→                    const prevItem = gallery[(idx + 1) % gallery.length];
+   787→   787→                    const nextItem = gallery[(idx - 1 + gallery.length) % gallery.length];
+   788→   788→                    return (
+   789→   789→                      <>
+   790→   790→                        <button onClick={() => setViewItem(prevItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   791→   791→                          ◀ Prev
+   792→   792→                        </button>
+   793→   793→                        <span className="old-typewriter text-xs text-[#8b7355] self-center">
+   794→   794→                          {gallery.findIndex(i => i.id === viewItem.id) + 1} / {gallery.length}
+   795→   795→                        </span>
+   796→   796→                        <button onClick={() => setViewItem(nextItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   797→   797→                          Next ▶
+   798→   798→                        </button>
+   799→   799→                      </>
+   800→   800→                    );
+   801→   801→                  })()}
+   802→   802→                </>
+   803→   803→              )}
+   804→   804→            </div>
+   805→   805→          </motion.div>
+   806→   806→        )}
+   807→   807→      </AnimatePresence>
+   808→   808→    </>
+   809→   809→  );
+   810→   810→}

@@ -30,3 +30,34 @@
 3. `/home/z/my-project/src/app/globals.css` — new CSS animations
 
 ### Build Status: ✅ Zero errors
+---
+Task ID: 1
+Agent: Super Z (Main)
+Task: Implement comprehensive vintage image processing pipeline for the camera
+
+Work Log:
+- Created /src/lib/image-pipeline.ts — full per-pixel color science engine with 9 pipeline stages
+- Rewrote /src/components/VintageCamera.tsx — replaced CSS-filter preview with real-time Canvas 2D processed preview at 24fps
+- Added Perlin noise-based procedural film grain (3-octave, luminance-dependent opacity)
+- Implemented chromatic aberration with radial RGB channel displacement
+- Implemented tone curve distortion (matte effect: black lift + white crush via LUT)
+- Implemented contrast flattening (25-35% configurable per preset)
+- Implemented chrominance shift (amber/yellow +12%, green tint in shadows +6%)
+- Implemented anti-clarity bilateral blur (simplified, preserves edges)
+- Implemented halation/glow (highlight extraction → box blur → screen blend)
+- Implemented vignette with progressive radial darkening + corner softness (radial Gaussian blur on outer frame)
+- Implemented gate flicker for video mode (±0.05 EV per-frame micro-exposure)
+- Added VHS tracking line artifacts
+- Added real-time preview pipeline (lightweight, skips bilateral blur & halation for 24fps performance)
+- Added full pipeline for photo capture (all 9 stages at full resolution)
+- Added pipeline HUD showing active stages (CA, MATTE, FLAT, SOFT, GRAIN, GLOW, VIG)
+- Added FPS counter and gate flicker EV readout to viewfinder
+- Added processing spinner during capture
+- Build verified: 0 errors
+
+Stage Summary:
+- New file: /src/lib/image-pipeline.ts (~500 lines) — complete image processing engine
+- Rewritten: /src/components/VintageCamera.tsx (~470 lines) — real-time canvas preview + full pipeline capture
+- 8 filter presets now each have a unique PipelineConfig with 10+ configurable parameters
+- Preview runs at 24fps at 360x202 resolution with chromatic aberration, tone curves, grain, vignette
+- Photo capture runs full pipeline at camera native resolution (1280x720) with all effects including halation, bilateral blur, corner softness
