@@ -47,3 +47,28 @@ Stage Summary:
 - Files modified: src/app/page.tsx (import, camera state, floating button), src/app/globals.css (camera animations)
 - Camera features: 8 filters, photo+video, gallery, download, delete, front/back camera switch
 - Build: SUCCESS (0 errors)
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Add old-style journal/diary feature with leather cover, aged pages, and vintage feel
+
+Work Log:
+- Created /home/z/my-project/src/components/OldJournal.tsx (full journal component)
+- Designed leather-bound book cover with embossed gold text, decorative double borders, corner ornaments, spine shadow
+- Created aged paper page design with torn edges, ink blots, page corner folds, bookmark ribbons, quill pen decorations
+- Implemented JournalEntry type with mood (8 options), weather (6 options), date, title, body
+- Built 4 views: Cover, Entries List, Entry Editor (writing mode), Entry Viewer (reading mode)
+- Entry Editor: lined notebook paper with LXGW WenKai handwriting font, date picker, mood/weather selectors, "Seal & Save" button
+- Entry Viewer: wax seal with mood emoji, old-style date formatting ("January 5th, 1995"), prev/next navigation, edit/discard actions
+- Entries List: slightly rotated paper cards for natural feel, chronological order, truncated previews
+- localStorage persistence (rewind_journal_entries key)
+- Added "Journal" tab (BookOpen icon) between Memories and Games in Dashboard
+- Added journal CSS: page-turn animation, ink-spread, quill cursor, seal-press, leather-grain, embossed-gold, twine-binding, torn-top, paper-stain
+- Verified clean build - 0 errors
+
+Stage Summary:
+- Files created: src/components/OldJournal.tsx
+- Files modified: src/app/page.tsx (import, Journal tab), src/app/globals.css (journal animations)
+- Journal features: leather cover, aged paper, ink blots, wax seals, bookmark ribbons, lined writing, mood/weather, CRUD, localStorage
+- Build: SUCCESS (0 errors)

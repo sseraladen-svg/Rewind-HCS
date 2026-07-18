@@ -14,6 +14,7 @@ import {
   type DecadeData, type NostalgiaItem,
 } from '@/lib/nostalgia-data';
 import VintageCamera from '@/components/VintageCamera';
+import OldJournal from '@/components/OldJournal';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -1033,6 +1034,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
 
   const tabs = [
     { id: 'memories', label: 'Memories', icon: <Sparkles className="h-4 w-4" /> },
+    { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
     { id: 'games', label: 'Play Games', icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
   ];
@@ -1136,6 +1138,18 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                 ) : (
                   <CategoryGrid items={categoryMap[activeCategory].items} color={data.color} />
                 )}
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+          {/* ═══ JOURNAL TAB ═══ */}
+          {activeTab === 'journal' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="journal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <div className="text-center mb-5">
+                  <p className="old-body text-sm text-[#5c4033] font-medium">Put pen to paper. Let your memories breathe in ink.</p>
+                </div>
+                <OldJournal />
               </motion.div>
             </AnimatePresence>
           )}
