@@ -17,6 +17,9 @@ import {
   Gamepad2,
   Phone,
   Sticker,
+  Minimize2,
+  X,
+  SmilePlus,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -1317,6 +1320,331 @@ function StickerWallSection() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 9. Retro Chat (AIM / MSN Messenger style)
+// ═══════════════════════════════════════════════════════════════
+
+interface ChatMessage {
+  id: string;
+  from: 'me' | 'buddy';
+  text: string;
+  time: string;
+  color: string;
+}
+
+const BUDDY_REPLIES = [
+  "hey!! whats up?? :D",
+  "omg remember when we used to stay up late chatting??",
+  "haha yeah that was so fun",
+  "did u watch that cartoon yesterday?? it was so good!!",
+  "brb my mom is calling me for dinner",
+  "back! sorry about that lol",
+  "i cant believe its already 11pm... time flies when ur having fun",
+  "u still have that mixtape i made u??",
+  "LOL thats hilarious",
+  "wanna come over tomorrow? we can play n64",
+  "my dad said we can rent a movie from blockbuster!!",
+  "a/s/l? lol jk",
+  "brb phone is ringing... its probably jessica",
+  "ok back. it was jessica. she said shes coming over too!",
+  "remember that time we snuck out at night?? so scary but fun",
+  "my mom made cookies!! chocolate chip :D",
+  "u online?? hello??",
+  "gtg its getting late. ttyl!!",
+  "omg i just heard the best song on the radio",
+  "check this out -> I just found the coolest website",
+  "haha ur so funny",
+  "wait wait wait... did u see that episode??",
+  "i love these smileys :) ;) :P :D >:( 8-)",
+  "summer vacation is gonna be so awesome this year!!",
+  "school is almost over!!! YESSS",
+  "do u have aol or msn?? add me!!",
+  "my screen name is NostalgiaKid2000 add me",
+  "gtg bye!! *waves*",
+];
+
+const BUDDY_NAMES = [
+  { name: 'CoolDude99', color: '#ff0000' },
+  { name: 'SunshineGal', color: '#ff69b4' },
+  { name: 'Sk8rBoi2000', color: '#0000ff' },
+  { name: 'xXDarkAngelXx', color: '#800080' },
+  { name: 'PizzaLover42', color: '#008080' },
+];
+
+function RetroChatSection() {
+  const [messages, setMessages] = useStoredState<ChatMessage[]>('rewind_chat_messages', []);
+  const [inputText, setInputText] = useState('');
+  const [buddyName] = useState(() => BUDDY_NAMES[Math.floor(Math.random() * BUDDY_NAMES.length)]);
+  const [statusText, setStatusText] = useState('Online');
+  const [showEmojis, setShowEmojis] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const myColor = '#000080';
+
+  const emojis = [':)', ';)', ':P', ':D', ':(', '>:(', '8-)', 'O:)', ':O', '<3', 'XD', 'LOL'];
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Buddy auto-replies
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg.from !== 'me') return;
+
+    // Show typing indicator
+    const typingDelay = 800 + Math.random() * 1200;
+    const replyDelay = typingDelay + 1000 + Math.random() * 1500;
+
+    const t1 = setTimeout(() => setStatusText('typing...'), typingDelay);
+    const t2 = setTimeout(() => {
+      const reply = BUDDY_REPLIES[Math.floor(Math.random() * BUDDY_REPLIES.length)];
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      const newMsg: ChatMessage = {
+        id: generateId(),
+        from: 'buddy',
+        text: reply,
+        time: timeStr,
+        color: buddyName.color,
+      };
+      setMessages((prev: ChatMessage[]) => [...prev, newMsg]);
+      setStatusText('Online');
+    }, replyDelay);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [messages.length, buddyName.color, setMessages]);
+
+  const sendMessage = () => {
+    const text = inputText.trim();
+    if (!text) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const newMsg: ChatMessage = {
+      id: generateId(),
+      from: 'me',
+      text,
+      time: timeStr,
+      color: myColor,
+    };
+    setMessages((prev: ChatMessage[]) => [...prev, newMsg]);
+    setInputText('');
+    setShowEmojis(false);
+  };
+
+  const insertEmoji = (emoji: string) => {
+    setInputText(prev => prev + ' ' + emoji);
+    setShowEmojis(false);
+  };
+
+  const clearChat = () => {
+    setMessages([]);
+    setStatusText('Online');
+  };
+
+  return (
+    <section id="chat" className="scroll-mt-8">
+      <SectionHeader icon={MessageSquare} title="Retro Chat" subtitle="Chat like it's 2001. AIM style." />
+
+      <div className="max-w-lg mx-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-sm overflow-hidden"
+          style={{
+            border: '2px solid',
+            borderColor: '#808080 #ffffff #ffffff #808080',
+            boxShadow: '2px 2px 0 #000',
+          }}
+        >
+          {/* Window title bar - AIM style */}
+          <div
+            className="flex items-center justify-between px-3 py-1.5"
+            style={{
+              background: 'linear-gradient(180deg, #3168d5 0%, #2456b5 40%, #1a3f8a 100%)',
+              borderBottom: '1px solid #000',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-3.5 h-3.5 text-white/80" />
+              <span style={{ fontFamily: 'Tahoma, Verdana, sans-serif', fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>
+                AIM - Instant Message
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+                <Minimize2 className="w-3 h-3" />
+              </button>
+              <button className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
+          {/* Toolbar */}
+          <div
+            className="flex items-center gap-1 px-2 py-1"
+            style={{ background: '#c0c0c0', borderBottom: '1px solid #808080' }}
+          >
+            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px', color: '#000' }}>
+              To:
+            </span>
+            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px', fontWeight: 'bold', color: buddyName.color }}>
+              {buddyName.name}
+            </span>
+            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080', marginLeft: '8px' }}>
+              ({statusText})
+            </span>
+          </div>
+
+          {/* Chat area */}
+          <div
+            className="relative"
+            style={{
+              height: '320px',
+              background: '#ffffff',
+              fontFamily: 'Tahoma, Verdana, Arial, sans-serif',
+              fontSize: '12px',
+              overflowY: 'auto',
+            }}
+          >
+            {messages.length === 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-[#808080]">
+                <span className="text-3xl mb-2">💬</span>
+                <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px' }}>
+                  Start a conversation with <b style={{ color: buddyName.color }}>{buddyName.name}</b>
+                </p>
+                <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#a0a0a0', marginTop: '4px' }}>
+                  Type something below and hit Send
+                </p>
+              </div>
+            )}
+            {messages.map((msg) => (
+              <div key={msg.id} className="px-3 py-1 hover:bg-[#f0f0ff]/50" style={{ lineHeight: '1.5' }}>
+                <span style={{ fontWeight: 'bold', color: msg.color, fontSize: '12px' }}>
+                  {msg.from === 'me' ? 'Me' : buddyName.name}:
+                </span>{' '}
+                <span style={{ color: '#000', fontSize: '12px' }}>{msg.text}</span>
+                <span className="ml-2" style={{ color: '#808080', fontSize: '10px' }}>{msg.time}</span>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Input area */}
+          <div
+            className="px-2 py-2"
+            style={{ background: '#c0c0c0', borderTop: '1px solid #808080' }}
+          >
+            {/* Emoji picker */}
+            <AnimatePresence>
+              {showEmojis && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-2 flex flex-wrap gap-1 p-2 overflow-hidden"
+                  style={{ background: '#ffffff', border: '1px solid #808080' }}
+                >
+                  {emojis.map(e => (
+                    <button key={e} onClick={() => insertEmoji(e)}
+                      className="px-1.5 py-0.5 text-sm hover:bg-[#e0e0ff] cursor-pointer"
+                      style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '13px' }}>
+                      {e}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex items-center gap-2">
+              <div
+                className="flex-1"
+                style={{
+                  border: '2px solid',
+                  borderColor: '#808080 #ffffff #ffffff #808080',
+                }}
+              >
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={e => setInputText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') sendMessage(); }}
+                  placeholder="Type a message..."
+                  className="w-full px-2 py-1.5 text-[12px] outline-none"
+                  style={{
+                    fontFamily: 'Tahoma, Verdana, sans-serif',
+                    background: '#ffffff',
+                    color: '#000',
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => setShowEmojis(!showEmojis)}
+                className="px-2 py-1.5 cursor-pointer"
+                style={{
+                  background: '#c0c0c0',
+                  border: '2px solid',
+                  borderColor: '#ffffff #808080 #808080 #ffffff',
+                  fontSize: '14px',
+                }}
+                title="Emoticons"
+              >
+                <SmilePlus className="w-4 h-4 text-[#000]" />
+              </button>
+              <button
+                onClick={sendMessage}
+                className="px-3 py-1.5 cursor-pointer font-bold"
+                style={{
+                  fontFamily: 'Tahoma, sans-serif',
+                  fontSize: '11px',
+                  background: 'linear-gradient(180deg, #e8e8e8, #c0c0c0)',
+                  border: '2px solid',
+                  borderColor: '#ffffff #808080 #808080 #ffffff',
+                  color: '#000',
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom bar with clear */}
+          <div
+            className="flex items-center justify-between px-3 py-1"
+            style={{ background: '#c0c0c0', borderTop: '1px solid #ffffff' }}
+          >
+            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080' }}>
+              {messages.length > 0 ? `${messages.length} message${messages.length > 1 ? 's' : ''}` : 'No messages yet'}
+            </span>
+            {messages.length > 0 && (
+              <button onClick={clearChat}
+                style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080', textDecoration: 'underline' }}
+                className="hover:text-[#000] cursor-pointer">
+                Clear Chat
+              </button>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Fun AIM-era info */}
+        <div className="mt-4 text-center space-y-1">
+          <p className="old-handwritten text-xs text-[#8b7355]">
+            Chatting with <b style={{ color: buddyName.color }}>{buddyName.name}</b> on AIM
+          </p>
+          <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#a0a0a0' }}>
+            &quot;You&apos;ve Got Mail!&quot; 📬
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Main Component — NostalgiaFeatures
 // ═══════════════════════════════════════════════════════════════
 
@@ -1381,6 +1709,11 @@ export default function NostalgiaFeatures() {
 
         {/* ── Sticker Wall ── */}
         <StickerWallSection />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Retro Chat ── */}
+        <RetroChatSection />
 
         {/* Footer */}
         <footer className="pt-8 pb-4 text-center">

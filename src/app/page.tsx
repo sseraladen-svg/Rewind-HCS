@@ -17,109 +17,140 @@ import NostalgiaFeatures from '@/components/NostalgiaFeatures';
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
 
 /* ═══════════════════════════════════════════════════
-   CRT / VHS LOADING SCREEN
+   OLD-SCHOOL LOADING SCREEN (Win95 / DOS style)
    ═══════════════════════════════════════════════════ */
-function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
-  const [phase, setPhase] = useState(0); // 0=boot, 1=title, 2=fading
-  const [bootLines, setBootLines] = useState<string[]>([]);
-  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+function RetroLoadingScreen({ onDone }: { onDone: () => void }) {
+  const [lines, setLines] = useState<string[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [done, setDone] = useState(false);
 
-  const allBootLines = useMemo(() => [
-    'BIOS v2.4 — Nostalgia Systems Inc.',
-    'POST: Memory test... 640K OK',
-    'Detecting floppy drives... A: OK  B: OK',
-    'Loading REWIND.EXE...',
-    'Mounting childhood memories... 47% complete',
-    'Indexing nostalgia database...',
-    'Rewinding time...',
-    'Loading good old days... 83% complete',
-    'Ready.',
+  const bootLines = useMemo(() => [
+    'C:\\> cd rewind',
+    'C:\\REWIND> dir',
+    ' Volume in drive C is NOSTALGIA',
+    ' Directory of C:\\REWIND',
+    '',
+    'REWIND   EXE     128,456  01-01-95  12:00a',
+    'MEMORIES DAT     64,000  06-15-98   3:42p',
+    'GOODTIMES TXT     8,192  07-04-99  11:30a',
+    '',
+    '         3 File(s)    200,648 bytes',
+    '',
+    'C:\\REWIND> rewind.exe',
+    'Loading... please wait.',
   ], []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    // Reveal boot lines one by one
-    allBootLines.forEach((line, i) => {
+
+    // Type each line one by one
+    bootLines.forEach((line, i) => {
       timers.push(setTimeout(() => {
-        setBootLines(prev => [...prev, line]);
-        if (i === allBootLines.length - 1) {
-          // Last line — show title after a beat
-          timers.push(setTimeout(() => setPhase(1), 1000));
-        }
-      }, 500 + i * 500));
+        setLines(prev => [...prev, line]);
+      }, 400 + i * 450));
     });
 
-    // Auto-dismiss after title phase
-    fadeTimerRef.current = setTimeout(() => {
-      setPhase(2);
-      setTimeout(onDone, 800);
-    }, 7000);
+    // Start progress bar after last line
+    const progressStart = 400 + bootLines.length * 450 + 600;
+    timers.push(setTimeout(() => {
+      const interval = setInterval(() => {
+        setProgress(p => {
+          if (p >= 100) {
+            clearInterval(interval);
+            setDone(true);
+            timers.push(setTimeout(onDone, 600));
+            return 100;
+          }
+          // Chunky old-style progress jumps
+          const jump = Math.random() * 12 + 3;
+          return Math.min(100, p + jump);
+        });
+      }, 300);
+    }, progressStart));
 
-    return () => {
-      timers.forEach(clearTimeout);
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-    };
-  }, [allBootLines, onDone]);
+    return () => timers.forEach(clearTimeout);
+  }, [bootLines, onDone]);
 
   return (
-    <div className={`crt-screen ${phase === 2 ? 'crt-fadeout' : 'crt-flicker'}`}>
-      <div className="crt-scanlines" />
-      <div className="vhs-noise" />
-      <div className="vhs-tracking" />
-      <div className="vhs-tracking" style={{ animationDelay: '1.2s', opacity: 0.5 }} />
-
-      <div className="relative z-10 flex flex-col items-center gap-4">
-        {/* Boot lines */}
-        <div className="space-y-1.5 min-h-[180px]">
-          {bootLines.map((line, i) => (
-            <div
-              key={i}
-              className="boot-line"
-              style={{ animationDelay: '0s' }}
-            >
-              {line}
-              {i === bootLines.length - 1 && (
-                <span className="inline-block w-2 h-3.5 bg-[#c4956a] ml-0.5 align-middle"
-                  style={{ animation: 'blink-cursor 0.6s step-end infinite' }}
-                />
-              )}
-            </div>
-          ))}
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      style={{ background: '#008080' }}
+    >
+      {/* Windows 95 style dialog box */}
+      <div
+        className="w-[340px] sm:w-[400px] rounded-none overflow-hidden"
+        style={{
+          background: '#c0c0c0',
+          border: '2px solid',
+          borderColor: '#ffffff #808080 #808080 #ffffff',
+          boxShadow: '1px 1px 0 #000',
+        }}
+      >
+        {/* Title bar */}
+        <div
+          className="flex items-center px-2 py-1"
+          style={{
+            background: 'linear-gradient(90deg, #000080, #1084d0)',
+            color: '#ffffff',
+            fontFamily: 'MS Sans Serif, Tahoma, sans-serif',
+            fontSize: '12px',
+            fontWeight: 'bold',
+          }}
+        >
+          <span className="mr-2 text-[11px]"> rewind.exe</span>
         </div>
 
-        {/* Title */}
-        {phase >= 1 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.0 }}
-            className="text-center mt-2"
+        {/* Content area */}
+        <div className="p-3" style={{ fontFamily: 'Courier New, monospace', fontSize: '11px' }}>
+          {/* DOS-style boot output */}
+          <div
+            className="rounded-sm overflow-hidden p-2 mb-3"
+            style={{
+              background: '#000000',
+              color: '#c0c0c0',
+              height: '200px',
+              overflowY: 'auto',
+              border: '2px solid',
+              borderColor: '#808080 #ffffff #ffffff #808080',
+            }}
           >
-            <h1 className="text-4xl md:text-5xl font-black crt-glow old-title tracking-wider" style={{ color: '#c4956a' }}>
-              REWIND
-            </h1>
-            <div className="loading-bar-track mt-4 mx-auto">
-              <div className="loading-bar-fill" style={{ animationDuration: '3.5s' }} />
-            </div>
-            <p className="old-typewriter text-[10px] mt-3" style={{ color: 'rgba(196,149,106,0.5)' }}>
-              <span style={{ animation: 'blink-cursor 0.8s step-end infinite' }}>_</span>
-              {' '}press any key to continue_
-            </p>
-          </motion.div>
-        )}
-      </div>
+            {lines.map((line, i) => (
+              <div key={i} style={{ minHeight: '14px', whiteSpace: 'pre' }}>
+                {line}
+                {i === lines.length - 1 && !done && (
+                  <span style={{ animation: 'blink-cursor 0.5s step-end infinite' }}>█</span>
+                )}
+              </div>
+            ))}
+          </div>
 
-      {/* VHS timestamp corner */}
-      <div className="absolute bottom-4 left-4 z-10">
-        <span className="old-typewriter text-[10px]" style={{ color: 'rgba(196,149,106,0.35)' }}>
-          SP 0:00:00
-        </span>
-      </div>
-      <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1">
-        <span className="inline-block w-2 h-2 rounded-full bg-red-500" style={{ animation: 'blink-cursor 1s step-end infinite' }} />
-        <span className="old-typewriter text-[10px]" style={{ color: 'rgba(196,149,106,0.4)' }}>
-          REC
-        </span>
+          {/* Progress bar (Windows 95 style) */}
+          <div className="flex items-center gap-2 mb-1">
+            <span style={{ fontFamily: 'MS Sans Serif, sans-serif', fontSize: '11px', color: '#000' }}>
+              Loading:
+            </span>
+            <div
+              className="flex-1 h-4 rounded-sm overflow-hidden"
+              style={{
+                background: '#c0c0c0',
+                border: '2px solid',
+                borderColor: '#808080 #ffffff #ffffff #808080',
+              }}
+            >
+              <div
+                className="h-full"
+                style={{
+                  width: `${progress}%`,
+                  background: 'repeating-linear-gradient(90deg, #000080 0px, #000080 8px, transparent 8px, transparent 10px)',
+                  transition: 'width 0.3s ease-out',
+                }}
+              />
+            </div>
+            <span style={{ fontFamily: 'MS Sans Serif, sans-serif', fontSize: '11px', color: '#000', minWidth: '32px', textAlign: 'right' }}>
+              {Math.round(progress)}%
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1327,8 +1358,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(180deg, #f5edd6 0%, #ede0c8 40%, #e8d8b8 100%)' }}>
-      {/* CRT Loading Screen */}
-      {loading && <CrtLoadingScreen onDone={handleLoadingDone} />}
+      {/* Retro Loading Screen */}
+      {loading && <RetroLoadingScreen onDone={handleLoadingDone} />}
 
       <AnimatePresence mode="wait">
         {birthYear === null ? (
