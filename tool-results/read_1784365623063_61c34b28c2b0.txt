@@ -1,0 +1,1061 @@
+     1→'use client';
+     2→
+     3→import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  BookOpen,
+     7→  MessageSquare,
+     8→  User,
+     9→  Send,
+    10→  Music,
+    11→  Save,
+    12→  Trash2,
+    13→  HelpCircle,
+    14→  Eye,
+    15→  Sparkles,
+    16→  ChevronRight,
+    17→} from 'lucide-react';
+    18→import { Input } from '@/components/ui/input';
+    19→import { Textarea } from '@/components/ui/textarea';
+    20→import { Button } from '@/components/ui/button';
+    21→import { Separator } from '@/components/ui/separator';
+    22→
+    23→// ═══════════════════════════════════════════════════════════════
+    24→// Types
+    25→// ═══════════════════════════════════════════════════════════════
+    26→
+    27→interface GuestbookEntry {
+    28→  id: string;
+    29→  name: string;
+    30→  message: string;
+    31→  date: string;
+    32→  emoji: string;
+    33→}
+    34→
+    35→interface Mixtape {
+    36→  id: string;
+    37→  to: string;
+    38→  from: string;
+    39→  side: 'A' | 'B';
+    40→  tracks: string[];
+    41→  createdAt: string;
+    42→}
+    43→
+    44→// ═══════════════════════════════════════════════════════════════
+    45→// Constants
+    46→// ═══════════════════════════════════════════════════════════════
+    47→
+    48→const AVATAR_EMOJIS = [
+    49→  '🎭', '🤠', '🦊', '🐱', '🌸', '🎸', '🕶️', '🎮',
+    50→  '👾', '🌈', '🦄', '🐶', '🎨', '🎪', '🚀', '🍕',
+    51→  '🎵', '🐻', '🌟', '🎃', '🦋', '🐙', '🪐', '🎯',
+    52→];
+    53→
+    54→const EIGHT_BALL_ANSWERS = [
+    55→  'It is certain',
+    56→  'It is decidedly so',
+    57→  'Without a doubt',
+    58→  'Yes, definitely',
+    59→  'You may rely on it',
+    60→  'As I see it, yes',
+    61→  'Most likely',
+    62→  'Outlook good',
+    63→  'Yes',
+    64→  'Signs point to yes',
+    65→  'Reply hazy, try again',
+    66→  'Ask again later',
+    67→  'Better not tell you now',
+    68→  'Cannot predict now',
+    69→  'Concentrate and ask again',
+    70→  "Don't count on it",
+    71→  'My reply is no',
+    72→  'My sources say no',
+    73→  'Outlook not so good',
+    74→  'Very doubtful',
+    75→];
+    76→
+    77→const MAX_GUESTBOOK_ENTRIES = 8;
+    78→const MIXTAPE_TRACK_SLOTS = 8;
+    79→
+    80→// Stable initial values (module-level to avoid ref/render-path lint issues)
+    81→const INITIAL_GUESTBOOK: GuestbookEntry[] = [];
+    82→const INITIAL_MIXTAPES: Mixtape[] = [];
+    83→
+    84→function getRandomEmoji(): string {
+    85→  return AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)];
+    86→}
+    87→
+    88→function getRandomAnswer(): string {
+    89→  return EIGHT_BALL_ANSWERS[Math.floor(Math.random() * EIGHT_BALL_ANSWERS.length)];
+    90→}
+    91→
+    92→function generateId(): string {
+    93→  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    94→}
+    95→
+    96→function formatDate(dateStr: string): string {
+    97→  const d = new Date(dateStr);
+    98→  return d.toLocaleDateString('en-US', {
+    99→    month: 'short',
+   100→    day: 'numeric',
+   101→    year: 'numeric',
+   102→    hour: '2-digit',
+   103→    minute: '2-digit',
+   104→  });
+   105→}
+   106→
+   107→// ═══════════════════════════════════════════════════════════════
+   108→// useIsClient — detects client-side rendering via useSyncExternalStore
+   109→// ═══════════════════════════════════════════════════════════════
+   110→
+   111→const emptySubscribe = () => () => {};
+   112→function useIsClient(): boolean {
+   113→  return useSyncExternalStore(
+   114→    emptySubscribe,
+   115→    () => true,
+   116→    () => false,
+   117→  );
+   118→}
+   119→
+   120→// ═══════════════════════════════════════════════════════════════
+   121→// useStoredState — localStorage-backed state via useSyncExternalStore
+   122→// ═══════════════════════════════════════════════════════════════
+   123→
+   124→function useStoredState<T>(
+   125→  key: string,
+   126→  initial: T,
+   127→): [T, (updater: T | ((prev: T) => T)) => void] {
+   128→  const subscribe = useCallback(
+   129→    (onStoreChange: () => void) => {
+   130→      const handler = (e: StorageEvent) => {
+   131→        if (e.key === key || e.key === null) onStoreChange();
+   132→      };
+   133→      window.addEventListener('storage', handler);
+   134→      return () => window.removeEventListener('storage', handler);
+   135→    },
+   136→    [key],
+   137→  );
+   138→
+   139→  const getSnapshot = useCallback(() => {
+   140→    return localStorage.getItem(key);
+   141→  }, [key]);
+   142→
+   143→  const getServerSnapshot = useCallback(() => null, []);
+   144→
+   145→  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+   146→
+   147→  const value = useMemo<T>(() => {
+   148→    if (raw === null) return initial;
+   149→    try {
+   150→      return JSON.parse(raw) as T;
+   151→    } catch {
+   152→      return initial;
+   153→    }
+   154→  }, [raw, initial]);
+   155→
+   156→  const setValue = useCallback(
+   157→    (updater: T | ((prev: T) => T)) => {
+   158→      try {
+   159→        const currentRaw = localStorage.getItem(key);
+   160→        const current: T =
+   161→          currentRaw !== null ? (JSON.parse(currentRaw) as T) : initial;
+   162→        const next =
+   163→          typeof updater === 'function'
+   164→            ? (updater as (prev: T) => T)(current)
+   165→            : updater;
+   166→        localStorage.setItem(key, JSON.stringify(next));
+   167→        window.dispatchEvent(new StorageEvent('storage', { key }));
+   168→      } catch {
+   169→        /* ignore storage errors */
+   170→      }
+   171→    },
+   172→    [key, initial],
+   173→  );
+   174→
+   175→  return [value, setValue];
+   176→}
+   177→
+   178→// ═══════════════════════════════════════════════════════════════
+   179→// useVisitCounter — auto-incrementing visit counter
+   180→// ═══════════════════════════════════════════════════════════════
+   181→
+   182→// Only called when isClient is true, so localStorage is available.
+   183→// The useState lazy initializer runs exactly once on first mount.
+   184→function useVisitCounter(): number {
+   185→  const [count] = useState(() => {
+   186→    const stored = localStorage.getItem('rewind_visit_count');
+   187→    let c = 1;
+   188→    if (stored) {
+   189→      const parsed = parseInt(stored, 10);
+   190→      if (!isNaN(parsed)) c = parsed + 1;
+   191→    }
+   192→    localStorage.setItem('rewind_visit_count', String(c));
+   193→    return c;
+   194→  });
+   195→  return count;
+   196→}
+   197→
+   198→// ═══════════════════════════════════════════════════════════════
+   199→// Section Header Component
+   200→// ═══════════════════════════════════════════════════════════════
+   201→
+   202→function SectionHeader({
+   203→  icon: Icon,
+   204→  title,
+   205→  subtitle,
+   206→}: {
+   207→  icon: React.ComponentType<{ className?: string }>;
+   208→  title: string;
+   209→  subtitle: string;
+   210→}) {
+   211→  return (
+   212→    <motion.div
+   213→      initial={{ opacity: 0, y: 20 }}
+   214→      whileInView={{ opacity: 1, y: 0 }}
+   215→      viewport={{ once: true, margin: '-50px' }}
+   216→      transition={{ duration: 0.6, ease: 'easeOut' }}
+   217→      className="mb-8 text-center"
+   218→    >
+   219→      <div className="inline-flex items-center justify-center w-14 h-14 rounded-full sk-leather mb-4">
+   220→        <Icon className="w-7 h-7 text-[#d4a574]" />
+   221→      </div>
+   222→      <h2 className="old-title text-3xl md:text-4xl text-foreground mb-2">{title}</h2>
+   223→      <p className="old-body text-muted-foreground text-sm md:text-base max-w-md mx-auto">
+   224→        {subtitle}
+   225→      </p>
+   226→    </motion.div>
+   227→  );
+   228→}
+   229→
+   230→// ═══════════════════════════════════════════════════════════════
+   231→// 1. Guestbook Section
+   232→// ═══════════════════════════════════════════════════════════════
+   233→
+   234→function GuestbookSection({ visitorCount }: { visitorCount: number }) {
+   235→  const [entries, setEntries] = useStoredState<GuestbookEntry[]>('rewind_guestbook', INITIAL_GUESTBOOK);
+   236→  const [name, setName] = useState('');
+   237→  const [message, setMessage] = useState('');
+   238→
+   239→  const handleSubmit = useCallback(() => {
+   240→    const trimmedName = name.trim();
+   241→    const trimmedMessage = message.trim();
+   242→    if (!trimmedName || !trimmedMessage) return;
+   243→
+   244→    const newEntry: GuestbookEntry = {
+   245→      id: generateId(),
+   246→      name: trimmedName,
+   247→      message: trimmedMessage,
+   248→      date: new Date().toISOString(),
+   249→      emoji: getRandomEmoji(),
+   250→    };
+   251→
+   252→    setEntries((prev) => [newEntry, ...prev].slice(0, MAX_GUESTBOOK_ENTRIES));
+   253→    setName('');
+   254→    setMessage('');
+   255→  }, [name, message, setEntries]);
+   256→
+   257→  const rotations = [-2, 1.5, -1, 2, -0.5, 1, -1.5, 0.5];
+   258→
+   259→  return (
+   260→    <section id="guestbook" className="scroll-mt-8">
+   261→      <SectionHeader
+   262→        icon={BookOpen}
+   263→        title="Guestbook"
+   264→        subtitle="Sign my guestbook! Just like the good old GeoCities days."
+   265→      />
+   266→
+   267→      {/* Visitor Counter Badge */}
+   268→      <motion.div
+   269→        initial={{ scale: 0.8, opacity: 0 }}
+   270→        animate={{ scale: 1, opacity: 1 }}
+   271→        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+   272→        className="flex justify-center mb-8"
+   273→      >
+   274→        <div className="sk-metal rounded-lg px-5 py-2.5 flex items-center gap-3">
+   275→          <Eye className="w-4 h-4 text-[#5c4033]" />
+   276→          <span className="old-label text-[#3d2b1f]">You are visitor #</span>
+   277→          <span className="old-typewriter text-lg font-bold text-[#8b5e3c] tracking-widest">
+   278→            {String(visitorCount).padStart(6, '0')}
+   279→          </span>
+   280→        </div>
+   281→      </motion.div>
+   282→
+   283→      {/* Sign Guestbook Form */}
+   284→      <motion.div
+   285→        initial={{ opacity: 0, y: 20 }}
+   286→        animate={{ opacity: 1, y: 0 }}
+   287→        transition={{ delay: 0.4, duration: 0.5 }}
+   288→        className="max-w-lg mx-auto mb-10"
+   289→      >
+   290→        <div className="sk-paper rounded-xl p-6 relative sk-tape">
+   291→          <h3 className="old-heading text-xl text-foreground mb-4 text-center">
+   292→            ✍️ Leave a Note
+   293→          </h3>
+   294→          <div className="space-y-3">
+   295→            <div className="flex items-center gap-2">
+   296→              <User className="w-4 h-4 text-muted-foreground shrink-0" />
+   297→              <Input
+   298→                value={name}
+   299→                onChange={(e) => setName(e.target.value)}
+   300→                placeholder="Your name..."
+   301→                maxLength={40}
+   302→                className="sk-inset old-typewriter text-sm border-0"
+   303→              />
+   304→            </div>
+   305→            <div className="flex items-start gap-2">
+   306→              <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0 mt-2" />
+   307→              <Textarea
+   308→                value={message}
+   309→                onChange={(e) => setMessage(e.target.value)}
+   310→                placeholder="Write something nice..."
+   311→                maxLength={200}
+   312→                rows={3}
+   313→                className="sk-inset old-typewriter text-sm border-0 resize-none"
+   314→              />
+   315→            </div>
+   316→            <div className="flex justify-end">
+   317→              <Button
+   318→                onClick={handleSubmit}
+   319→                disabled={!name.trim() || !message.trim()}
+   320→                className="sk-btn old-btn text-xs px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-40"
+   321→              >
+   322→                <Send className="w-3.5 h-3.5 mr-1.5" />
+   323→                Sign!
+   324→              </Button>
+   325→            </div>
+   326→          </div>
+   327→        </div>
+   328→      </motion.div>
+   329→
+   330→      {/* Guestbook Entries */}
+   331→      <div className="max-w-2xl mx-auto">
+   332→        <AnimatePresence mode="popLayout">
+   333→          {entries.length === 0 && (
+   334→            <motion.p
+   335→              initial={{ opacity: 0 }}
+   336→              animate={{ opacity: 1 }}
+   337→              className="old-handwritten text-center text-muted-foreground text-lg py-8"
+   338→            >
+   339→              Be the first to sign the guestbook! 📝
+   340→            </motion.p>
+   341→          )}
+   342→          {entries.map((entry, index) => (
+   343→            <motion.div
+   344→              key={entry.id}
+   345→              layout
+   346→              initial={{ opacity: 0, scale: 0.8, rotate: rotations[index % rotations.length] - 5 }}
+   347→              animate={{ opacity: 1, scale: 1, rotate: rotations[index % rotations.length] }}
+   348→              exit={{ opacity: 0, scale: 0.7, y: -20 }}
+   349→              transition={{ duration: 0.4, type: 'spring', stiffness: 150 }}
+   350→              className="sk-paper-aged rounded-lg p-4 mb-4 relative sk-pin cursor-default"
+   351→              style={
+   352→                { '--rotate': `${rotations[index % rotations.length]}deg` } as React.CSSProperties
+   353→              }
+   354→            >
+   355→              <div className="flex items-start gap-3">
+   356→                <span className="text-2xl shrink-0 mt-0.5">{entry.emoji}</span>
+   357→                <div className="flex-1 min-w-0">
+   358→                  <div className="flex items-center justify-between mb-1">
+   359→                    <span className="old-heading text-sm font-semibold text-foreground truncate">
+   360→                      {entry.name}
+   361→                    </span>
+   362→                    <span className="old-label text-[10px] shrink-0 ml-2">
+   363→                      {formatDate(entry.date)}
+   364→                    </span>
+   365→                  </div>
+   366→                  <p className="old-body text-sm text-foreground/80 leading-relaxed">
+   367→                    {entry.message}
+   368→                  </p>
+   369→                </div>
+   370→              </div>
+   371→            </motion.div>
+   372→          ))}
+   373→        </AnimatePresence>
+   374→      </div>
+   375→    </section>
+   376→  );
+   377→}
+   378→
+   379→// ═══════════════════════════════════════════════════════════════
+   380→// 2. Mixtape Creator Section
+   381→// ═══════════════════════════════════════════════════════════════
+   382→
+   383→function MixtapeSection() {
+   384→  const [savedMixtapes, setSavedMixtapes] = useStoredState<Mixtape[]>('rewind_mixtapes', INITIAL_MIXTAPES);
+   385→  const [to, setTo] = useState('');
+   386→  const [from, setFrom] = useState('');
+   387→  const [side, setSide] = useState<'A' | 'B'>('A');
+   388→  const [tracks, setTracks] = useState<string[]>(Array(MIXTAPE_TRACK_SLOTS).fill(''));
+   389→  const [showSaved, setShowSaved] = useState(false);
+   390→
+   391→  const handleTrackChange = useCallback((index: number, value: string) => {
+   392→    setTracks((prev) => {
+   393→      const updated = [...prev];
+   394→      updated[index] = value;
+   395→      return updated;
+   396→    });
+   397→  }, []);
+   398→
+   399→  const handleSave = useCallback(() => {
+   400→    const filledTracks = tracks.filter((t) => t.trim() !== '');
+   401→    if (!to.trim() || filledTracks.length === 0) return;
+   402→
+   403→    const mixtape: Mixtape = {
+   404→      id: generateId(),
+   405→      to: to.trim(),
+   406→      from: from.trim() || 'Anonymous',
+   407→      side,
+   408→      tracks: filledTracks.map((t) => t.trim()),
+   409→      createdAt: new Date().toISOString(),
+   410→    };
+   411→
+   412→    setSavedMixtapes((prev) => [mixtape, ...prev]);
+   413→    setTo('');
+   414→    setFrom('');
+   415→    setTracks(Array(MIXTAPE_TRACK_SLOTS).fill(''));
+   416→  }, [to, from, side, tracks, setSavedMixtapes]);
+   417→
+   418→  const handleDelete = useCallback(
+   419→    (id: string) => {
+   420→      setSavedMixtapes((prev) => prev.filter((m) => m.id !== id));
+   421→    },
+   422→    [setSavedMixtapes],
+   423→  );
+   424→
+   425→  return (
+   426→    <section id="mixtape" className="scroll-mt-8">
+   427→      <SectionHeader
+   428→        icon={Music}
+   429→        title="Mixtape Creator"
+   430→        subtitle="Make a mixtape for that special someone, just like the old days."
+   431→      />
+   432→
+   433→      <div className="max-w-lg mx-auto">
+   434→        {/* Cassette Tape Visual */}
+   435→        <motion.div
+   436→          initial={{ opacity: 0, y: 30 }}
+   437→          animate={{ opacity: 1, y: 0 }}
+   438→          transition={{ duration: 0.6, type: 'spring' }}
+   439→          className="relative"
+   440→        >
+   441→          <div className="sk-metal rounded-2xl p-1">
+   442→            {/* Cassette body */}
+   443→            <div className="bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] rounded-xl p-5 relative overflow-hidden">
+   444→              {/* Noise overlay */}
+   445→              <div className="absolute inset-0 sk-noise pointer-events-none" />
+   446→
+   447→              {/* Top section: reels */}
+   448→              <div className="flex items-center justify-center gap-10 mb-4 relative z-10">
+   449→                {/* Left reel */}
+   450→                <div className="relative">
+   451→                  <div className="w-20 h-20 rounded-full border-4 border-[#444] bg-[#222] flex items-center justify-center">
+   452→                    <div className="w-14 h-14 rounded-full border-2 border-[#555] bg-gradient-to-br from-[#333] to-[#1a1a1a] flex items-center justify-center">
+   453→                      <div className="w-4 h-4 rounded-full bg-[#555] border border-[#666]" />
+   454→                    </div>
+   455→                  </div>
+   456→                  {/* Spinning spokes */}
+   457→                  <motion.div
+   458→                    className="absolute inset-0 flex items-center justify-center"
+   459→                    animate={side === 'A' ? { rotate: 360 } : { rotate: 0 }}
+   460→                    transition={
+   461→                      side === 'A'
+   462→                        ? { duration: 3, repeat: Infinity, ease: 'linear' }
+   463→                        : { duration: 0 }
+   464→                    }
+   465→                  >
+   466→                    <div className="w-16 h-16">
+   467→                      {[0, 60, 120, 180, 240, 300].map((deg) => (
+   468→                        <div
+   469→                          key={deg}
+   470→                          className="absolute top-1/2 left-1/2 w-px h-7 bg-[#444]"
+   471→                          style={{
+   472→                            transform: `translate(-50%, -100%) rotate(${deg}deg)`,
+   473→                            transformOrigin: 'bottom center',
+   474→                          }}
+   475→                        />
+   476→                      ))}
+   477→                    </div>
+   478→                  </motion.div>
+   479→                </div>
+   480→
+   481→                {/* Center window / label area */}
+   482→                <div className="sk-vhs-label rounded-md px-4 py-3 text-center min-w-[140px] relative">
+   483→                  <p className="old-label text-[10px] text-[#8b7355] mb-1">★ HIGH BIAS ★</p>
+   484→                  <p className="old-title text-lg text-foreground leading-tight">My Mixtape</p>
+   485→                  <p className="old-typewriter text-[10px] text-muted-foreground mt-1">CHROME 90</p>
+   486→
+   487→                  {/* Side A/B indicator */}
+   488→                  <div className="flex items-center justify-center gap-1 mt-2">
+   489→                    <motion.div
+   490→                      className={`w-2 h-2 rounded-full ${side === 'A' ? 'bg-[#e85d5d]' : 'bg-[#555]'}`}
+   491→                      animate={side === 'A' ? { scale: [1, 1.3, 1] } : {}}
+   492→                      transition={{ duration: 1.5, repeat: Infinity }}
+   493→                    />
+   494→                    <span className="old-label text-[8px]">
+   495→                      {side === 'A' ? '▶ PLAYING' : '■ STOPPED'}
+   496→                    </span>
+   497→                  </div>
+   498→                </div>
+   499→
+   500→                {/* Right reel */}
+   501→                <div className="relative">
+   502→                  <div className="w-20 h-20 rounded-full border-4 border-[#444] bg-[#222] flex items-center justify-center">
+   503→                    <div className="w-14 h-14 rounded-full border-2 border-[#555] bg-gradient-to-br from-[#333] to-[#1a1a1a] flex items-center justify-center">
+   504→                      <div className="w-4 h-4 rounded-full bg-[#555] border border-[#666]" />
+   505→                    </div>
+   506→                  </div>
+   507→                  <motion.div
+   508→                    className="absolute inset-0 flex items-center justify-center"
+   509→                    animate={side === 'A' ? { rotate: 360 } : { rotate: 0 }}
+   510→                    transition={
+   511→                      side === 'A'
+   512→                        ? { duration: 4, repeat: Infinity, ease: 'linear' }
+   513→                        : { duration: 0 }
+   514→                    }
+   515→                  >
+   516→                    <div className="w-16 h-16">
+   517→                      {[0, 60, 120, 180, 240, 300].map((deg) => (
+   518→                        <div
+   519→                          key={deg}
+   520→                          className="absolute top-1/2 left-1/2 w-px h-7 bg-[#444]"
+   521→                          style={{
+   522→                            transform: `translate(-50%, -100%) rotate(${deg}deg)`,
+   523→                            transformOrigin: 'bottom center',
+   524→                          }}
+   525→                        />
+   526→                      ))}
+   527→                    </div>
+   528→                  </motion.div>
+   529→                </div>
+   530→              </div>
+   531→
+   532→              {/* Tape window strip */}
+   533→              <div className="bg-[#111] rounded h-6 mx-8 mb-4 flex items-center justify-center overflow-hidden relative z-10">
+   534→                <div className="flex gap-0.5">
+   535→                  {Array.from({ length: 30 }).map((_, i) => (
+   536→                    <motion.div
+   537→                      key={i}
+   538→                      className="w-0.5 h-3 bg-[#3a2a1a] rounded-full"
+   539→                      animate={
+   540→                        side === 'A'
+   541→                          ? { x: [0, 8, 0] }
+   542→                          : {}
+   543→                      }
+   544→                      transition={
+   545→                        side === 'A'
+   546→                          ? {
+   547→                              duration: 2,
+   548→                              repeat: Infinity,
+   549→                              ease: 'easeInOut',
+   550→                              delay: i * 0.05,
+   551→                            }
+   552→                          : { duration: 0 }
+   553→                      }
+   554→                    />
+   555→                  ))}
+   556→                </div>
+   557→              </div>
+   558→
+   559→              {/* Form area */}
+   560→              <div className="relative z-10 space-y-3">
+   561→                <div className="flex gap-3">
+   562→                  <div className="flex-1">
+   563→                    <label className="old-label text-[10px] block mb-1">To:</label>
+   564→                    <Input
+   565→                      value={to}
+   566→                      onChange={(e) => setTo(e.target.value)}
+   567→                      placeholder="A special someone..."
+   568→                      maxLength={30}
+   569→                      className="sk-inset old-typewriter text-xs border-0 h-9"
+   570→                    />
+   571→                  </div>
+   572→                  <div className="flex-1">
+   573→                    <label className="old-label text-[10px] block mb-1">From:</label>
+   574→                    <Input
+   575→                      value={from}
+   576→                      onChange={(e) => setFrom(e.target.value)}
+   577→                      placeholder="Your name..."
+   578→                      maxLength={30}
+   579→                      className="sk-inset old-typewriter text-xs border-0 h-9"
+   580→                    />
+   581→                  </div>
+   582→                </div>
+   583→
+   584→                {/* Side toggle */}
+   585→                <div className="flex items-center justify-center gap-2">
+   586→                  <span className="old-label text-[10px]">SIDE</span>
+   587→                  <button
+   588→                    onClick={() => setSide(side === 'A' ? 'B' : 'A')}
+   589→                    className="sk-btn old-btn text-xs px-4 py-1.5 rounded-md flex items-center gap-2"
+   590→                  >
+   591→                    <span
+   592→                      className={`font-bold transition-colors ${
+   593→                        side === 'A' ? 'text-[#8b5e3c]' : 'text-[#8b7355]'
+   594→                      }`}
+   595→                    >
+   596→                      A
+   597→                    </span>
+   598→                    <span className="text-[#8b7355]">/</span>
+   599→                    <span
+   600→                      className={`font-bold transition-colors ${
+   601→                        side === 'B' ? 'text-[#8b5e3c]' : 'text-[#8b7355]'
+   602→                      }`}
+   603→                    >
+   604→                      B
+   605→                    </span>
+   606→                  </button>
+   607→                </div>
+   608→
+   609→                {/* Track slots */}
+   610→                <div className="space-y-1.5 mt-3">
+   611→                  {tracks.map((track, i) => (
+   612→                    <motion.div
+   613→                      key={i}
+   614→                      initial={{ opacity: 0, x: -10 }}
+   615→                      animate={{ opacity: 1, x: 0 }}
+   616→                      transition={{ delay: 0.05 * i }}
+   617→                      className="flex items-center gap-2"
+   618→                    >
+   619→                      <span className="old-typewriter text-[10px] text-[#888] w-5 text-right shrink-0">
+   620→                        {i + 1}.
+   621→                      </span>
+   622→                      <Input
+   623→                        value={track}
+   624→                        onChange={(e) => handleTrackChange(i, e.target.value)}
+   625→                        placeholder={`Track ${i + 1}...`}
+   626→                        maxLength={60}
+   627→                        className="sk-inset old-typewriter text-[11px] border-0 h-7"
+   628→                      />
+   629→                    </motion.div>
+   630→                  ))}
+   631→                </div>
+   632→
+   633→                {/* Save button */}
+   634→                <div className="flex justify-center pt-2">
+   635→                  <Button
+   636→                    onClick={handleSave}
+   637→                    disabled={!to.trim() || tracks.filter((t) => t.trim()).length === 0}
+   638→                    className="sk-btn old-btn text-xs px-6 py-2 rounded-lg hover:opacity-90 disabled:opacity-40"
+   639→                  >
+   640→                    <Save className="w-3.5 h-3.5 mr-1.5" />
+   641→                    Save Mixtape
+   642→                  </Button>
+   643→                </div>
+   644→              </div>
+   645→            </div>
+   646→          </div>
+   647→        </motion.div>
+   648→
+   649→        {/* Saved Mixtapes */}
+   650→        <div className="mt-8">
+   651→          <button
+   652→            onClick={() => setShowSaved(!showSaved)}
+   653→            className="sk-btn old-btn text-xs px-4 py-2 rounded-lg mx-auto flex items-center gap-2 w-full justify-center mb-4"
+   654→          >
+   655→            <span className="text-sm">📼</span>
+   656→            {showSaved ? 'Hide' : 'Show'} Saved Mixtapes
+   657→            <ChevronRight
+   658→              className={`w-3.5 h-3.5 transition-transform ${showSaved ? 'rotate-90' : ''}`}
+   659→            />
+   660→            {savedMixtapes.length > 0 && (
+   661→              <span className="bg-[#8b5e3c] text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
+   662→                {savedMixtapes.length}
+   663→              </span>
+   664→            )}
+   665→          </button>
+   666→
+   667→          <AnimatePresence>
+   668→            {showSaved && (
+   669→              <motion.div
+   670→                initial={{ height: 0, opacity: 0 }}
+   671→                animate={{ height: 'auto', opacity: 1 }}
+   672→                exit={{ height: 0, opacity: 0 }}
+   673→                transition={{ duration: 0.3 }}
+   674→                className="overflow-hidden"
+   675→              >
+   676→                <div className="space-y-3 max-h-96 overflow-y-auto sk-scrollbar pr-1">
+   677→                  {savedMixtapes.length === 0 && (
+   678→                    <p className="old-handwritten text-center text-muted-foreground py-4">
+   679→                      No mixtapes saved yet. Make one above! 🎶
+   680→                    </p>
+   681→                  )}
+   682→                  {savedMixtapes.map((mixtape) => (
+   683→                    <motion.div
+   684→                      key={mixtape.id}
+   685→                      layout
+   686→                      initial={{ opacity: 0, y: 10 }}
+   687→                      animate={{ opacity: 1, y: 0 }}
+   688→                      exit={{ opacity: 0, scale: 0.9 }}
+   689→                      className="sk-paper-aged rounded-lg p-4 relative sk-tape"
+   690→                    >
+   691→                      <div className="flex items-start justify-between mb-2">
+   692→                        <div>
+   693→                          <p className="old-heading text-sm">
+   694→                            To: <span className="text-[#8b5e3c]">{mixtape.to}</span>
+   695→                          </p>
+   696→                          <p className="old-typewriter text-[11px] text-muted-foreground">
+   697→                            From: {mixtape.from} · Side {mixtape.side} ·{' '}
+   698→                            {formatDate(mixtape.createdAt)}
+   699→                          </p>
+   700→                        </div>
+   701→                        <button
+   702→                          onClick={() => handleDelete(mixtape.id)}
+   703→                          className="text-[#8b7355] hover:text-[#e85d5d] transition-colors p-1"
+   704→                          aria-label="Delete mixtape"
+   705→                        >
+   706→                          <Trash2 className="w-3.5 h-3.5" />
+   707→                        </button>
+   708→                      </div>
+   709→                      <ol className="space-y-0.5">
+   710→                        {mixtape.tracks.map((track, i) => (
+   711→                          <li
+   712→                            key={i}
+   713→                            className="old-typewriter text-xs text-foreground/80 flex items-baseline gap-1.5"
+   714→                          >
+   715→                            <span className="text-[#8b7355] shrink-0">{i + 1}.</span>
+   716→                            <span>{track}</span>
+   717→                          </li>
+   718→                        ))}
+   719→                      </ol>
+   720→                    </motion.div>
+   721→                  ))}
+   722→                </div>
+   723→              </motion.div>
+   724→            )}
+   725→          </AnimatePresence>
+   726→        </div>
+   727→      </div>
+   728→    </section>
+   729→  );
+   730→}
+   731→
+   732→// ═══════════════════════════════════════════════════════════════
+   733→// 3. Magic 8-Ball Section
+   734→// ═══════════════════════════════════════════════════════════════
+   735→
+   736→function Magic8BallSection() {
+   737→  const [question, setQuestion] = useState('');
+   738→  const [answer, setAnswer] = useState('');
+   739→  const [isShaking, setIsShaking] = useState(false);
+   740→  const [isRevealed, setIsRevealed] = useState(false);
+   741→
+   742→  const handleShake = useCallback(() => {
+   743→    if (!question.trim() || isShaking) return;
+   744→
+   745→    setIsShaking(true);
+   746→    setIsRevealed(false);
+   747→    setAnswer('');
+   748→
+   749→    setTimeout(() => {
+   750→      setAnswer(getRandomAnswer());
+   751→      setIsShaking(false);
+   752→      setIsRevealed(true);
+   753→    }, 1500);
+   754→  }, [question, isShaking]);
+   755→
+   756→  const handleKeyDown = useCallback(
+   757→    (e: React.KeyboardEvent) => {
+   758→      if (e.key === 'Enter' && !e.shiftKey) {
+   759→        e.preventDefault();
+   760→        handleShake();
+   761→      }
+   762→    },
+   763→    [handleShake],
+   764→  );
+   765→
+   766→  return (
+   767→    <section id="eightball" className="scroll-mt-8">
+   768→      <SectionHeader
+   769→        icon={Sparkles}
+   770→        title="Magic 8-Ball"
+   771→        subtitle="Ask the mystic 8-Ball a yes-or-no question and shake for your fate."
+   772→      />
+   773→
+   774→      <div className="max-w-sm mx-auto text-center">
+   775→        {/* The 8-Ball */}
+   776→        <motion.div
+   777→          className="relative mx-auto mb-8"
+   778→          style={{ width: 220, height: 220 }}
+   779→        >
+   780→          {/* Shadow */}
+   781→          <div className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-40 h-6 bg-black/20 rounded-full blur-md" />
+   782→
+   783→          {/* Ball */}
+   784→          <motion.div
+   785→            animate={
+   786→              isShaking
+   787→                ? {
+   788→                    x: [-8, 8, -6, 6, -4, 4, -2, 2, 0],
+   789→                    y: [-4, -8, -2, -6, 0, -4, 2, -1, 0],
+   790→                    rotate: [-3, 3, -2, 2, -1, 1, -0.5, 0.5, 0],
+   791→                  }
+   792→                : {}
+   793→            }
+   794→            transition={
+   795→              isShaking
+   796→                ? { duration: 1.4, ease: 'easeInOut' }
+   797→                : { duration: 0.3, ease: 'easeOut' }
+   798→            }
+   799→            className="relative w-full h-full rounded-full bg-gradient-to-br from-[#2a2a2a] via-[#111] to-[#000] shadow-[0_8px_30px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1)]"
+   800→          >
+   801→            {/* Shine highlight */}
+   802→            <div className="absolute top-5 left-7 w-16 h-8 rounded-full bg-gradient-to-br from-white/20 to-transparent rotate-[-30deg]" />
+   803→
+   804→            {/* Triangle window */}
+   805→            <div className="absolute inset-0 flex items-center justify-center">
+   806→              <div className="relative" style={{ width: 100, height: 100 }}>
+   807→                {/* Triangle */}
+   808→                <div className="absolute inset-0 flex items-center justify-center">
+   809→                  <div
+   810→                    className="w-0 h-0"
+   811→                    style={{
+   812→                      borderLeft: '50px solid transparent',
+   813→                      borderRight: '50px solid transparent',
+   814→                      borderBottom: '87px solid #1a3a5c',
+   815→                      filter: 'drop-shadow(0 0 8px rgba(26, 58, 92, 0.5))',
+   816→                    }}
+   817→                  />
+   818→                </div>
+   819→
+   820→                {/* Answer text overlay on triangle */}
+   821→                <div className="absolute inset-0 flex items-center justify-center pt-4">
+   822→                  <AnimatePresence mode="wait">
+   823→                    {isRevealed && answer && (
+   824→                      <motion.p
+   825→                        key={answer}
+   826→                        initial={{ opacity: 0, scale: 0.5, y: 5 }}
+   827→                        animate={{ opacity: 1, scale: 1, y: 0 }}
+   828→                        exit={{ opacity: 0, scale: 0.8 }}
+   829→                        transition={{ duration: 0.5, type: 'spring', stiffness: 200 }}
+   830→                        className="old-typewriter text-white text-[10px] leading-tight text-center max-w-[70px] drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]"
+   831→                      >
+   832→                        {answer}
+   833→                      </motion.p>
+   834→                    )}
+   835→                    {!isRevealed && !isShaking && (
+   836→                      <motion.p
+   837→                        initial={{ opacity: 0 }}
+   838→                        animate={{ opacity: 0.4 }}
+   839→                        className="old-typewriter text-white text-[10px] text-center"
+   840→                      >
+   841→                        8
+   842→                      </motion.p>
+   843→                    )}
+   844→                    {isShaking && (
+   845→                      <motion.div
+   846→                        animate={{ opacity: [0.2, 0.6, 0.2] }}
+   847→                        transition={{ duration: 0.5, repeat: Infinity }}
+   848→                        className="w-3 h-3 rounded-full bg-white/40"
+   849→                      />
+   850→                    )}
+   851→                  </AnimatePresence>
+   852→                </div>
+   853→              </div>
+   854→            </div>
+   855→
+   856→            {/* Bottom shadow curve */}
+   857→            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full bg-black/30 blur-sm" />
+   858→          </motion.div>
+   859→        </motion.div>
+   860→
+   861→        {/* Question Input */}
+   862→        <motion.div
+   863→          initial={{ opacity: 0, y: 10 }}
+   864→          animate={{ opacity: 1, y: 0 }}
+   865→          transition={{ delay: 0.2 }}
+   866→          className="space-y-4"
+   867→        >
+   868→          <div className="relative">
+   869→            <HelpCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   870→            <Input
+   871→              value={question}
+   872→              onChange={(e) => setQuestion(e.target.value)}
+   873→              onKeyDown={handleKeyDown}
+   874→              placeholder="Ask a yes-or-no question..."
+   875→              maxLength={100}
+   876→              disabled={isShaking}
+   877→              className="sk-inset old-typewriter text-sm border-0 pl-9"
+   878→            />
+   879→          </div>
+   880→
+   881→          <Button
+   882→            onClick={handleShake}
+   883→            disabled={!question.trim() || isShaking}
+   884→            className="sk-btn old-btn text-sm px-8 py-2.5 rounded-xl hover:opacity-90 disabled:opacity-40 w-full"
+   885→          >
+   886→            {isShaking ? (
+   887→              <motion.span
+   888→                animate={{ rotate: [0, 15, -15, 10, -10, 5, -5, 0] }}
+   889→                transition={{ duration: 1.4, repeat: Infinity }}
+   890→                className="inline-block"
+   891→              >
+   892→                🔮 Shaking...
+   893→              </motion.span>
+   894→            ) : (
+   895→              <>🔮 Shake the 8-Ball</>
+   896→            )}
+   897→          </Button>
+   898→
+   899→          {isRevealed && (
+   900→            <motion.p
+   901→              initial={{ opacity: 0, y: 5 }}
+   902→              animate={{ opacity: 1, y: 0 }}
+   903→              className="old-quote text-muted-foreground text-sm mt-2"
+   904→            >
+   905→              The 8-Ball has spoken...
+   906→            </motion.p>
+   907→          )}
+   908→        </motion.div>
+   909→      </div>
+   910→    </section>
+   911→  );
+   912→}
+   913→
+   914→// ═══════════════════════════════════════════════════════════════
+   915→// 4. Visit Counter Section
+   916→// ═══════════════════════════════════════════════════════════════
+   917→
+   918→function VisitCounterSection({ count }: { count: number }) {
+   919→  const digits = String(count).padStart(6, '0').split('');
+   920→
+   921→  return (
+   922→    <section id="counter" className="scroll-mt-8">
+   923→      <SectionHeader
+   924→        icon={Eye}
+   925→        title="Visit Counter"
+   926→        subtitle="Remember those hit counters on every homepage? Here's yours."
+   927→      />
+   928→
+   929→      <div className="max-w-md mx-auto text-center">
+   930→        {/* Odometer Counter */}
+   931→        <motion.div
+   932→          initial={{ opacity: 0, scale: 0.9 }}
+   933→          whileInView={{ opacity: 1, scale: 1 }}
+   934→          viewport={{ once: true }}
+   935→          transition={{ duration: 0.5, type: 'spring' }}
+   936→          className="inline-flex gap-1 p-3 sk-cork rounded-xl"
+   937→        >
+   938→          {digits.map((digit, i) => (
+   939→            <motion.div
+   940→              key={`${digit}-${i}`}
+   941→              initial={{ y: -20, opacity: 0 }}
+   942→              animate={{ y: 0, opacity: 1 }}
+   943→              transition={{
+   944→                delay: 0.1 * i,
+   945→                type: 'spring',
+   946→                stiffness: 200,
+   947→                damping: 15,
+   948→              }}
+   949→              className="relative w-11 h-14 md:w-13 md:h-16 sk-metal rounded-md flex items-center justify-center overflow-hidden"
+   950→              style={{
+   951→                boxShadow:
+   952→                  'inset 0 2px 4px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.3)',
+   953→              }}
+   954→            >
+   955→              {/* Digit background slot */}
+   956→              <div className="absolute inset-1 bg-gradient-to-b from-[#1a1a1a] to-[#0a0a0a] rounded-sm" />
+   957→              {/* The digit */}
+   958→              <span
+   959→                className="relative z-10 font-bold text-2xl md:text-3xl text-[#e85d5d] tracking-wider"
+   960→                style={{
+   961→                  fontFamily: "'Courier New', 'Special Elite', monospace",
+   962→                  textShadow: '0 0 6px rgba(232, 93, 93, 0.4)',
+   963→                }}
+   964→              >
+   965→                {digit}
+   966→              </span>
+   967→              {/* Top shine */}
+   968→              <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent rounded-t-sm pointer-events-none" />
+   969→              {/* Divider line */}
+   970→              <div className="absolute top-1/2 left-1 right-1 h-px bg-black/40" />
+   971→            </motion.div>
+   972→          ))}
+   973→        </motion.div>
+   974→
+   975→        {/* Label */}
+   976→        <motion.p
+   977→          initial={{ opacity: 0 }}
+   978→          whileInView={{ opacity: 1 }}
+   979→          viewport={{ once: true }}
+   980→          transition={{ delay: 0.6, duration: 0.5 }}
+   981→          className="old-typewriter text-sm md:text-base text-muted-foreground mt-6"
+   982→        >
+   983→          This page has been visited{' '}
+   984→          <span className="text-[#8b5e3c] font-bold">{count.toLocaleString()}</span>{' '}
+   985→          time{count !== 1 ? 's' : ''}
+   986→        </motion.p>
+   987→
+   988→        <motion.p
+   989→          initial={{ opacity: 0 }}
+   990→          whileInView={{ opacity: 1 }}
+   991→          viewport={{ once: true }}
+   992→          transition={{ delay: 0.8, duration: 0.5 }}
+   993→          className="old-body text-xs text-[#8b7355] mt-2"
+   994→        >
+   995→          ✨ Every visit counts. Just like the old days. ✨
+   996→        </motion.p>
+   997→      </div>
+   998→    </section>
+   999→  );
+  1000→}
+  1001→
+  1002→// ═══════════════════════════════════════════════════════════════
+  1003→// Main Component — NostalgiaFeatures
+  1004→// ═══════════════════════════════════════════════════════════════
+  1005→
+  1006→export default function NostalgiaFeatures() {
+  1007→  const isClient = useIsClient();
+  1008→  const visitCount = useVisitCounter();
+  1009→
+  1010→  if (!isClient) {
+  1011→    return (
+  1012→      <div className="min-h-screen flex items-center justify-center bg-background">
+  1013→        <motion.div
+  1014→          animate={{ opacity: [0.3, 1, 0.3] }}
+  1015→          transition={{ duration: 1.5, repeat: Infinity }}
+  1016→          className="old-typewriter text-muted-foreground text-sm"
+  1017→        >
+  1018→          Loading... please wait...
+  1019→        </motion.div>
+  1020→      </div>
+  1021→    );
+  1022→  }
+  1023→
+  1024→  return (
+  1025→    <main className="min-h-screen bg-background">
+  1026→      {/* Decorative noise overlay */}
+  1027→      <div className="fixed inset-0 sk-noise pointer-events-none z-50" />
+  1028→
+  1029→      <div className="relative z-10 max-w-3xl mx-auto px-4 py-12 md:py-16 space-y-16 md:space-y-20">
+  1030→        {/* ── Guestbook ── */}
+  1031→        <GuestbookSection visitorCount={visitCount} />
+  1032→
+  1033→        <Separator className="opacity-30" />
+  1034→
+  1035→        {/* ── Mixtape Creator ── */}
+  1036→        <MixtapeSection />
+  1037→
+  1038→        <Separator className="opacity-30" />
+  1039→
+  1040→        {/* ── Magic 8-Ball ── */}
+  1041→        <Magic8BallSection />
+  1042→
+  1043→        <Separator className="opacity-30" />
+  1044→
+  1045→        {/* ── Visit Counter ── */}
+  1046→        <VisitCounterSection count={visitCount} />
+  1047→
+  1048→        {/* Footer */}
+  1049→        <footer className="pt-8 pb-4 text-center">
+  1050→          <Separator className="opacity-20 mb-6" />
+  1051→          <p className="old-handwritten text-muted-foreground text-sm">
+  1052→            ~ made with 💾 and nostalgia ~
+  1053→          </p>
+  1054→          <p className="old-label text-[10px] text-[#8b7355] mt-2">
+  1055→            REWIND © {new Date().getFullYear()} · BEST VIEWED IN NETSCAPE NAVIGATOR 4.0
+  1056→          </p>
+  1057→        </footer>
+  1058→      </div>
+  1059→    </main>
+  1060→  );
+  1061→}

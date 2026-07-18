@@ -830,6 +830,73 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* Tamagotchi LCD screen */
+.tamagotchi-screen {
+  background: #9bbc0f;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.15);
+  border: 3px solid #5c5c5c;
+  border-radius: 12px;
+  image-rendering: pixelated;
+}
+
+.tamagotchi-pixel-text {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: #306230;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+  letter-spacing: 0.05em;
+}
+
+/* Floppy disk eject animation */
+@keyframes floppy-eject {
+  0% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-12px) rotate(-2deg); }
+  60% { transform: translateY(-6px) rotate(1deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+.floppy-eject {
+  animation: floppy-eject 0.6s ease-in-out;
+}
+
+/* Rotary dial */
+@keyframes dial-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(300deg); }
+}
+
+.dial-spin {
+  animation: dial-rotate 0.5s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+}
+
+/* Sticker pop-in */
+@keyframes sticker-pop {
+  0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+  60% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(var(--sticker-rotate, 0deg)); opacity: 1; }
+}
+
+.sticker-pop {
+  animation: sticker-pop 0.4s ease-out forwards;
+}
+
+/* Phone ring shake */
+@keyframes phone-ring {
+  0%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(12deg); }
+  20% { transform: rotate(-12deg); }
+  30% { transform: rotate(10deg); }
+  40% { transform: rotate(-10deg); }
+  50% { transform: rotate(6deg); }
+  60% { transform: rotate(-6deg); }
+  70% { transform: rotate(2deg); }
+  80% { transform: rotate(0deg); }
+}
+
+.phone-ring {
+  animation: phone-ring 0.8s ease-in-out;
+}
+
 /* Dial-up loading bar (chunky) */
 @keyframes dialup-progress {
   0% { width: 0%; }

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
   ChevronRight, Sparkles, ArrowLeft, RefreshCw,
-  RotateCcw, Play, CheckCircle2, XCircle, Camera, Smile,
+  RotateCcw, Play, CheckCircle2, XCircle, Camera, Smile, Timer,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -1237,7 +1237,13 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 1 }}
-        onClick={() => setShowCamera(true)}
+        onClick={() => {
+          triggerOldLoader('Loading film...');
+          setTimeout(() => {
+            setShowCamera(true);
+            hideOldLoader();
+          }, 350);
+        }}
         className="fixed bottom-6 right-6 z-40 cursor-pointer group"
         title="Open Vintage Camera"
       >
@@ -1301,12 +1307,20 @@ export default function Home() {
   }, []);
 
   const handleSubmit = useCallback((year: number) => {
-    setBirthYear(year);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    triggerOldLoader('Tuning into your era...');
+    setTimeout(() => {
+      setBirthYear(year);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      hideOldLoader();
+    }, 600);
   }, []);
 
   const handleBack = useCallback(() => {
-    setBirthYear(null);
+    triggerOldLoader('Rewinding...');
+    setTimeout(() => {
+      setBirthYear(null);
+      hideOldLoader();
+    }, 500);
   }, []);
 
   return (

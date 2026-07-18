@@ -1,102 +1,32 @@
-# Rewind — Work Log
+# Worklog
 
----
-Task ID: 1
-Agent: Main Agent
-Task: Add old-style typography + retro CRT/VHS loading screen + fix games
+## Session: Nostalgic Loading Transitions & New Features
 
-Work Log:
-- Read and analyzed full page.tsx (~1111 lines), globals.css, layout.tsx
-- Identified game bugs: Memory Match had stale closure in handleFlip, WhackGame had interval leak on restart
-- Added 8 vintage typography CSS classes to globals.css: old-title, old-typewriter, old-handwritten, old-label, old-body, old-btn, old-heading, old-quote
-- Added full CRT/VHS loading screen CSS: scanlines, flicker, glow, VHS tracking, noise, boot text, loading bar, CRT fadeout
-- Updated layout.tsx to import Playfair Display, Special Elite, and LXGW WenKai Google Fonts
-- Changed default body font-family to Playfair Display (serif-first)
-- Built CrtLoadingScreen component: retro BIOS boot sequence, "REWIND" title with CRT glow, loading bar, VHS timestamp + REC indicator
-- Rewrote Memory Match game: extracted createMatchCards helper, fixed handleFlip using functional setState to avoid stale closures
-- Fixed WhackGame: added stopGame helper with activeRef guard, clears intervals before starting new game (fixes Play Again interval leak)
-- Applied old-style classes throughout: headings use old-title/old-heading, labels use old-label, buttons use old-btn, descriptions use old-body, quotes use old-quote, sticky notes use old-handwritten, VHS/technical text uses old-typewriter
-- Build successful with zero errors
+### Date: 2025-07-22
 
-Stage Summary:
-- 4 font families loaded (Playfair Display, Special Elite, LXGW WenKai, Nunito)
-- Retro CRT loading screen with 7-line BIOS boot sequence, scanlines, VHS tracking, noise overlay
-- 8 vintage typography utility classes applied throughout the entire app
-- All 3 games fixed and functional (Memory Match, Guess the Year, Tap the Memory)
-- Files modified: globals.css, layout.tsx, page.tsx
----
-Task ID: 1
-Agent: Main Agent
-Task: Add vintage camera feature with old-style photo/video capture
+### Changes Made:
 
-Work Log:
-- Created /home/z/my-project/src/components/VintageCamera.tsx (full camera component)
-- Implemented 8 film filter presets: Raw, 70s Sepia, 80s Fade, 90s Warm, 60s B&W, Polaroid, VHS, Kodak
-- Each filter applies per-pixel canvas processing (color grading, contrast, brightness, saturation)
-- Added vignette overlay, film grain, and date stamp post-processing
-- Built retro camera UI: viewfinder with corner brackets, crosshair, scanlines, film border
-- Implemented photo capture with flash animation and shutter animation
-- Implemented video recording with MediaRecorder API and real-time CSS filter preview
-- Created gallery strip with Polaroid-style thumbnails and fullscreen viewer
-- Added floating camera button (vintage lens design) to Dashboard
-- Added vintage camera CSS classes to globals.css (shutter, flash, recording pulse, film grain, etc.)
-- Verified clean build - 0 errors
+#### TASK 1: Old-Style Loading Transitions (page.tsx)
+- **1a. Camera open transition**: Changed camera button `onClick` to trigger `triggerOldLoader('Loading film...')` with a 350ms delay before showing the camera and hiding the loader.
+- **1b. Hero → Dashboard transition**: Modified `handleSubmit` to show `triggerOldLoader('Tuning into your era...')` with a 600ms delay before setting birth year and scrolling to top.
+- **1c. Back button transition**: Modified `handleBack` to show `triggerOldLoader('Rewinding...')` with a 500ms delay before clearing the birth year.
 
-Stage Summary:
-- Files created: src/components/VintageCamera.tsx
-- Files modified: src/app/page.tsx (import, camera state, floating button), src/app/globals.css (camera animations)
-- Camera features: 8 filters, photo+video, gallery, download, delete, front/back camera switch
-- Build: SUCCESS (0 errors)
+#### TASK 2: New Nostalgic Features (NostalgiaFeatures.tsx)
+- **2a. Tamagotchi Virtual Pet**: Full virtual pet with hunger/happiness/energy stats (0-100), 4 action buttons (Feed, Play, Sleep, Clean), stats decay every 5s, expression changes based on average stats (😊/🐣/😢), death state (🪦) with restart, old LCD screen look, localStorage persistence.
+- **2b. Floppy Disk Save Counter**: CSS-made 3.5" floppy disk with metal slider and label area, save button with chunk-chunk eject animation, "Saving..." → "Saved!" status text, random nostalgic messages on each save, localStorage persistence.
+- **2c. Rotary Phone Dial**: Circular dial with 10 numbered holes positioned trigonometrically, CSS rotation animation on dial, dialed number display, Call button with phone ring shake animation, random nostalgic call messages, Clear button.
+- **2d. Retro Sticker Wall**: 25 retro sticker emojis, click-to-pick then click-to-place on cork board, pop-in animation with random rotation, cursor-grab for placed stickers, localStorage persistence, Clear Wall button.
 
----
-Task ID: 2
-Agent: Main Agent
-Task: Add old-style journal/diary feature with leather cover, aged pages, and vintage feel
+#### CSS Additions (globals.css)
+- `.tamagotchi-screen` / `.tamagotchi-pixel-text`: LCD screen look with dark green pixel text
+- `@keyframes floppy-eject` / `.floppy-eject`: Disk eject and re-insert animation
+- `@keyframes dial-rotate` / `.dial-spin`: Rotary dial spin animation
+- `@keyframes sticker-pop` / `.sticker-pop`: Sticker placement pop-in with random rotation
+- `@keyframes phone-ring` / `.phone-ring`: Phone ringing shake animation
 
-Work Log:
-- Created /home/z/my-project/src/components/OldJournal.tsx (full journal component)
-- Designed leather-bound book cover with embossed gold text, decorative double borders, corner ornaments, spine shadow
-- Created aged paper page design with torn edges, ink blots, page corner folds, bookmark ribbons, quill pen decorations
-- Implemented JournalEntry type with mood (8 options), weather (6 options), date, title, body
-- Built 4 views: Cover, Entries List, Entry Editor (writing mode), Entry Viewer (reading mode)
-- Entry Editor: lined notebook paper with LXGW WenKai handwriting font, date picker, mood/weather selectors, "Seal & Save" button
-- Entry Viewer: wax seal with mood emoji, old-style date formatting ("January 5th, 1995"), prev/next navigation, edit/discard actions
-- Entries List: slightly rotated paper cards for natural feel, chronological order, truncated previews
-- localStorage persistence (rewind_journal_entries key)
-- Added "Journal" tab (BookOpen icon) between Memories and Games in Dashboard
-- Added journal CSS: page-turn animation, ink-spread, quill cursor, seal-press, leather-grain, embossed-gold, twine-binding, torn-top, paper-stain
-- Verified clean build - 0 errors
+### Files Modified:
+1. `/home/z/my-project/src/app/page.tsx` — 3 transition edits
+2. `/home/z/my-project/src/components/NostalgiaFeatures.tsx` — 4 new feature sections + imports
+3. `/home/z/my-project/src/app/globals.css` — new CSS animations
 
-Stage Summary:
-- Files created: src/components/OldJournal.tsx
-- Files modified: src/app/page.tsx (import, Journal tab), src/app/globals.css (journal animations)
-- Journal features: leather cover, aged paper, ink blots, wax seals, bookmark ribbons, lined writing, mood/weather, CRUD, localStorage
-- Build: SUCCESS (0 errors)
-
----
-Task ID: 3
-Agent: Main Agent
-Task: Balance, optimize, add old-style loading transitions and nostalgic features
-
-Work Log:
-- Fixed NostalgiaFeatures.tsx: Cassette icon → CassetteTape (lucide-react doesn't have "Cassette")
-- Removed unused imports from page.tsx: Button, Badge, Timer
-- Added Smile icon import for Fun Stuff tab
-- Created OldTransitionLoader component with cassette tape loading animation (spinning reels, progress bar, random old-style messages like "Rewinding tape...", "Dusting off shelves...")
-- Created TypewriterText component and useTypewriter hook for text reveal effects
-- Integrated transition loader into Dashboard - tab switches now show cassette loading overlay (~500-900ms)
-- Created NostalgiaFeatures component with 4 old-time favorites:
-  1. Guestbook (GeoCities style) - sign entries, visitor counter, emoji avatars, rotated paper cards
-  2. Mixtape Creator - cassette tape visual, To/From fields, 8 track slots, Side A/B toggle, save/load
-  3. Magic 8-Ball - shake animation, 20 classic answers, typewriter font display
-  4. Visit Counter - odometer-style digit boxes, incrementing on each load
-- Added "Fun Stuff" tab (Smile icon) between Journal and Games
-- Added transition CSS: cassette-reel-spin, vhs-track-loader, old-hourglass cursor, tv-static, dialup-progress
-- Restored page.tsx after accidental overwrite by subagent (git checkout)
-- Final build: 0 errors
-
-Stage Summary:
-- Files created: src/components/OldTransitionLoader.tsx, src/components/NostalgiaFeatures.tsx
-- Files modified: src/app/page.tsx (imports, tab handler, Fun Stuff tab, loader), src/app/globals.css (transition CSS)
-- Features: cassette tab transition loader, guestbook, mixtape creator, magic 8-ball, visit counter
-- Build: SUCCESS (0 errors)
+### Build Status: ✅ Zero errors

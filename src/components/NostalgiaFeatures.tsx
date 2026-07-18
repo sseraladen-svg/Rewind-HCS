@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useState, useCallback, useMemo, useSyncExternalStore, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
@@ -13,8 +13,10 @@ import {
   HelpCircle,
   Eye,
   Sparkles,
-  CassetteTape,
   ChevronRight,
+  Gamepad2,
+  Phone,
+  Sticker,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -653,7 +655,7 @@ function MixtapeSection() {
             onClick={() => setShowSaved(!showSaved)}
             className="sk-btn old-btn text-xs px-4 py-2 rounded-lg mx-auto flex items-center gap-2 w-full justify-center mb-4"
           >
-            <CassetteTape className="w-3.5 h-3.5" />
+            <span className="text-sm">📼</span>
             {showSaved ? 'Hide' : 'Show'} Saved Mixtapes
             <ChevronRight
               className={`w-3.5 h-3.5 transition-transform ${showSaved ? 'rotate-90' : ''}`}
@@ -1001,6 +1003,320 @@ function VisitCounterSection({ count }: { count: number }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// 5. Tamagotchi Virtual Pet Section
+// ═══════════════════════════════════════════════════════════════
+
+interface PetState { hunger: number; happiness: number; energy: number; }
+
+function TamagotchiSection() {
+  const [pet, setPet] = useStoredState<PetState>('rewind_tamagotchi', { hunger: 80, happiness: 80, energy: 80 });
+  const [ejecting, setEjecting] = useState(false);
+
+  const avg = (pet.hunger + pet.happiness + pet.energy) / 3;
+  const isDead = pet.hunger === 0 && pet.happiness === 0 && pet.energy === 0;
+  const face = isDead ? '🪦' : avg > 70 ? '😊' : avg > 40 ? '🐣' : '😢';
+
+  useEffect(() => {
+    if (isDead) return;
+    const interval = setInterval(() => {
+      setPet((prev: PetState) => {
+        const keys: (keyof PetState)[] = ['hunger', 'happiness', 'energy'];
+        const k = keys[Math.floor(Math.random() * keys.length)];
+        return { ...prev, [k]: Math.max(0, prev[k] - 5) };
+      });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isDead, setPet]);
+
+  const doAction = (stat: keyof PetState, amt: number) => {
+    if (isDead) return;
+    setPet((prev: PetState) => ({ ...prev, [stat]: Math.min(100, prev[stat] + amt) }));
+    setEjecting(true);
+    setTimeout(() => setEjecting(false), 400);
+  };
+
+  const restart = () => setPet({ hunger: 80, happiness: 80, energy: 80 });
+
+  const StatBar = ({ label, value }: { label: string; value: number }) => (
+    <div className="flex items-center gap-2">
+      <span className="tamagotchi-pixel-text text-xs w-20">{label}</span>
+      <div className="flex-1 h-3 bg-[#306230]/30 rounded-sm overflow-hidden">
+        <div className="h-full bg-[#306230] rounded-sm transition-all duration-300" style={{ width: `${value}%` }} />
+      </div>
+      <span className="tamagotchi-pixel-text text-xs w-8 text-right">{value}</span>
+    </div>
+  );
+
+  return (
+    <section id="tamagotchi" className="scroll-mt-8">
+      <SectionHeader icon={Gamepad2} title="Tamagotchi" subtitle="Keep your virtual pet alive! Stats drop every 5 seconds." />
+      <div className="max-w-xs mx-auto">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#8b5e3c] rounded-3xl p-3 shadow-lg" style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+          {/* Egg shape top */}
+          <div className="bg-[#c4956a] rounded-t-2xl h-3 mx-4" />
+          {/* Screen */}
+          <div className="tamagotchi-screen rounded-xl p-4 mx-2 mb-3">
+            <div className={`text-center text-5xl mb-3 ${ejecting ? 'scale-110 transition-transform' : ''}`}>{face}</div>
+            {isDead ? (
+              <div className="text-center">
+                <p className="tamagotchi-pixel-text text-sm mb-2">GAME OVER</p>
+                <button onClick={restart} className="sk-btn rounded px-3 py-1 text-xs old-btn">Restart</button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <StatBar label="Hunger" value={pet.hunger} />
+                <StatBar label="Happy" value={pet.happiness} />
+                <StatBar label="Energy" value={pet.energy} />
+              </div>
+            )}
+          </div>
+          {/* Buttons */}
+          {!isDead && (
+            <div className="grid grid-cols-4 gap-2 px-2 pb-3">
+              {([['🍔', 'hunger', 15], ['🎮', 'happiness', 15], ['💤', 'energy', 20], ['🧹', 'happiness', 10]] as const).map(([emoji, stat, amt]) => (
+                <button key={String(emoji)} onClick={() => doAction(stat as keyof PetState, amt)}
+                  className="sk-btn rounded-lg py-2 text-xl flex flex-col items-center gap-0.5">
+                  <span>{emoji}</span>
+                  <span className="text-[8px] old-label">{String(emoji) === '🍔' ? 'Feed' : String(emoji) === '🎮' ? 'Play' : String(emoji) === '💤' ? 'Sleep' : 'Clean'}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 6. Floppy Disk Save Counter Section
+// ═══════════════════════════════════════════════════════════════
+
+const FLOPPY_MESSAGES = [
+  "Don't forget to label your disk!",
+  'Saving to A:\\...',
+  'Please wait... writing to disk',
+  'Disk full! Just kidding.',
+  'Make sure the write-protect tab is off!',
+];
+
+function FloppyDiskSection() {
+  const [count, setCount] = useStoredState<number>('rewind_floppy_saves', 0);
+  const [ejecting, setEjecting] = useState(false);
+  const [statusText, setStatusText] = useState('');
+
+  const handleSave = () => {
+    setEjecting(true);
+    setStatusText('Saving...');
+    setTimeout(() => {
+      setCount((prev: number) => prev + 1);
+      setStatusText('Saved!');
+      setTimeout(() => {
+        setStatusText(FLOPPY_MESSAGES[Math.floor(Math.random() * FLOPPY_MESSAGES.length)]);
+        setEjecting(false);
+      }, 800);
+    }, 600);
+  };
+
+  return (
+    <section id="floppy" className="scroll-mt-8">
+      <SectionHeader icon={Save} title="Floppy Disk Saver" subtitle="Save your progress like it's 1995." />
+      <div className="max-w-xs mx-auto text-center">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+          className={`sk-paper rounded-xl p-6 relative ${ejecting ? 'floppy-eject' : ''}`}>
+          {/* CSS Floppy Disk */}
+          <div className="mx-auto w-36 h-44 bg-[#1a1a2e] rounded-lg relative mb-4"
+            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+            {/* Metal slider */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-14 h-8 bg-[#b0b0b0] rounded-b-md"
+              style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-3 bg-[#1a1a2e] rounded-t-sm" />
+            </div>
+            {/* Label area */}
+            <div className="absolute top-12 left-3 right-3 bottom-3 sk-vhs-label rounded p-2 flex flex-col items-center justify-center">
+              <span className="old-label text-[8px] mb-1">REWIND.DAT</span>
+              <span className="old-typewriter text-xs text-[#8b5e3c]">Saves: {count}</span>
+            </div>
+          </div>
+          {/* Save button */}
+          <button onClick={handleSave} disabled={ejecting}
+            className="sk-btn rounded-xl px-8 py-3 old-btn text-sm mb-3 disabled:opacity-60">
+            💾 Save
+          </button>
+          <p className="old-typewriter text-xs text-muted-foreground h-4">{statusText}</p>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 7. Rotary Phone Dial Section
+// ═══════════════════════════════════════════════════════════════
+
+const PHONE_MESSAGES = [
+  "Nobody's home! Leave a message after the beep.",
+  'The number you have dialed... is your childhood. Please try again.',
+  'Connection established. Rewinding memories...',
+];
+
+function RotaryPhoneSection() {
+  const [dialed, setDialed] = useState<number[]>([]);
+  const [spinning, setSpinning] = useState(false);
+  const [ringing, setRinging] = useState(false);
+  const [callMsg, setCallMsg] = useState('');
+  const dialRef = useRef<HTMLDivElement>(null);
+
+  const dialNumber = (n: number) => {
+    if (spinning) return;
+    setSpinning(true);
+    setDialed((prev) => [...prev, n]);
+    if (dialRef.current) {
+      dialRef.current.classList.remove('dial-spin');
+      void dialRef.current.offsetWidth;
+      dialRef.current.classList.add('dial-spin');
+    }
+    setTimeout(() => setSpinning(false), 500);
+  };
+
+  const handleCall = () => {
+    if (dialed.length === 0 || ringing) return;
+    setRinging(true);
+    setTimeout(() => {
+      setCallMsg(PHONE_MESSAGES[Math.floor(Math.random() * PHONE_MESSAGES.length)]);
+      setRinging(false);
+    }, 1000);
+  };
+
+  const handleClear = () => { setDialed([]); setCallMsg(''); };
+
+  const holes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+  const getAngle = (i: number) => (i * 30 + 150) * (Math.PI / 180);
+
+  return (
+    <section id="phone" className="scroll-mt-8">
+      <SectionHeader icon={Phone} title="Rotary Phone" subtitle="Dial a number the old-fashioned way." />
+      <div className="max-w-xs mx-auto text-center">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+          className="sk-paper rounded-xl p-6 relative">
+          {/* Dial */}
+          <div className="mx-auto w-48 h-48 rounded-full bg-[#2a1f14] relative mb-4 p-4"
+            style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.05)' }}>
+            <div ref={dialRef} className="w-full h-full rounded-full relative" style={{ transition: 'transform 0.5s cubic-bezier(0.2,0,0.2,1)' }}>
+              {holes.map((n, i) => {
+                const a = getAngle(i);
+                const r = 60;
+                const x = 96 + r * Math.cos(a) - 14;
+                const y = 96 + r * Math.sin(a) - 14;
+                return (
+                  <button key={n} onClick={() => dialNumber(n)} disabled={spinning}
+                    className="absolute w-7 h-7 rounded-full bg-[#f0e6d3] border border-[#a89878] flex items-center justify-center old-typewriter text-xs font-bold text-[#3d2b1f] hover:bg-[#faf6eb] disabled:opacity-50 cursor-pointer"
+                    style={{ left: x, top: y, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.2)' }}>
+                    {n}
+                  </button>
+                );
+              })}
+              {/* Center cap */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#5c4033]"
+                style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
+            </div>
+          </div>
+          {/* Dialed number display */}
+          <div className="sk-inset rounded-lg px-4 py-2 mb-3">
+            <span className="old-typewriter text-lg tracking-[0.3em] text-[#5c4033]">
+              {dialed.length > 0 ? dialed.join('') : '—'}
+            </span>
+          </div>
+          {/* Ring animation */}
+          {ringing && <div className="text-3xl mb-2 phone-ring inline-block">📞</div>}
+          {/* Call message */}
+          {callMsg && <p className="old-body text-sm text-[#8b5e3c] mb-3">{callMsg}</p>}
+          {/* Buttons */}
+          <div className="flex gap-3 justify-center">
+            <button onClick={handleCall} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs">📞 Call</button>
+            <button onClick={handleClear} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs">✕ Clear</button>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 8. Retro Sticker Wall Section
+// ═══════════════════════════════════════════════════════════════
+
+const STICKER_EMOJIS = [
+  '⭐', '🎸', '🎮', '🎭', '🎬', '🎵', '📺', '📻', '📱', '📸',
+  '🍔', '🧸', '🎪', '🚀', '🌈', '💯', '👀', '🔥', '💎', '🍇',
+  '🌙', '🍀', '🏀', '🎨', '🎧',
+];
+
+interface PlacedSticker { id: string; emoji: string; x: number; y: number; rotation: number; }
+
+function StickerWallSection() {
+  const [stickers, setStickers] = useStoredState<PlacedSticker[]>('rewind_sticker_wall', []);
+  const [pickedEmoji, setPickedEmoji] = useState<string | null>(null);
+  const wallRef = useRef<HTMLDivElement>(null);
+
+  const placeSticker = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!pickedEmoji || !wallRef.current) return;
+    const rect = wallRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const rotation = (Math.random() - 0.5) * 30;
+    setStickers((prev: PlacedSticker[]) => [...prev, { id: generateId(), emoji: pickedEmoji, x, y, rotation }]);
+  };
+
+  const clearWall = () => { setStickers([]); setPickedEmoji(null); };
+
+  return (
+    <section id="stickers" className="scroll-mt-8">
+      <SectionHeader icon={Sticker} title="Sticker Wall" subtitle="Pick a sticker, then click the board to place it." />
+      <div className="max-w-lg mx-auto">
+        {/* Emoji picker */}
+        <div className="sk-paper rounded-xl p-3 mb-4">
+          <div className="flex flex-wrap gap-2 justify-center">
+            {STICKER_EMOJIS.map((emoji) => (
+              <button key={emoji} onClick={() => setPickedEmoji(pickedEmoji === emoji ? null : emoji)}
+                className={`w-9 h-9 rounded-lg flex items-center justify-center text-xl cursor-pointer transition-all ${
+                  pickedEmoji === emoji ? 'sk-sticker scale-110 bg-[#faf6eb]' : 'hover:bg-[#faf6eb]/60'
+                }`}>
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+        {/* Cork board */}
+        <div ref={wallRef} onClick={placeSticker}
+          className="sk-cork rounded-xl relative overflow-hidden cursor-crosshair"
+          style={{ height: pickedEmoji ? '300px' : '200px', transition: 'height 0.3s' }}>
+          {stickers.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center old-handwritten text-[#8b7355] text-sm opacity-50 pointer-events-none">
+              {pickedEmoji ? 'Click here to place your sticker!' : 'Pick a sticker above to get started'}
+            </div>
+          )}
+          {stickers.map((s) => (
+            <div key={s.id} className="absolute text-2xl sticker-pop cursor-grab active:cursor-grabbing select-none"
+              style={{ left: s.x - 16, top: s.y - 16, '--sticker-rotate': `${s.rotation}deg` } as React.CSSProperties}>
+              {s.emoji}
+            </div>
+          ))}
+        </div>
+        {stickers.length > 0 && (
+          <div className="flex justify-center mt-3">
+            <button onClick={clearWall} className="sk-btn rounded-lg px-4 py-2 old-btn text-xs flex items-center gap-1.5">
+              <Trash2 className="w-3 h-3" /> Clear Wall
+            </button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Main Component — NostalgiaFeatures
 // ═══════════════════════════════════════════════════════════════
 
@@ -1045,6 +1361,26 @@ export default function NostalgiaFeatures() {
 
         {/* ── Visit Counter ── */}
         <VisitCounterSection count={visitCount} />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Tamagotchi ── */}
+        <TamagotchiSection />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Floppy Disk Saver ── */}
+        <FloppyDiskSection />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Rotary Phone ── */}
+        <RotaryPhoneSection />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Sticker Wall ── */}
+        <StickerWallSection />
 
         {/* Footer */}
         <footer className="pt-8 pb-4 text-center">
