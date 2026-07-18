@@ -50,7 +50,7 @@ export default function OldTransitionLoader() {
     setTimeout(() => {
       setVisible(false);
       setReelRotation(0);
-    }, 300);
+    }, 500);
   }, []);
 
   useEffect(() => {
@@ -62,33 +62,33 @@ export default function OldTransitionLoader() {
     };
   }, [show, hide]);
 
-  // Animate cassette reels
+  // Animate cassette reels (slower, old-school feel)
   useEffect(() => {
     if (!visible) return;
     const interval = setInterval(() => {
-      setReelRotation(r => r + 15);
-    }, 100);
+      setReelRotation(r => r + 8);
+    }, 120);
     return () => clearInterval(interval);
   }, [visible]);
 
-  // Animate dots
+  // Animate dots (slower)
   useEffect(() => {
     if (!visible) return;
     const interval = setInterval(() => {
       setDots(d => d.length >= 3 ? '' : d + '.');
-    }, 400);
+    }, 500);
     return () => clearInterval(interval);
   }, [visible]);
 
-  // Animate progress
+  // Animate progress (slower, chunkier fills like old dial-up)
   useEffect(() => {
     if (!visible) return;
     const interval = setInterval(() => {
       setProgress(p => {
-        if (p >= 90) return p; // Pause at 90 until hide is called
-        return p + Math.random() * 15;
+        if (p >= 88) return p; // Pause at 88 until hide is called
+        return p + Math.random() * 8;
       });
-    }, 200);
+    }, 250);
     return () => clearInterval(interval);
   }, [visible]);
 

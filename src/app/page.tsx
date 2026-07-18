@@ -26,11 +26,13 @@ function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
 
   const allBootLines = useMemo(() => [
     'BIOS v2.4 — Nostalgia Systems Inc.',
-    'Memory test... 640K OK',
+    'POST: Memory test... 640K OK',
+    'Detecting floppy drives... A: OK  B: OK',
     'Loading REWIND.EXE...',
-    'Mounting childhood memories...',
+    'Mounting childhood memories... 47% complete',
+    'Indexing nostalgia database...',
     'Rewinding time...',
-    'Loading good old days...',
+    'Loading good old days... 83% complete',
     'Ready.',
   ], []);
 
@@ -42,16 +44,16 @@ function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
         setBootLines(prev => [...prev, line]);
         if (i === allBootLines.length - 1) {
           // Last line — show title after a beat
-          timers.push(setTimeout(() => setPhase(1), 600));
+          timers.push(setTimeout(() => setPhase(1), 1000));
         }
-      }, 300 + i * 350));
+      }, 500 + i * 500));
     });
 
     // Auto-dismiss after title phase
     fadeTimerRef.current = setTimeout(() => {
       setPhase(2);
-      setTimeout(onDone, 500);
-    }, 3800);
+      setTimeout(onDone, 800);
+    }, 7000);
 
     return () => {
       timers.forEach(clearTimeout);
@@ -90,14 +92,14 @@ function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 1.0 }}
             className="text-center mt-2"
           >
             <h1 className="text-4xl md:text-5xl font-black crt-glow old-title tracking-wider" style={{ color: '#c4956a' }}>
               REWIND
             </h1>
             <div className="loading-bar-track mt-4 mx-auto">
-              <div className="loading-bar-fill" />
+              <div className="loading-bar-fill" style={{ animationDuration: '3.5s' }} />
             </div>
             <p className="old-typewriter text-[10px] mt-3" style={{ color: 'rgba(196,149,106,0.5)' }}>
               <span style={{ animation: 'blink-cursor 0.8s step-end infinite' }}>_</span>
@@ -1038,8 +1040,8 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
     triggerOldLoader();
     const timer = setTimeout(() => {
       setActiveTab(tabId);
-      setTimeout(() => hideOldLoader(), 150);
-    }, 500 + Math.random() * 400);
+      setTimeout(() => hideOldLoader(), 300);
+    }, 900 + Math.random() * 600);
     // Cleanup — stored in a ref so it can be cancelled on unmount
     const ref = { current: timer };
     return () => clearTimeout(ref.current);
@@ -1242,7 +1244,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           setTimeout(() => {
             setShowCamera(true);
             hideOldLoader();
-          }, 350);
+          }, 750);
         }}
         className="fixed bottom-6 right-6 z-40 cursor-pointer group"
         title="Open Vintage Camera"
@@ -1312,7 +1314,7 @@ export default function Home() {
       setBirthYear(year);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       hideOldLoader();
-    }, 600);
+    }, 1100);
   }, []);
 
   const handleBack = useCallback(() => {
@@ -1320,7 +1322,7 @@ export default function Home() {
     setTimeout(() => {
       setBirthYear(null);
       hideOldLoader();
-    }, 500);
+    }, 850);
   }, []);
 
   return (
