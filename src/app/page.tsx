@@ -17,88 +17,110 @@ import NostalgiaFeatures from '@/components/NostalgiaFeatures';
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
 
 /* ═══════════════════════════════════════════════════
-   CRT BOOT LOADING SCREEN (original VHS/CRT style)
+   CRT / VHS LOADING SCREEN
    ═══════════════════════════════════════════════════ */
 function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
-  const [visibleLines, setVisibleLines] = useState(0);
-  const [fadingOut, setFadingOut] = useState(false);
-  const [showBar, setShowBar] = useState(false);
+  const [phase, setPhase] = useState(0); // 0=boot, 1=title, 2=fading
+  const [bootLines, setBootLines] = useState<string[]>([]);
+  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const bootLines = useMemo(() => [
-    '> Initializing nostalgia buffer...',
-    '> Loading childhood memories...',
-    '> Dusting off the VHS tapes...',
-    '> Warming up the CRT display...',
-    '> Searching for good times...',
-    '> Indexing mixtape tracks...',
-    '> Polishing polaroid photos...',
-    '> Rewinding cassette deck...',
-    '> Ready.',
+  const allBootLines = useMemo(() => [
+    'BIOS v2.4 — Nostalgia Systems Inc.',
+    'POST: Memory test... 640K OK',
+    'Detecting floppy drives... A: OK  B: OK',
+    'Loading REWIND.EXE...',
+    'Mounting childhood memories... 47% complete',
+    'Indexing nostalgia database...',
+    'Rewinding time...',
+    'Loading good old days... 83% complete',
+    'Ready.',
   ], []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-
-    // Reveal boot lines one by one at 500ms intervals
-    bootLines.forEach((_, i) => {
+    // Reveal boot lines one by one
+    allBootLines.forEach((line, i) => {
       timers.push(setTimeout(() => {
-        setVisibleLines(i + 1);
-      }, 500 * (i + 1)));
+        setBootLines(prev => [...prev, line]);
+        if (i === allBootLines.length - 1) {
+          // Last line — show title after a beat
+          timers.push(setTimeout(() => setPhase(1), 1000));
+        }
+      }, 500 + i * 500));
     });
 
-    // Show progress bar after all lines
-    const barStart = 500 * (bootLines.length + 1);
-    timers.push(setTimeout(() => setShowBar(true), barStart));
+    // Auto-dismiss after title phase
+    fadeTimerRef.current = setTimeout(() => {
+      setPhase(2);
+      setTimeout(onDone, 800);
+    }, 7000);
 
-    // Fade out (CRT turn-off) after bar fills (3s animation)
-    const fadeStart = barStart + 3200;
-    timers.push(setTimeout(() => setFadingOut(true), fadeStart));
-    timers.push(setTimeout(onDone, fadeStart + 1000));
-
-    return () => timers.forEach(clearTimeout);
-  }, [bootLines, onDone]);
+    return () => {
+      timers.forEach(clearTimeout);
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    };
+  }, [allBootLines, onDone]);
 
   return (
-    <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center ${fadingOut ? 'crt-fadeout' : ''}`}
-      style={{
-        background: '#1a1208',
-      }}
-    >
-      {/* CRT scanlines overlay */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px)',
-      }} />
+    <div className={`crt-screen ${phase === 2 ? 'crt-fadeout' : 'crt-flicker'}`}>
+      <div className="crt-scanlines" />
+      <div className="vhs-noise" />
+      <div className="vhs-tracking" />
+      <div className="vhs-tracking" style={{ animationDelay: '1.2s', opacity: 0.5 }} />
 
-      {/* CRT screen glow */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse at center, rgba(196,149,106,0.03) 0%, transparent 70%)',
-      }} />
+      <div className="relative z-10 flex flex-col items-center gap-4">
+        {/* Boot lines */}
+        <div className="space-y-1.5 min-h-[180px]">
+          {bootLines.map((line, i) => (
+            <div
+              key={i}
+              className="boot-line"
+              style={{ animationDelay: '0s' }}
+            >
+              {line}
+              {i === bootLines.length - 1 && (
+                <span className="inline-block w-2 h-3.5 bg-[#c4956a] ml-0.5 align-middle"
+                  style={{ animation: 'blink-cursor 0.6s step-end infinite' }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
 
-      {/* Boot text lines */}
-      <div className="relative z-10 flex flex-col gap-2 px-8 max-w-md">
-        {bootLines.slice(0, visibleLines).map((line, i) => (
-          <div
-            key={i}
-            className="boot-line"
-            style={{ animationDelay: '0s' }}
+        {/* Title */}
+        {phase >= 1 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.0 }}
+            className="text-center mt-2"
           >
-            {line}
-            {i === visibleLines - 1 && !showBar && (
-              <span className="inline-block w-[2px] h-[1em] bg-[#c4956a]/70 ml-0.5 align-middle" style={{ animation: 'blink-cursor 0.6s step-end infinite' }} />
-            )}
-          </div>
-        ))}
+            <h1 className="text-4xl md:text-5xl font-black crt-glow old-title tracking-wider" style={{ color: '#c4956a' }}>
+              REWIND
+            </h1>
+            <div className="loading-bar-track mt-4 mx-auto">
+              <div className="loading-bar-fill" style={{ animationDuration: '3.5s' }} />
+            </div>
+            <p className="old-typewriter text-[10px] mt-3" style={{ color: 'rgba(196,149,106,0.5)' }}>
+              <span style={{ animation: 'blink-cursor 0.8s step-end infinite' }}>_</span>
+              {' '}press any key to continue_
+            </p>
+          </motion.div>
+        )}
       </div>
 
-      {/* Loading bar */}
-      {showBar && (
-        <div className="relative z-10 mt-8">
-          <div className="loading-bar-track">
-            <div className="loading-bar-fill" />
-          </div>
-        </div>
-      )}
+      {/* VHS timestamp corner */}
+      <div className="absolute bottom-4 left-4 z-10">
+        <span className="old-typewriter text-[10px]" style={{ color: 'rgba(196,149,106,0.35)' }}>
+          SP 0:00:00
+        </span>
+      </div>
+      <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1">
+        <span className="inline-block w-2 h-2 rounded-full bg-red-500" style={{ animation: 'blink-cursor 1s step-end infinite' }} />
+        <span className="old-typewriter text-[10px]" style={{ color: 'rgba(196,149,106,0.4)' }}>
+          REC
+        </span>
+      </div>
     </div>
   );
 }
