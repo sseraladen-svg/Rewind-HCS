@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
   ChevronRight, Sparkles, ArrowLeft, RefreshCw,
-  RotateCcw, Play, Timer, CheckCircle2, XCircle,
+  RotateCcw, Play, Timer, CheckCircle2, XCircle, Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
   type DecadeData, type NostalgiaItem,
 } from '@/lib/nostalgia-data';
+import VintageCamera from '@/components/VintageCamera';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -1016,6 +1017,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const data = nostalgiaData[decadeKey];
   const [activeTab, setActiveTab] = useState('memories');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [showCamera, setShowCamera] = useState(false);
 
   const categoryMap: Record<string, { label: string; icon: React.ReactNode; items: NostalgiaItem[] }> = {
     cartoons: { label: 'Cartoons', icon: <Film className="h-4 w-4" />, items: data.cartoons },
@@ -1192,6 +1194,57 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           </p>
         </div>
       </footer>
+
+      {/* ═══ FLOATING VINTAGE CAMERA BUTTON ═══ */}
+      <motion.button
+        initial={{ scale: 0, rotate: -180 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 1 }}
+        onClick={() => setShowCamera(true)}
+        className="fixed bottom-6 right-6 z-40 cursor-pointer group"
+        title="Open Vintage Camera"
+      >
+        {/* Outer ring - vintage lens look */}
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center relative"
+          style={{
+            background: 'linear-gradient(145deg, #5c4033, #3d2b1f)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+            border: '3px solid #8b5e3c',
+          }}
+        >
+          {/* Lens glass effect */}
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{
+              background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.3), #6b4226 40%, #3d2b1f 70%, #2a1f14)',
+              boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.1)',
+            }}
+          >
+            <Camera className="h-5 w-5 text-[#d4a574] group-hover:text-[#faf6eb] transition-colors" />
+          </div>
+          {/* Lens reflection dot */}
+          <div
+            className="absolute top-3 left-4 w-2 h-2 rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.6), transparent)' }}
+          />
+        </div>
+        {/* Label */}
+        <span className="absolute -top-6 left-1/2 -translate-x-1/2 old-typewriter text-[9px] font-bold text-[#8b5e3c] bg-[#faf6eb]/90 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+          Vintage Cam
+        </span>
+        {/* Pulse ring animation */}
+        <motion.div
+          animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute inset-0 rounded-full border-2 border-[#8b5e3c]/30 pointer-events-none"
+        />
+      </motion.button>
+
+      {/* ═══ VINTAGE CAMERA OVERLAY ═══ */}
+      <AnimatePresence>
+        {showCamera && <VintageCamera onClose={() => setShowCamera(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

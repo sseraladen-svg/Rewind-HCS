@@ -568,3 +568,105 @@
   40% { opacity: 1; transform: scale(1.01, 0.99); filter: brightness(1.3); }
   100% { opacity: 0; transform: scale(0.95, 1.05); filter: brightness(3); }
 }
+
+/* ═══════ VINTAGE CAMERA STYLES ═══════ */
+
+/* Shutter click animation */
+@keyframes shutter-click {
+  0% { transform: scaleY(0); }
+  50% { transform: scaleY(1); }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+
+.shutter-anim {
+  animation: shutter-click 0.2s ease-out forwards;
+}
+
+/* Camera flash */
+@keyframes camera-flash {
+  0% { opacity: 0.95; }
+  100% { opacity: 0; }
+}
+
+.camera-flash {
+  animation: camera-flash 0.25s ease-out forwards;
+}
+
+/* Recording pulse */
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.rec-pulse {
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+
+/* Film strip sprocket holes effect */
+.film-strip {
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      transparent 0px,
+      transparent 8px,
+      rgba(0,0,0,0.15) 8px,
+      rgba(0,0,0,0.15) 10px,
+      transparent 10px,
+      transparent 20px
+    );
+  background-position: center;
+}
+
+/* Vintage photo developing effect */
+@keyframes develop {
+  0% { filter: brightness(0) sepia(1) contrast(2); }
+  30% { filter: brightness(0.3) sepia(0.8) contrast(1.5); }
+  60% { filter: brightness(0.7) sepia(0.4) contrast(1.2); }
+  100% { filter: brightness(1) sepia(0.2) contrast(1.05); }
+}
+
+.photo-developing {
+  animation: develop 1.5s ease-out forwards;
+}
+
+/* Lens flare on camera button hover */
+@keyframes lens-flare {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+/* Film grain overlay (CSS-only) */
+.film-grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+  animation: noise-shift 0.08s steps(4) infinite;
+}
+
+/* Vintage camera body texture */
+.sk-camera-body {
+  background: linear-gradient(145deg, #4a3728 0%, #3d2b1f 50%, #2a1f14 100%);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    inset 0 -1px 0 rgba(0,0,0,0.3);
+  border: 1px solid #5c4033;
+}
+
+/* Camera leather grip texture */
+.sk-camera-grip {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(0,0,0,0.05) 0px,
+      rgba(0,0,0,0.05) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(145deg, #5c4033, #3d2b1f);
+}
