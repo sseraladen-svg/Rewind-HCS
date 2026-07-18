@@ -784,3 +784,62 @@
   background: radial-gradient(ellipse, rgba(180,150,100,0.06), transparent 70%);
   pointer-events: none;
 }
+
+/* ═══════ OLD TRANSITION LOADER ═══════ */
+
+/* Cassette reel spin */
+@keyframes cassette-reel {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.cassette-reel-spin {
+  animation: cassette-reel 0.8s linear infinite;
+}
+
+/* VHS tracking for loader */
+@keyframes vhs-track-loader {
+  0% { top: -3px; opacity: 0; }
+  10% { opacity: 0.3; }
+  90% { opacity: 0.3; }
+  100% { top: 100vh; opacity: 0; }
+}
+
+/* Old Windows-style hourglass cursor */
+.old-hourglass {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 0h8v2l-3 5 3 5v2H4v-2l3-5-3-5V0z' fill='%233d2b1f' opacity='0.7'/%3E%3C/svg%3E") 8 8, wait;
+}
+
+/* Old TV static transition */
+@keyframes tv-static {
+  0% { opacity: 0; }
+  10% { opacity: 0.15; }
+  20% { opacity: 0; }
+  30% { opacity: 0.1; }
+  40% { opacity: 0; }
+  50% { opacity: 0.2; }
+  60% { opacity: 0.05; }
+  70% { opacity: 0.15; }
+  80% { opacity: 0; }
+  90% { opacity: 0.1; }
+  100% { opacity: 0; }
+}
+
+.tv-static {
+  animation: tv-static 0.5s steps(10) forwards;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Dial-up loading bar (chunky) */
+@keyframes dialup-progress {
+  0% { width: 0%; }
+  15% { width: 12%; }
+  30% { width: 25%; }
+  45% { width: 38%; }
+  55% { width: 42%; }
+  60% { width: 55%; }
+  75% { width: 68%; }
+  85% { width: 80%; }
+  95% { width: 95%; }
+  100% { width: 100%; }
+}

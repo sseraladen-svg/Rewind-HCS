@@ -5,16 +5,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
   ChevronRight, Sparkles, ArrowLeft, RefreshCw,
-  RotateCcw, Play, Timer, CheckCircle2, XCircle, Camera,
+  RotateCcw, Play, CheckCircle2, XCircle, Camera, Smile,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
   type DecadeData, type NostalgiaItem,
 } from '@/lib/nostalgia-data';
 import VintageCamera from '@/components/VintageCamera';
 import OldJournal from '@/components/OldJournal';
+import NostalgiaFeatures from '@/components/NostalgiaFeatures';
+import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -1032,9 +1032,23 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
     tech: { label: 'Tech', icon: <Monitor className="h-4 w-4" />, items: data.tech },
   };
 
+  // Trigger old-style cassette loader when switching tabs
+  const handleTabChange = useCallback((tabId: string) => {
+    if (tabId === activeTab) return;
+    triggerOldLoader();
+    const timer = setTimeout(() => {
+      setActiveTab(tabId);
+      setTimeout(() => hideOldLoader(), 150);
+    }, 500 + Math.random() * 400);
+    // Cleanup — stored in a ref so it can be cancelled on unmount
+    const ref = { current: timer };
+    return () => clearTimeout(ref.current);
+  }, [activeTab]);
+
   const tabs = [
     { id: 'memories', label: 'Memories', icon: <Sparkles className="h-4 w-4" /> },
     { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
+    { id: 'funstuff', label: 'Fun Stuff', icon: <Smile className="h-4 w-4" /> },
     { id: 'games', label: 'Play Games', icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
   ];
@@ -1081,7 +1095,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer old-typewriter ${
                   activeTab === tab.id
                     ? 'sk-paper shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] text-[#3d2b1f]'
@@ -1138,6 +1152,15 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                 ) : (
                   <CategoryGrid items={categoryMap[activeCategory].items} color={data.color} />
                 )}
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+          {/* ═══ FUN STUFF TAB ═══ */}
+          {activeTab === 'funstuff' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="funstuff" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <NostalgiaFeatures />
               </motion.div>
             </AnimatePresence>
           )}
@@ -1259,6 +1282,9 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
       <AnimatePresence>
         {showCamera && <VintageCamera onClose={() => setShowCamera(false)} />}
       </AnimatePresence>
+
+      {/* Old-style cassette transition loader (global) */}
+      <OldTransitionLoader />
     </div>
   );
 }
