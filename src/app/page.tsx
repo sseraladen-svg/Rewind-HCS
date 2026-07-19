@@ -68,18 +68,18 @@ function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
       <div className="vhs-tracking" />
       <div className="vhs-tracking" style={{ animationDelay: '1.2s', opacity: 0.5 }} />
 
-      <div className="relative z-10 flex flex-col items-center gap-4">
+      <div className="relative z-10 flex flex-col items-center gap-4 px-4 w-full max-w-xl">
         {/* Boot lines */}
-        <div className="space-y-1.5 min-h-[180px]">
+        <div className="space-y-1 sm:space-y-1.5 min-h-[120px] sm:min-h-[180px] w-full">
           {bootLines.map((line, i) => (
             <div
               key={i}
-              className="boot-line"
+              className="boot-line text-[10px] sm:text-xs md:text-[0.75rem]"
               style={{ animationDelay: '0s' }}
             >
               {line}
               {i === bootLines.length - 1 && (
-                <span className="inline-block w-2 h-3.5 bg-[#c4956a] ml-0.5 align-middle"
+                <span className="inline-block w-1.5 h-3 sm:w-2 sm:h-3.5 bg-[#c4956a] ml-0.5 align-middle"
                   style={{ animation: 'blink-cursor 0.6s step-end infinite' }}
                 />
               )}
@@ -93,15 +93,15 @@ function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.0 }}
-            className="text-center mt-2"
+            className="text-center mt-1 sm:mt-2 w-full"
           >
-            <h1 className="text-4xl md:text-5xl font-black crt-glow old-title tracking-wider" style={{ color: '#c4956a' }}>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black crt-glow old-title tracking-wider" style={{ color: '#c4956a' }}>
               REWIND
             </h1>
-            <div className="loading-bar-track mt-4 mx-auto">
+            <div className="loading-bar-track sm:loading-bar-track-md mt-3 sm:mt-4 mx-auto">
               <div className="loading-bar-fill" style={{ animationDuration: '3.5s' }} />
             </div>
-            <p className="old-typewriter text-[10px] mt-3" style={{ color: 'rgba(196,149,106,0.5)' }}>
+            <p className="old-typewriter text-[8px] sm:text-[10px] mt-2 sm:mt-3" style={{ color: 'rgba(196,149,106,0.5)' }}>
               <span style={{ animation: 'blink-cursor 0.8s step-end infinite' }}>_</span>
               {' '}press any key to continue_
             </p>
@@ -110,14 +110,14 @@ function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
       </div>
 
       {/* VHS timestamp corner */}
-      <div className="absolute bottom-4 left-4 z-10">
-        <span className="old-typewriter text-[10px]" style={{ color: 'rgba(196,149,106,0.35)' }}>
+      <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 z-10">
+        <span className="old-typewriter text-[8px] sm:text-[10px]" style={{ color: 'rgba(196,149,106,0.35)' }}>
           SP 0:00:00
         </span>
       </div>
-      <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1">
-        <span className="inline-block w-2 h-2 rounded-full bg-red-500" style={{ animation: 'blink-cursor 1s step-end infinite' }} />
-        <span className="old-typewriter text-[10px]" style={{ color: 'rgba(196,149,106,0.4)' }}>
+      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 z-10 flex items-center gap-1">
+        <span className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" style={{ animation: 'blink-cursor 1s step-end infinite' }} />
+        <span className="old-typewriter text-[8px] sm:text-[10px]" style={{ color: 'rgba(196,149,106,0.4)' }}>
           REC
         </span>
       </div>
