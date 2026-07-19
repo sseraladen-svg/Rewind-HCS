@@ -150,3 +150,35 @@ Stage Summary:
 - Sections: Overview, Tech Stack, File Tree, IDB Architecture, Component Hierarchy, Data Flow, CSS Architecture, Lucide Icons, Gotchas, Feature Status, Worklog ref, Build & Run, Architecture Decisions
 - Key discovery: IndexedDB migration (Task 2) was already completed in a prior session
 - All 20 features are complete. No remaining in-progress coding tasks.
+
+---
+Task ID: 4
+Agent: Super Z (Main)
+Task: Implement remaining features — Auth, AI Insights, Share, Cloud Sync
+
+Work Log:
+- Installed bcryptjs + @types/bcryptjs for password hashing
+- Updated Prisma schema: User (email/name/password/birthYear/eraSkin), Session, Account, JournalSync, AiInsight models
+- Ran `prisma db push` to sync schema to SQLite
+- Created /src/lib/auth.ts — next-auth credentials provider config with session strategy, JWT callbacks
+- Created /src/app/api/auth/[...nextauth]/route.ts — next-auth handler
+- Created /src/app/api/auth/register/route.ts — user registration with bcrypt hashing, duplicate email check
+- Created /src/app/api/ai/insights/route.ts — AI mood analysis via z-ai-web-dev-sdk, parses journal entries, generates JSON insights
+- Created /src/app/api/user/profile/route.ts — GET/PATCH user profile (birthYear, eraSkin, name)
+- Created /src/app/api/sync/push/route.ts — push/pull journal entries for cloud sync (upsert pattern)
+- Created /src/components/AuthModal.tsx — login/signup modal with skeuomorphic styling, password visibility toggle, error handling
+- Created /src/components/AiInsightsPanel.tsx — AI insights UI with 4 card types (Mood Summary, Patterns, Suggestion, Reflection), loading animation
+- Created /src/components/ShareButton.tsx — Web Share API + clipboard fallback for sharing memories
+- Created /src/components/Providers.tsx — SessionProvider wrapper for next-auth
+- Updated layout.tsx — wrapped children with Providers component
+- Updated page.tsx — added Insights tab, auth button in header (Sign In/Sign Out), AuthModal overlay, session state
+- Added NEXTAUTH_SECRET to .env
+- Final build: 0 errors, 8 routes (5 new API routes)
+
+Stage Summary:
+- Auth system: credentials-based login/signup with bcrypt, next-auth session management
+- AI Insights: new "Insights" dashboard tab, sends journal entries to z-ai-web-dev-sdk, displays mood patterns/suggestions
+- Share: ShareButton component uses Web Share API with clipboard fallback
+- Cloud Sync: API endpoints for push/pull journal entries to server database
+- All new API routes: /api/auth/[...nextauth], /api/auth/register, /api/ai/insights, /api/user/profile, /api/sync/push
+- Build verified: 0 errors

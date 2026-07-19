@@ -6,6 +6,7 @@ import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
   ChevronRight, Sparkles, ArrowLeft, RefreshCw,
   RotateCcw, Play, CheckCircle2, XCircle, Camera, Smile, Timer, Clapperboard,
+  Brain, User, LogOut,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -18,7 +19,11 @@ import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/componen
 import { MemoryReelFeed } from '@/components/memory-reel';
 import LocalDataBadge from '@/components/ui/LocalDataBadge';
 import ManageDataScreen from '@/components/settings/ManageDataScreen';
+import AuthModal from '@/components/AuthModal';
+import AiInsightsPanel from '@/components/AiInsightsPanel';
 import { runMigration } from '@/lib/idb-store/migrate';
+import { useSession, signOut } from 'next-auth/react';
+import { SessionProvider } from 'next-auth/react';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -1026,6 +1031,8 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const [activeCategory, setActiveCategory] = useState('all');
   const [showCamera, setShowCamera] = useState(false);
   const [showReel, setShowReel] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const { data: session } = useSession();
 
   const categoryMap: Record<string, { label: string; icon: React.ReactNode; items: NostalgiaItem[] }> = {
     cartoons: { label: 'Cartoons', icon: <Film className="h-4 w-4" />, items: data.cartoons },
@@ -1067,6 +1074,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
     { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
     { id: 'funstuff', label: 'Fun Stuff', icon: <Smile className="h-4 w-4" /> },
     { id: 'games', label: 'Play Games', icon: <Gamepad2 className="h-4 w-4" /> },
+    { id: 'insights', label: 'Insights', icon: <Brain className="h-4 w-4" /> },
     { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
   ];
 
@@ -1084,8 +1092,33 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
               Rewind
             </h2>
           </div>
-          <div className="sk-vhs-label old-typewriter text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
-            {data.decade} &middot; Born {birthYear}
+          <div className="flex items-center gap-2">
+            <div className="sk-vhs-label old-typewriter text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
+              {data.decade} &middot; Born {birthYear}
+            </div>
+            {/* Auth button */}
+            {session?.user ? (
+              <div className="flex items-center gap-1.5">
+                <span className="old-typewriter text-[9px] text-[#6b6b6b] hidden sm:inline max-w-[80px] truncate">
+                  {session.user.name || session.user.email}
+                </span>
+                <button
+                  onClick={() => signOut()}
+                  className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
+                  title="Sign out"
+                >
+                  <LogOut className="h-3.5 w-3.5 text-[#5c4033]" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAuth(true)}
+                className="sk-btn old-btn px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <User className="h-3 w-3" />
+                <span className="hidden sm:inline">Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -1210,6 +1243,33 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             </AnimatePresence>
           )}
 
+          {/* ═══ INSIGHTS TAB ═══ */}
+          {activeTab === 'insights' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <div className="text-center mb-5">
+                  <p className="old-body text-sm text-[#5c4033] font-medium">Your journal holds more than words. Let AI help you see the patterns.</p>
+                </div>
+                <AiInsightsPanel birthYear={birthYear} />
+                <div className="mt-6 sk-paper rounded-xl p-4 sk-noise text-center">
+                  <p className="old-body text-xs text-[#8b7355]">
+                    {session?.user
+                      ? 'Insights are generated locally using AI. They never leave your device.'
+                      : 'Sign in to save your insights history and access them from any device.'}
+                  </p>
+                  {!session?.user && (
+                    <button
+                      onClick={() => setShowAuth(true)}
+                      className="sk-btn old-btn px-4 py-2 rounded-lg text-xs font-bold mt-3 cursor-pointer flex items-center gap-2 mx-auto"
+                    >
+                      <User className="h-3.5 w-3.5" /> Create Account
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          )}
+
           {/* ═══ TIMELINE TAB ═══ */}
           {activeTab === 'timeline' && (
             <AnimatePresence mode="wait">
@@ -1317,6 +1377,17 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
       {/* ═══ MEMORY REEL OVERLAY ═══ */}
       <AnimatePresence>
         {showReel && <MemoryReelFeed birthYear={birthYear} onClose={() => setShowReel(false)} />}
+      </AnimatePresence>
+
+      {/* ═══ AUTH MODAL OVERLAY ═══ */}
+      <AnimatePresence>
+        {showAuth && (
+          <AuthModal
+            isOpen={showAuth}
+            onClose={() => setShowAuth(false)}
+            onAuthSuccess={() => {}}
+          />
+        )}
       </AnimatePresence>
 
       {/* ═══ MANAGE DATA OVERLAY ═══ */}

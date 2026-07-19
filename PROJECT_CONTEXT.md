@@ -324,10 +324,10 @@ Skins: `default`, `70s-groovy`, `80s-neon`, `90s-grunge`, `2000s-y2k`, `2010s-mi
 | Manage Data Screen | ✅ Complete | IDB (all stores) |
 | Local Data Trust Badge | ✅ Complete | N/A |
 | IndexedDB Migration | ✅ Complete | localStorage → IDB one-time |
-| Auth / User Accounts | ❌ Not started | — |
-| Cloud Sync / Supabase | ❌ Not started | — |
-| AI Tagging / Insights | ❌ Not started | — |
-| Social / Sharing | ❌ Not started | — |
+| Auth / User Accounts | ✅ Complete | Prisma SQLite + next-auth |
+| Cloud Sync | ✅ Complete | API endpoints (push/pull) |
+| AI Tagging / Insights | ✅ Complete | IDB + API (z-ai-web-dev-sdk) |
+| Social / Sharing | ✅ Complete | Web Share API / clipboard |
 
 ---
 
