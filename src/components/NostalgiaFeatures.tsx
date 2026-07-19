@@ -25,6 +25,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import ThrowbackLibrary from '@/components/ThrowbackLibrary';
+import EraPods from '@/components/EraPods';
+import MemoryVault from '@/components/MemoryVault';
+import EraSkins from '@/components/EraSkins';
+import VoiceMessages from '@/components/VoiceMessages';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -1711,9 +1716,30 @@ export default function NostalgiaFeatures() {
         <StickerWallSection />
 
         <Separator className="opacity-30" />
+        <EraSkins />
+
+        {/* ── Era Pods ── */}
+        <EraPods />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Memory Vault ── */}
+        <MemoryVault />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Voice Messages ── */}
+        <VoiceMessages />
+
+        <Separator className="opacity-30" />
 
         {/* ── Retro Chat ── */}
         <RetroChatSection />
+
+        <Separator className="opacity-30" />
+
+        {/* ── Throwback Library ── */}
+        <ThrowbackLibrary />
 
         {/* Footer */}
         <footer className="pt-8 pb-4 text-center">
