@@ -1,0 +1,1004 @@
+     1→@import "tailwindcss";
+     2→@import "tw-animate-css";
+     3→
+     4→@custom-variant dark (&:is(.dark *));
+     5→
+     6→@theme inline {
+     7→  --color-background: var(--background);
+     8→  --color-foreground: var(--foreground);
+     9→  --font-sans: var(--font-geist-sans);
+    10→  --font-mono: var(--font-geist-mono);
+    11→  --color-sidebar-ring: var(--sidebar-ring);
+    12→  --color-sidebar-border: var(--sidebar-border);
+    13→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    14→  --color-sidebar-accent: var(--sidebar-accent);
+    15→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    16→  --color-sidebar-primary: var(--sidebar-primary);
+    17→  --color-sidebar-foreground: var(--sidebar-foreground);
+    18→  --color-sidebar: var(--sidebar);
+    19→  --color-chart-5: var(--chart-5);
+    20→  --color-chart-4: var(--chart-4);
+    21→  --color-chart-3: var(--chart-3);
+    22→  --color-chart-2: var(--chart-2);
+    23→  --color-chart-1: var(--chart-1);
+    24→  --color-ring: var(--ring);
+    25→  --color-input: var(--input);
+    26→  --color-border: var(--border);
+    27→  --color-destructive: var(--destructive);
+    28→  --color-accent-foreground: var(--accent-foreground);
+    29→  --color-accent: var(--accent);
+    30→  --color-muted-foreground: var(--muted-foreground);
+    31→  --color-muted: var(--muted);
+    32→  --color-secondary-foreground: var(--secondary-foreground);
+    33→  --color-secondary: var(--secondary);
+    34→  --color-primary-foreground: var(--primary-foreground);
+    35→  --color-primary: var(--primary);
+    36→  --color-popover-foreground: var(--popover-foreground);
+    37→  --color-popover: var(--popover);
+    38→  --color-card-foreground: var(--card-foreground);
+    39→  --color-card: var(--card);
+    40→  --radius-sm: calc(var(--radius) - 4px);
+    41→  --radius-md: calc(var(--radius) - 2px);
+    42→  --radius-lg: var(--radius);
+    43→  --radius-xl: calc(var(--radius) + 4px);
+    44→}
+    45→
+    46→:root {
+    47→  --radius: 0.625rem;
+    48→  --background: #f5edd6;
+    49→  --foreground: #3d2b1f;
+    50→  --card: #faf6eb;
+    51→  --card-foreground: #3d2b1f;
+    52→  --popover: #faf6eb;
+    53→  --popover-foreground: #3d2b1f;
+    54→  --primary: #8b5e3c;
+    55→  --primary-foreground: #faf6eb;
+    56→  --secondary: #e8dcc8;
+    57→  --secondary-foreground: #5c4033;
+    58→  --muted: #e8dcc8;
+    59→  --muted-foreground: #8b7355;
+    60→  --accent: #c4956a;
+    61→  --accent-foreground: #3d2b1f;
+    62→  --destructive: oklch(0.577 0.245 27.325);
+    63→  --border: #c4b594;
+    64→  --input: #d4c5a9;
+    65→  --ring: #8b5e3c;
+    66→  --chart-1: #c4956a;
+    67→  --chart-2: #8b5e3c;
+    68→  --chart-3: #6b4226;
+    69→  --chart-4: #d4a574;
+    70→  --chart-5: #e8c9a0;
+    71→  --sidebar: #e8dcc8;
+    72→  --sidebar-foreground: #3d2b1f;
+    73→  --sidebar-primary: #8b5e3c;
+    74→  --sidebar-primary-foreground: #faf6eb;
+    75→  --sidebar-accent: #d4c5a9;
+    76→  --sidebar-accent-foreground: #3d2b1f;
+    77→  --sidebar-border: #c4b594;
+    78→  --sidebar-ring: #8b5e3c;
+    79→}
+    80→
+    81→@layer base {
+    82→  * {
+    83→    @apply border-border outline-ring/50;
+    84→  }
+    85→  body {
+    86→    @apply bg-background text-foreground;
+    87→    font-family: 'Playfair Display', 'Nunito', Georgia, var(--font-geist-sans), serif;
+    88→  }
+    89→}
+    90→
+    91→/* ═══════ SKEUOMORPHIC TEXTURES ═══════ */
+    92→
+    93→/* Cork board background */
+    94→.sk-cork {
+    95→  background-color: #c4956a;
+    96→  background-image:
+    97→    repeating-conic-gradient(#b8845a 0% 25%, transparent 0% 50%) 0 0 / 6px 6px,
+    98→    repeating-conic-gradient(#d4a574 0% 25%, transparent 0% 50%) 3px 3px / 6px 6px;
+    99→  box-shadow: inset 0 2px 8px rgba(0,0,0,0.3), inset 0 -1px 4px rgba(255,255,255,0.1);
+   100→}
+   101→
+   102→/* Worn paper */
+   103→.sk-paper {
+   104→  background-color: #faf6eb;
+   105→  background-image:
+   106→    linear-gradient(90deg, rgba(200,180,140,0.06) 1px, transparent 1px),
+   107→    linear-gradient(rgba(200,180,140,0.06) 1px, transparent 1px);
+   108→  background-size: 20px 20px;
+   109→  box-shadow:
+   110→    0 1px 1px rgba(255,255,255,0.6),
+   111→    0 2px 4px rgba(0,0,0,0.1),
+   112→    0 8px 24px rgba(0,0,0,0.12),
+   113→    inset 0 1px 0 rgba(255,255,255,0.5);
+   114→  border: 1px solid #d4c5a9;
+   115→}
+   116→
+   117→/* Aged paper (darker, more yellowed) */
+   118→.sk-paper-aged {
+   119→  background: linear-gradient(135deg, #f5edd6 0%, #ede0c8 50%, #e8d8b8 100%);
+   120→  box-shadow:
+   121→    0 2px 3px rgba(255,255,255,0.4) inset,
+   122→    0 -2px 3px rgba(0,0,0,0.05) inset,
+   123→    0 4px 12px rgba(0,0,0,0.15);
+   124→  border: 1px solid #c4b594;
+   125→}
+   126→
+   127→/* Lined notebook paper */
+   128→.sk-lined {
+   129→  background-color: #fffef5;
+   130→  background-image:
+   131→    linear-gradient(#c4d8e8 1px, transparent 1px);
+   132→  background-size: 100% 28px;
+   133→  background-position: 0 12px;
+   134→  box-shadow:
+   135→    0 1px 3px rgba(0,0,0,0.12),
+   136→    0 4px 12px rgba(0,0,0,0.08),
+   137→    inset 0 1px 0 rgba(255,255,255,0.7);
+   138→  border: 1px solid #c4b594;
+   139→  border-left: 3px solid #e85d5d;
+   140→}
+   141→
+   142→/* Polaroid photo */
+   143→.sk-polaroid {
+   144→  background: #fffef8;
+   145→  padding: 8px 8px 40px 8px;
+   146→  box-shadow:
+   147→    0 2px 4px rgba(0,0,0,0.08),
+   148→    0 6px 16px rgba(0,0,0,0.12);
+   149→  transform: rotate(var(--rotate, 0deg));
+   150→  border: none;
+   151→}
+   152→.sk-polaroid:hover {
+   153→  box-shadow:
+   154→    0 4px 8px rgba(0,0,0,0.12),
+   155→    0 12px 32px rgba(0,0,0,0.16);
+   156→  transform: rotate(0deg) scale(1.03);
+   157→}
+   158→
+   159→/* Embossed button */
+   160→.sk-btn {
+   161→  background: linear-gradient(180deg, #f0e6d3 0%, #d4c5a9 40%, #c4b594 60%, #b8a888 100%);
+   162→  box-shadow:
+   163→    0 1px 0 rgba(255,255,255,0.5) inset,
+   164→    0 -2px 0 rgba(0,0,0,0.1) inset,
+   165→    0 3px 8px rgba(0,0,0,0.15),
+   166→    0 1px 2px rgba(0,0,0,0.1);
+   167→  border: 1px solid #a89878;
+   168→  text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+   169→  color: #5c4033;
+   170→  transition: all 0.15s ease;
+   171→}
+   172→.sk-btn:active {
+   173→  background: linear-gradient(180deg, #d4c5a9 0%, #c4b594 40%, #b8a888 60%, #a89878 100%);
+   174→  box-shadow:
+   175→    0 1px 0 rgba(0,0,0,0.1) inset,
+   176→    0 -1px 0 rgba(255,255,255,0.3) inset,
+   177→    0 1px 3px rgba(0,0,0,0.1);
+   178→  transform: translateY(1px);
+   179→}
+   180→
+   181→/* Inset/recessed input */
+   182→.sk-inset {
+   183→  background: linear-gradient(180deg, #e8dcc8 0%, #f0e6d3 100%);
+   184→  box-shadow:
+   185→    0 2px 4px rgba(0,0,0,0.12) inset,
+   186→    0 -1px 0 rgba(255,255,255,0.3) inset,
+   187→    0 1px 0 rgba(0,0,0,0.06);
+   188→  border: 1px solid #b8a888;
+   189→}
+   190→
+   191→/* Tape strip decoration */
+   192→.sk-tape {
+   193→  position: relative;
+   194→}
+   195→.sk-tape::before {
+   196→  content: '';
+   197→  position: absolute;
+   198→  top: -8px;
+   199→  left: 50%;
+   200→  transform: translateX(-50%) rotate(var(--tape-rotate, -2deg));
+   201→  width: 60px;
+   202→  height: 18px;
+   203→  background: linear-gradient(180deg, rgba(255,255,220,0.85) 0%, rgba(230,220,190,0.75) 100%);
+   204→  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+   205→  z-index: 2;
+   206→  border-radius: 1px;
+   207→}
+   208→
+   209→/* Pin/pushpin */
+   210→.sk-pin {
+   211→  position: relative;
+   212→}
+   213→.sk-pin::after {
+   214→  content: '';
+   215→  position: absolute;
+   216→  top: -6px;
+   217→  left: 50%;
+   218→  transform: translateX(-50%);
+   219→  width: 14px;
+   220→  height: 14px;
+   221→  border-radius: 50%;
+   222→  background: radial-gradient(circle at 40% 35%, #e85d5d, #c0392b 60%, #922b21);
+   223→  box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.3);
+   224→  z-index: 2;
+   225→}
+   226→
+   227→/* Leather texture */
+   228→.sk-leather {
+   229→  background: linear-gradient(135deg, #6b4226 0%, #8b5e3c 50%, #7a4f30 100%);
+   230→  box-shadow:
+   231→    0 4px 12px rgba(0,0,0,0.3),
+   232→    inset 0 1px 0 rgba(255,255,255,0.1),
+   233→    inset 0 -1px 0 rgba(0,0,0,0.2);
+   234→}
+   235→
+   236→/* Wood grain */
+   237→.sk-wood {
+   238→  background:
+   239→    linear-gradient(90deg, #8b7355 0%, #a08868 20%, #8b7355 40%, #9c8460 60%, #8b7355 80%, #a08868 100%);
+   240→  box-shadow:
+   241→    0 3px 8px rgba(0,0,0,0.2),
+   242→    inset 0 1px 0 rgba(255,255,255,0.08);
+   243→}
+   244→
+   245→/* Metal brushed */
+   246→.sk-metal {
+   247→  background: linear-gradient(180deg, #d4d4d4 0%, #b0b0b0 30%, #c8c8c8 50%, #a8a8a8 70%, #b8b8b8 100%);
+   248→  box-shadow:
+   249→    0 2px 4px rgba(0,0,0,0.2),
+   250→    inset 0 1px 0 rgba(255,255,255,0.6),
+   251→    inset 0 -1px 0 rgba(0,0,0,0.15);
+   252→}
+   253→
+   254→/* Sticker effect */
+   255→.sk-sticker {
+   256→  box-shadow:
+   257→    0 2px 4px rgba(0,0,0,0.1),
+   258→    0 0 0 2px #fff,
+   259→    0 0 0 4px #d4c5a9;
+   260→}
+   261→
+   262→/* VHS / cassette label */
+   263→.sk-vhs-label {
+   264→  background: linear-gradient(180deg, #f5edd6 0%, #e8dcc8 100%);
+   265→  box-shadow:
+   266→    0 1px 0 rgba(255,255,255,0.5) inset,
+   267→    0 -1px 0 rgba(0,0,0,0.05) inset,
+   268→    0 2px 6px rgba(0,0,0,0.1);
+   269→  border: 1px dashed #c4b594;
+   270→}
+   271→
+   272→/* Neon glow text (for 80s) */
+   273→.sk-neon-text {
+   274→  text-shadow:
+   275→    0 0 7px #fff,
+   276→    0 0 10px #fff,
+   277→    0 0 21px #fff,
+   278→    0 0 42px #ff1493,
+   279→    0 0 82px #ff1493,
+   280→    0 0 92px #ff1493;
+   281→}
+   282→
+   283→/* Retro TV screen */
+   284→.sk-tv-screen {
+   285→  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+   286→  box-shadow:
+   287→    0 0 20px rgba(0,200,255,0.15) inset,
+   288→    0 0 60px rgba(0,0,0,0.3) inset,
+   289→    0 4px 12px rgba(0,0,0,0.3);
+   290→  border: 3px solid #2a2a3a;
+   291→  border-radius: 8px;
+   292→}
+   293→
+   294→/* Scratchy noise overlay */
+   295→.sk-noise::after {
+   296→  content: '';
+   297→  position: absolute;
+   298→  inset: 0;
+   299→  opacity: 0.03;
+   300→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+   301→  pointer-events: none;
+   302→  border-radius: inherit;
+   303→}
+   304→
+   305→/* Game card flip */
+   306→.sk-game-card {
+   307→  perspective: 600px;
+   308→}
+   309→.sk-game-card-inner {
+   310→  transition: transform 0.5s;
+   311→  transform-style: preserve-3d;
+   312→}
+   313→.sk-game-card-inner.flipped {
+   314→  transform: rotateY(180deg);
+   315→}
+   316→.sk-game-card-front,
+   317→.sk-game-card-back {
+   318→  backface-visibility: hidden;
+   319→  -webkit-backface-visibility: hidden;
+   320→}
+   321→.sk-game-card-back {
+   322→  transform: rotateY(180deg);
+   323→}
+   324→
+   325→/* Scrollbar styling */
+   326→.sk-scrollbar::-webkit-scrollbar {
+   327→  width: 8px;
+   328→  height: 8px;
+   329→}
+   330→.sk-scrollbar::-webkit-scrollbar-track {
+   331→  background: linear-gradient(180deg, #e8dcc8, #d4c5a9);
+   332→  border-radius: 4px;
+   333→  box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+   334→}
+   335→.sk-scrollbar::-webkit-scrollbar-thumb {
+   336→  background: linear-gradient(180deg, #c4b594, #a89878);
+   337→  border-radius: 4px;
+   338→  box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2);
+   339→}
+   340→.sk-scrollbar::-webkit-scrollbar-thumb:hover {
+   341→  background: linear-gradient(180deg, #b8a888, #9c8460);
+   342→}
+   343→
+   344→/* Animations */
+   345→@keyframes float {
+   346→  0% { transform: translateY(0) rotate(0deg); opacity: 0.15; }
+   347→  25% { transform: translateY(-30px) rotate(90deg); opacity: 0.25; }
+   348→  50% { transform: translateY(-15px) rotate(180deg); opacity: 0.15; }
+   349→  75% { transform: translateY(-40px) rotate(270deg); opacity: 0.2; }
+   350→  100% { transform: translateY(0) rotate(360deg); opacity: 0.15; }
+   351→}
+   352→
+   353→@keyframes pulse-glow {
+   354→  0%, 100% { box-shadow: 0 0 5px rgba(196,149,106,0.3); }
+   355→  50% { box-shadow: 0 0 20px rgba(196,149,106,0.5), 0 0 40px rgba(196,149,106,0.2); }
+   356→}
+   357→
+   358→@keyframes scanline {
+   359→  0% { transform: translateY(-100%); }
+   360→  100% { transform: translateY(100vh); }
+   361→}
+   362→
+   363→@keyframes blink-cursor {
+   364→  0%, 100% { opacity: 1; }
+   365→  50% { opacity: 0; }
+   366→}
+   367→
+   368→@keyframes pop-in {
+   369→  0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+   370→  70% { transform: scale(1.05) rotate(2deg); }
+   371→  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+   372→}
+   373→
+   374→/* ═══════ CRT / VHS LOADING SCREEN ═══════ */
+   375→
+   376→.crt-screen {
+   377→  position: fixed;
+   378→  inset: 0;
+   379→  z-index: 9999;
+   380→  background: #0a0a0a;
+   381→  display: flex;
+   382→  flex-direction: column;
+   383→  align-items: center;
+   384→  justify-content: center;
+   385→  overflow: hidden;
+   386→}
+   387→
+   388→.crt-scanlines {
+   389→  position: absolute;
+   390→  inset: 0;
+   391→  background: repeating-linear-gradient(
+   392→    0deg,
+   393→    transparent,
+   394→    transparent 2px,
+   395→    rgba(0, 0, 0, 0.15) 2px,
+   396→    rgba(0, 0, 0, 0.15) 4px
+   397→  );
+   398→  pointer-events: none;
+   399→  z-index: 2;
+   400→}
+   401→
+   402→.crt-flicker {
+   403→  animation: crt-flicker 0.15s infinite;
+   404→}
+   405→
+   406→@keyframes crt-flicker {
+   407→  0% { opacity: 0.97; }
+   408→  50% { opacity: 1; }
+   409→  100% { opacity: 0.98; }
+   410→}
+   411→
+   412→.crt-glow {
+   413→  text-shadow:
+   414→    0 0 7px rgba(196, 149, 106, 0.8),
+   415→    0 0 20px rgba(196, 149, 106, 0.5),
+   416→    0 0 42px rgba(196, 149, 106, 0.3),
+   417→    0 0 80px rgba(196, 149, 106, 0.15);
+   418→}
+   419→
+   420→.vhs-tracking {
+   421→  position: absolute;
+   422→  left: 0;
+   423→  right: 0;
+   424→  height: 3px;
+   425→  background: rgba(196, 149, 106, 0.3);
+   426→  animation: vhs-track 2.5s ease-in-out infinite;
+   427→  z-index: 3;
+   428→}
+   429→
+   430→@keyframes vhs-track {
+   431→  0% { top: -3px; opacity: 0; }
+   432→  10% { opacity: 1; }
+   433→  90% { opacity: 1; }
+   434→  100% { top: 100vh; opacity: 0; }
+   435→}
+   436→
+   437→.vhs-noise {
+   438→  position: absolute;
+   439→  inset: 0;
+   440→  opacity: 0.04;
+   441→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+   442→  pointer-events: none;
+   443→  z-index: 1;
+   444→  animation: noise-shift 0.1s steps(3) infinite;
+   445→}
+   446→
+   447→@keyframes noise-shift {
+   448→  0% { transform: translate(0, 0); }
+   449→  33% { transform: translate(-1px, 1px); }
+   450→  66% { transform: translate(1px, -1px); }
+   451→  100% { transform: translate(0, 0); }
+   452→}
+   453→
+   454→.crt-text-reveal {
+   455→  animation: crt-reveal 0.8s steps(12) forwards;
+   456→  overflow: hidden;
+   457→  white-space: nowrap;
+   458→  border-right: 2px solid rgba(196, 149, 106, 0.7);
+   459→}
+   460→
+   461→@keyframes crt-reveal {
+   462→  from { max-width: 0; }
+   463→  to { max-width: 600px; }
+   464→}
+   465→
+   466→.boot-line {
+   467→  font-family: 'Special Elite', 'Courier 10 Pitch', monospace;
+   468→  color: rgba(196, 149, 106, 0.7);
+   469→  font-size: 0.75rem;
+   470→  letter-spacing: 0.05em;
+   471→  opacity: 0;
+   472→  animation: boot-fade-in 0.5s forwards;
+   473→}
+   474→
+   475→@keyframes boot-fade-in {
+   476→  from { opacity: 0; transform: translateY(4px); }
+   477→  to { opacity: 1; transform: translateY(0); }
+   478→}
+   479→
+   480→.loading-bar-track {
+   481→  width: 200px;
+   482→  height: 6px;
+   483→  background: rgba(196, 149, 106, 0.15);
+   484→  border-radius: 1px;
+   485→  overflow: hidden;
+   486→  border: 1px solid rgba(196, 149, 106, 0.2);
+   487→}
+   488→
+   489→.loading-bar-fill {
+   490→  height: 100%;
+   491→  background: linear-gradient(90deg, rgba(196, 149, 106, 0.6), rgba(196, 149, 106, 0.9));
+   492→  animation: loading-fill 3s ease-in-out forwards;
+   493→  border-radius: 1px;
+   494→}
+   495→
+   496→@keyframes loading-fill {
+   497→  0% { width: 0%; }
+   498→  15% { width: 8%; }
+   499→  30% { width: 22%; }
+   500→  50% { width: 45%; }
+   501→  65% { width: 58%; }
+   502→  80% { width: 78%; }
+   503→  90% { width: 90%; }
+   504→  100% { width: 100%; }
+   505→}
+   506→
+   507→.crt-fadeout {
+   508→  animation: crt-off 1.0s ease-in forwards;
+   509→}
+   510→
+   511→@keyframes crt-off {
+   512→  0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+   513→  20% { opacity: 1; transform: scale(1.01, 0.99); filter: brightness(1.2); }
+   514→  50% { opacity: 0.7; transform: scale(0.98, 1.01); filter: brightness(1.8); }
+   515→  75% { opacity: 0.3; transform: scale(0.96, 1.03); filter: brightness(2.5); }
+   516→  100% { opacity: 0; transform: scale(0.93, 1.06); filter: brightness(4); }
+   517→}
+   518→
+   519→/* ═══════ CRT RESPONSIVE — ALL SCREEN SIZES ═══════ */
+   520→
+   521→/* Small phones (< 400px) */
+   522→@media (max-width: 400px) {
+   523→  .crt-glow {
+   524→    text-shadow:
+   525→      0 0 4px rgba(196, 149, 106, 0.7),
+   526→      0 0 10px rgba(196, 149, 106, 0.35);
+   527→  }
+   528→  .boot-line {
+   529→    font-size: 9px;
+   530→    letter-spacing: 0.02em;
+   531→  }
+   532→  .loading-bar-track {
+   533→    width: 140px;
+   534→    height: 5px;
+   535→  }
+   536→}
+   537→
+   538→/* Standard phones (400–640px) */
+   539→@media (min-width: 401px) and (max-width: 640px) {
+   540→  .crt-glow {
+   541→    text-shadow:
+   542→      0 0 5px rgba(196, 149, 106, 0.75),
+   543→      0 0 15px rgba(196, 149, 106, 0.45),
+   544→      0 0 30px rgba(196, 149, 106, 0.2);
+   545→  }
+   546→  .loading-bar-track {
+   547→    width: 160px;
+   548→  }
+   549→}
+   550→
+   551→/* Tablets in portrait (641–768px) */
+   552→@media (min-width: 641px) and (max-width: 768px) {
+   553→  .loading-bar-track {
+   554→    width: 180px;
+   555→  }
+   556→}
+   557→
+   558→/* Large tablets / small laptops (769–1024px) */
+   559→@media (min-width: 769px) and (max-width: 1024px) {
+   560→  .crt-glow {
+   561→    text-shadow:
+   562→      0 0 6px rgba(196, 149, 106, 0.8),
+   563→      0 0 18px rgba(196, 149, 106, 0.5),
+   564→      0 0 35px rgba(196, 149, 106, 0.25);
+   565→  }
+   566→}
+   567→
+   568→/* Landscape phones — compact layout */
+   569→@media (max-height: 500px) and (orientation: landscape) {
+   570→  .crt-screen {
+   571→    flex-direction: row;
+   572→    gap: 1.5rem;
+   573→  }
+   574→  .boot-line {
+   575→    font-size: 9px;
+   576→  }
+   577→  .loading-bar-track {
+   578→    width: 120px;
+   579→    height: 4px;
+   580→  }
+   581→}
+   582→
+   583→/* Ultra-wide screens (1440px+) — wider scanline spacing */
+   584→@media (min-width: 1440px) {
+   585→  .crt-scanlines {
+   586→    background: repeating-linear-gradient(
+   587→      0deg,
+   588→      transparent,
+   589→      transparent 3px,
+   590→      rgba(0, 0, 0, 0.12) 3px,
+   591→      rgba(0, 0, 0, 0.12) 6px
+   592→    );
+   593→  }
+   594→  .crt-glow {
+   595→    text-shadow:
+   596→      0 0 10px rgba(196, 149, 106, 0.8),
+   597→      0 0 25px rgba(196, 149, 106, 0.5),
+   598→      0 0 50px rgba(196, 149, 106, 0.3),
+   599→      0 0 100px rgba(196, 149, 106, 0.15);
+   600→  }
+   601→  .loading-bar-track {
+   602→    width: 240px;
+   603→  }
+   604→}
+   605→
+   606→/* ═══════ OLD-STYLE / VINTAGE TYPOGRAPHY ═══════ */
+   607→
+   608→.old-title {
+   609→  font-family: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
+   610→  text-shadow:
+   611→    0 1px 0 rgba(255,255,255,0.35),
+   612→    0 -1px 0 rgba(0,0,0,0.08),
+   613→    0 2px 4px rgba(0,0,0,0.08);
+   614→  letter-spacing: 0.02em;
+   615→}
+   616→
+   617→.old-typewriter {
+   618→  font-family: 'Special Elite', 'Courier 10 Pitch', 'Courier New', monospace;
+   619→  letter-spacing: 0.04em;
+   620→  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+   621→}
+   622→
+   623→.old-handwritten {
+   624→  font-family: 'LXGW WenKai', 'Caveat', cursive;
+   625→  text-shadow: 0 1px 0 rgba(255,255,255,0.15);
+   626→}
+   627→
+   628→.old-label {
+   629→  font-family: 'Special Elite', 'Courier 10 Pitch', monospace;
+   630→  font-size: 0.65rem;
+   631→  font-weight: 700;
+   632→  text-transform: uppercase;
+   633→  letter-spacing: 0.15em;
+   634→  color: #8b7355;
+   635→  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+   636→}
+   637→
+   638→.old-body {
+   639→  font-family: 'Playfair Display', 'Nunito', Georgia, serif;
+   640→  text-shadow: 0 0.5px 0 rgba(255,255,255,0.15);
+   641→  line-height: 1.7;
+   642→}
+   643→
+   644→.old-btn {
+   645→  font-family: 'Special Elite', 'Courier 10 Pitch', monospace;
+   646→  letter-spacing: 0.06em;
+   647→  text-transform: uppercase;
+   648→}
+   649→
+   650→.old-heading {
+   651→  font-family: 'Playfair Display', 'Georgia', serif;
+   652→  text-shadow:
+   653→    0 1px 0 rgba(255,255,255,0.3),
+   654→    0 2px 3px rgba(0,0,0,0.06);
+   655→  letter-spacing: 0.01em;
+   656→}
+   657→
+   658→.old-quote {
+   659→  font-family: 'Playfair Display', 'Georgia', serif;
+   660→  font-style: italic;
+   661→  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+   662→}
+   663→
+   664→/* ═══════ VINTAGE CAMERA STYLES ═══════ */
+   665→
+   666→/* Shutter click animation */
+   667→@keyframes shutter-click {
+   668→  0% { transform: scaleY(0); }
+   669→  50% { transform: scaleY(1); }
+   670→  100% { transform: scaleY(1); opacity: 0; }
+   671→}
+   672→
+   673→.shutter-anim {
+   674→  animation: shutter-click 0.2s ease-out forwards;
+   675→}
+   676→
+   677→/* Camera flash */
+   678→@keyframes camera-flash {
+   679→  0% { opacity: 0.95; }
+   680→  100% { opacity: 0; }
+   681→}
+   682→
+   683→.camera-flash {
+   684→  animation: camera-flash 0.25s ease-out forwards;
+   685→}
+   686→
+   687→/* Recording pulse */
+   688→@keyframes rec-pulse {
+   689→  0%, 100% { opacity: 1; }
+   690→  50% { opacity: 0.3; }
+   691→}
+   692→
+   693→.rec-pulse {
+   694→  animation: rec-pulse 1s ease-in-out infinite;
+   695→}
+   696→
+   697→/* Film strip sprocket holes effect */
+   698→.film-strip {
+   699→  background-image:
+   700→    repeating-linear-gradient(
+   701→      to right,
+   702→      transparent 0px,
+   703→      transparent 8px,
+   704→      rgba(0,0,0,0.15) 8px,
+   705→      rgba(0,0,0,0.15) 10px,
+   706→      transparent 10px,
+   707→      transparent 20px
+   708→    );
+   709→  background-position: center;
+   710→}
+   711→
+   712→/* Vintage photo developing effect */
+   713→@keyframes develop {
+   714→  0% { filter: brightness(0) sepia(1) contrast(2); }
+   715→  30% { filter: brightness(0.3) sepia(0.8) contrast(1.5); }
+   716→  60% { filter: brightness(0.7) sepia(0.4) contrast(1.2); }
+   717→  100% { filter: brightness(1) sepia(0.2) contrast(1.05); }
+   718→}
+   719→
+   720→.photo-developing {
+   721→  animation: develop 1.5s ease-out forwards;
+   722→}
+   723→
+   724→/* Lens flare on camera button hover */
+   725→@keyframes lens-flare {
+   726→  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+   727→  50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
+   728→  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+   729→}
+   730→
+   731→/* Film grain overlay (CSS-only) */
+   732→.film-grain::before {
+   733→  content: '';
+   734→  position: absolute;
+   735→  inset: 0;
+   736→  opacity: 0.06;
+   737→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+   738→  pointer-events: none;
+   739→  z-index: 1;
+   740→  animation: noise-shift 0.08s steps(4) infinite;
+   741→}
+   742→
+   743→/* Vintage camera body texture */
+   744→.sk-camera-body {
+   745→  background: linear-gradient(145deg, #4a3728 0%, #3d2b1f 50%, #2a1f14 100%);
+   746→  box-shadow:
+   747→    0 4px 16px rgba(0,0,0,0.5),
+   748→    inset 0 1px 0 rgba(255,255,255,0.08),
+   749→    inset 0 -1px 0 rgba(0,0,0,0.3);
+   750→  border: 1px solid #5c4033;
+   751→}
+   752→
+   753→/* Camera leather grip texture */
+   754→.sk-camera-grip {
+   755→  background:
+   756→    repeating-linear-gradient(
+   757→      45deg,
+   758→      rgba(0,0,0,0.05) 0px,
+   759→      rgba(0,0,0,0.05) 1px,
+   760→      transparent 1px,
+   761→      transparent 4px
+   762→    ),
+   763→    linear-gradient(145deg, #5c4033, #3d2b1f);
+   764→}
+   765→
+   766→/* ═══════ OLD JOURNAL STYLES ═══════ */
+   767→
+   768→/* Page turn animation */
+   769→@keyframes page-turn {
+   770→  0% { transform: perspective(800px) rotateY(0deg); }
+   771→  50% { transform: perspective(800px) rotateY(-12deg); }
+   772→  100% { transform: perspective(800px) rotateY(0deg); }
+   773→}
+   774→
+   775→.page-turn {
+   776→  animation: page-turn 0.6s ease-in-out;
+   777→}
+   778→
+   779→/* Ink spread on write */
+   780→@keyframes ink-spread {
+   781→  0% { opacity: 0; filter: blur(4px); transform: scale(0.8); }
+   782→  60% { opacity: 0.06; filter: blur(2px); transform: scale(1.1); }
+   783→  100% { opacity: 0.04; filter: blur(2px); transform: scale(1); }
+   784→}
+   785→
+   786→.ink-spread {
+   787→  animation: ink-spread 0.8s ease-out forwards;
+   788→}
+   789→
+   790→/* Old paper page curl (bottom-right corner) */
+   791→@keyframes page-curl {
+   792→  0%, 100% { transform: rotate(0deg); }
+   793→  50% { transform: rotate(1deg); }
+   794→}
+   795→
+   796→/* Quill writing cursor */
+   797→.journal-cursor textarea {
+   798→  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235c4033' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z'/%3E%3Cline x1='16' y1='8' x2='2' y2='22'/%3E%3Cline x1='17.5' y1='15' x2='9' y2='15'/%3E%3C/svg%3E") 2 20, auto;
+   799→}
+   800→
+   801→/* Wax seal press animation */
+   802→@keyframes seal-press {
+   803→  0% { transform: scale(1.3); opacity: 0; }
+   804→  50% { transform: scale(0.95); opacity: 1; }
+   805→  70% { transform: scale(1.05); }
+   806→  100% { transform: scale(1); }
+   807→}
+   808→
+   809→.seal-press {
+   810→  animation: seal-press 0.5s ease-out;
+   811→}
+   812→
+   813→/* Old leather grain pattern */
+   814→.leather-grain {
+   815→  background-image:
+   816→    repeating-linear-gradient(
+   817→      0deg,
+   818→      transparent 0px,
+   819→      transparent 2px,
+   820→      rgba(0,0,0,0.03) 2px,
+   821→      rgba(0,0,0,0.03) 3px
+   822→    ),
+   823→    repeating-linear-gradient(
+   824→      90deg,
+   825→      transparent 0px,
+   826→      transparent 5px,
+   827→      rgba(0,0,0,0.02) 5px,
+   828→      rgba(0,0,0,0.02) 6px
+   829→    );
+   830→}
+   831→
+   832→/* Gold embossed text effect for journal cover */
+   833→.embossed-gold {
+   834→  color: #d4a574;
+   835→  text-shadow:
+   836→    0 1px 0 rgba(255,255,255,0.15),
+   837→    0 -1px 0 rgba(0,0,0,0.3),
+   838→    0 2px 4px rgba(0,0,0,0.3),
+   839→    0 0 20px rgba(196,149,106,0.15);
+   840→}
+   841→
+   842→/* Old string/twine binding effect */
+   843→.twine-binding {
+   844→  background: repeating-linear-gradient(
+   845→    90deg,
+   846→    transparent 0px,
+   847→    transparent 14px,
+   848→    #8b7355 14px,
+   849→    #8b7355 16px
+   850→  );
+   851→  height: 2px;
+   852→  opacity: 0.3;
+   853→}
+   854→
+   855→/* Torn paper edge (top) */
+   856→.torn-top {
+   857→  clip-path: polygon(
+   858→    0% 4%, 3% 2%, 5% 5%, 8% 1%, 12% 4%, 15% 2%, 18% 5%,
+   859→    22% 1%, 25% 3%, 28% 0%, 32% 4%, 35% 1%, 38% 3%, 42% 0%,
+   860→    45% 4%, 48% 2%, 52% 5%, 55% 1%, 58% 3%, 62% 0%, 65% 4%,
+   861→    68% 2%, 72% 5%, 75% 1%, 78% 3%, 82% 0%, 85% 4%, 88% 2%,
+   862→    92% 5%, 95% 1%, 98% 3%, 100% 2%,
+   863→    100% 100%, 0% 100%
+   864→  );
+   865→}
+   866→
+   867→/* Aged paper stain effect */
+   868→.paper-stain::after {
+   869→  content: '';
+   870→  position: absolute;
+   871→  top: 10%;
+   872→  left: 5%;
+   873→  width: 40%;
+   874→  height: 30%;
+   875→  border-radius: 50%;
+   876→  background: radial-gradient(ellipse, rgba(180,150,100,0.06), transparent 70%);
+   877→  pointer-events: none;
+   878→}
+   879→
+   880→/* ═══════ OLD TRANSITION LOADER ═══════ */
+   881→
+   882→/* Cassette reel spin */
+   883→@keyframes cassette-reel {
+   884→  from { transform: rotate(0deg); }
+   885→  to { transform: rotate(360deg); }
+   886→}
+   887→
+   888→.cassette-reel-spin {
+   889→  animation: cassette-reel 0.8s linear infinite;
+   890→}
+   891→
+   892→/* VHS tracking for loader */
+   893→@keyframes vhs-track-loader {
+   894→  0% { top: -3px; opacity: 0; }
+   895→  10% { opacity: 0.3; }
+   896→  90% { opacity: 0.3; }
+   897→  100% { top: 100vh; opacity: 0; }
+   898→}
+   899→
+   900→/* Old Windows-style hourglass cursor */
+   901→.old-hourglass {
+   902→  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 0h8v2l-3 5 3 5v2H4v-2l3-5-3-5V0z' fill='%233d2b1f' opacity='0.7'/%3E%3C/svg%3E") 8 8, wait;
+   903→}
+   904→
+   905→/* Old TV static transition */
+   906→@keyframes tv-static {
+   907→  0% { opacity: 0; }
+   908→  10% { opacity: 0.15; }
+   909→  20% { opacity: 0; }
+   910→  30% { opacity: 0.1; }
+   911→  40% { opacity: 0; }
+   912→  50% { opacity: 0.2; }
+   913→  60% { opacity: 0.05; }
+   914→  70% { opacity: 0.15; }
+   915→  80% { opacity: 0; }
+   916→  90% { opacity: 0.1; }
+   917→  100% { opacity: 0; }
+   918→}
+   919→
+   920→.tv-static {
+   921→  animation: tv-static 0.5s steps(10) forwards;
+   922→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+   923→}
+   924→
+   925→/* Tamagotchi LCD screen */
+   926→.tamagotchi-screen {
+   927→  background: #9bbc0f;
+   928→  box-shadow: inset 0 2px 8px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.15);
+   929→  border: 3px solid #5c5c5c;
+   930→  border-radius: 12px;
+   931→  image-rendering: pixelated;
+   932→}
+   933→
+   934→.tamagotchi-pixel-text {
+   935→  font-family: 'Courier New', monospace;
+   936→  font-weight: bold;
+   937→  color: #306230;
+   938→  text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+   939→  letter-spacing: 0.05em;
+   940→}
+   941→
+   942→/* Floppy disk eject animation */
+   943→@keyframes floppy-eject {
+   944→  0% { transform: translateY(0) rotate(0deg); }
+   945→  30% { transform: translateY(-12px) rotate(-2deg); }
+   946→  60% { transform: translateY(-6px) rotate(1deg); }
+   947→  100% { transform: translateY(0) rotate(0deg); }
+   948→}
+   949→
+   950→.floppy-eject {
+   951→  animation: floppy-eject 0.6s ease-in-out;
+   952→}
+   953→
+   954→/* Rotary dial */
+   955→@keyframes dial-rotate {
+   956→  0% { transform: rotate(0deg); }
+   957→  100% { transform: rotate(300deg); }
+   958→}
+   959→
+   960→.dial-spin {
+   961→  animation: dial-rotate 0.5s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+   962→}
+   963→
+   964→/* Sticker pop-in */
+   965→@keyframes sticker-pop {
+   966→  0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+   967→  60% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+   968→  100% { transform: scale(1) rotate(var(--sticker-rotate, 0deg)); opacity: 1; }
+   969→}
+   970→
+   971→.sticker-pop {
+   972→  animation: sticker-pop 0.4s ease-out forwards;
+   973→}
+   974→
+   975→/* Phone ring shake */
+   976→@keyframes phone-ring {
+   977→  0%, 100% { transform: rotate(0deg); }
+   978→  10% { transform: rotate(12deg); }
+   979→  20% { transform: rotate(-12deg); }
+   980→  30% { transform: rotate(10deg); }
+   981→  40% { transform: rotate(-10deg); }
+   982→  50% { transform: rotate(6deg); }
+   983→  60% { transform: rotate(-6deg); }
+   984→  70% { transform: rotate(2deg); }
+   985→  80% { transform: rotate(0deg); }
+   986→}
+   987→
+   988→.phone-ring {
+   989→  animation: phone-ring 0.8s ease-in-out;
+   990→}
+   991→
+   992→/* Dial-up loading bar (chunky) */
+   993→@keyframes dialup-progress {
+   994→  0% { width: 0%; }
+   995→  15% { width: 12%; }
+   996→  30% { width: 25%; }
+   997→  45% { width: 38%; }
+   998→  55% { width: 42%; }
+   999→  60% { width: 55%; }
+  1000→  75% { width: 68%; }
+  1001→  85% { width: 80%; }
+  1002→  95% { width: 95%; }
+  1003→  100% { width: 100%; }
+  1004→}
