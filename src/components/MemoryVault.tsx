@@ -3,13 +3,12 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { nostalgiaData, NostalgiaItem, DecadeData } from '@/lib/nostalgia-data';
+import { getMemoryVaultTitles, setMemoryVaultTitles } from '@/lib/idb-store';
 import { Lock, Save, X as XIcon } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // Types & constants
 // ═══════════════════════════════════════════════════════════════
-
-const STORAGE_KEY = 'rewind_memory_vault';
 
 const CATEGORY_KEYS: (keyof DecadeData)[] = [
   'cartoons', 'toys', 'music', 'movies', 'snacks', 'games', 'trends', 'schoolLife', 'tech',
@@ -48,21 +47,12 @@ function getAllItems(): FlatItem[] {
   return items;
 }
 
-function loadVault(): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+async function loadVault(): Promise<string[]> {
+  return getMemoryVaultTitles();
 }
 
 function saveVault(names: string[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(names));
+  setMemoryVaultTitles(names);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -189,8 +179,10 @@ export default function MemoryVault() {
   const allItems = useMemo(() => getAllItems(), []);
 
   useEffect(() => {
-    setSavedNames(loadVault());
-    setMounted(true);
+    loadVault().then((titles) => {
+      setSavedNames(titles);
+      setMounted(true);
+    });
   }, []);
 
   const toggleItem = useCallback((title: string) => {

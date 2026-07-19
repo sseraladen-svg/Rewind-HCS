@@ -91,3 +91,39 @@ Stage Summary:
 - Feed generation abstracted behind generateFeed(userData) for future Supabase swap
 - No infinite scroll, no engagement counts, no autoplay — emotional wellbeing focus
 - Accessible from Dashboard first tab "Reel"
+
+---
+Task ID: 2
+Agent: main
+Task: Migrate all localStorage to IndexedDB via 'idb' library
+
+Work Log:
+- Installed `idb` package
+- Created /src/lib/idb-store/types.ts — 15 record type interfaces + DB_STORES list
+- Created /src/lib/idb-store/index.ts — full IndexedDB client (rewind-local-db v1) with 15 object stores, typed CRUD per store, bulk export/clear operations
+- Created /src/lib/idb-store/migrate.ts — one-time localStorage→IDB migration for all 14 legacy keys, converts base64 voicemails to Blobs, idempotent
+- Created /src/lib/idb-store/useDBState.ts — async-first React hook replacing useStoredState
+- Migrated OldJournal.tsx — uses addJournalEntry/putJournalEntry/deleteJournalEntry
+- Migrated NostalgiaFeatures.tsx — replaced useStoredState with useDBState, 6 call sites (guestbook, mixtapes, tamagotchi, floppy, stickers, chat), visit counter uses incrementVisitCount
+- Migrated VoiceMessages.tsx — stores audio as raw Blobs (not base64), uses URL.createObjectURL with proper cleanup
+- Migrated MemoryVault.tsx — uses getMemoryVaultTitles/setMemoryVaultTitles
+- Migrated EraSkins.tsx — uses getEraSkinId/setEraSkinId/clearEraSkin
+- Migrated ThrowbackLibrary.tsx — uses getLibraryFavorites/setLibraryFavorites
+- Migrated VintageCamera.tsx — now persists photos to IDB as Blobs, loads on mount, object URL lifecycle management
+- Migrated MemoryReelFeed.tsx — reactions use getReelReactions/setReelReaction
+- Migrated generateFeed.ts — all data loading from IDB, all functions now async
+- Created /src/components/ui/LocalDataBadge.tsx — wax-seal trust badge for footer
+- Created /src/components/settings/ManageDataScreen.tsx — export JSON/import JSON/clear all/storage estimate UI
+- Wired migration runner in app root useEffect, added trust badge + "Manage Your Data" link in footer
+- Renamed /lib/db/ to /lib/idb-store/ to avoid conflict with existing Prisma db.ts
+- Build verified: 0 errors, 0 localStorage references in any component
+
+Stage Summary:
+- 15 IndexedDB object stores in 'rewind-local-db'
+- Zero localStorage calls remain in any component or feature code
+- Camera photos stored as Blobs (not base64) — major storage savings
+- Voicemails stored as Blobs — eliminates the biggest localStorage risk
+- One-time migration preserves all existing user data
+- "Manage Your Data" screen: storage usage display, JSON export/import, full clear with confirmation
+- Privacy trust badge in footer: "Your memories stay on this device. Nothing is uploaded."
+- No server calls anywhere — purely local-first

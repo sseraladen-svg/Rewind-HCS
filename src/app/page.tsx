@@ -16,6 +16,9 @@ import OldJournal from '@/components/OldJournal';
 import NostalgiaFeatures from '@/components/NostalgiaFeatures';
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
 import { MemoryReelFeed } from '@/components/memory-reel';
+import LocalDataBadge from '@/components/ui/LocalDataBadge';
+import ManageDataScreen from '@/components/settings/ManageDataScreen';
+import { runMigration } from '@/lib/idb-store/migrate';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -1239,10 +1242,18 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
       </main>
 
       <footer className="sk-leather px-4 py-3 mt-auto">
-        <div className="max-w-5xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto flex flex-col items-center gap-2">
           <p className="old-typewriter text-[10px] text-[#d4a574] font-medium" style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}>
             Rewind — because you&apos;re human, not a machine. Take it easy.
           </p>
+          <LocalDataBadge />
+          <button
+            onClick={() => setShowSettings(true)}
+            className="old-typewriter text-[9px] text-[#a89878] hover:text-[#d4a574]
+              transition-colors cursor-pointer underline underline-offset-2 decoration-dotted"
+          >
+            Manage Your Data
+          </button>
         </div>
       </footer>
 
@@ -1308,6 +1319,11 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         {showReel && <MemoryReelFeed birthYear={birthYear} onClose={() => setShowReel(false)} />}
       </AnimatePresence>
 
+      {/* ═══ MANAGE DATA OVERLAY ═══ */}
+      <AnimatePresence>
+        {showSettings && <ManageDataScreen onClose={() => setShowSettings(false)} />}
+      </AnimatePresence>
+
       {/* Old-style cassette transition loader (global) */}
       <OldTransitionLoader />
     </div>
@@ -1320,6 +1336,14 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
 export default function Home() {
   const [birthYear, setBirthYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Run one-time localStorage → IndexedDB migration on first load
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      runMigration().catch(err => console.warn('[rewind] Migration error:', err));
+    }
+  }, []);
 
   const handleLoadingDone = useCallback(() => {
     setLoading(false);

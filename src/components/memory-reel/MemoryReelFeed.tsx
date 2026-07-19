@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowUp, ArrowDown } from 'lucide-react';
 import { generateFeed, saveThenVsNowReflection, saveMoodTag } from '@/lib/memory-reel/generateFeed';
 import type { FeedCard, CardReaction } from '@/lib/memory-reel/types';
+import { getReelReactions, setReelReaction } from '@/lib/idb-store';
 import MemoryCard from './cards/MemoryCard';
 import ThenVsNowCard from './cards/ThenVsNowCard';
 import GrowthSignalCard from './cards/GrowthSignalCard';
@@ -16,17 +17,11 @@ import ProgressIndicator from './cards/ProgressIndicator';
 
 /* ───── Reaction persistence ───── */
 
-function loadReactions(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem('rewind_reel_reactions');
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
+function loadReactions() {
+  return getReelReactions();
 }
 function persistReaction(cardId: string, reaction: string) {
-  const map = loadReactions();
-  if (reaction) map[cardId] = reaction;
-  else delete map[cardId];
-  try { localStorage.setItem('rewind_reel_reactions', JSON.stringify(map)); } catch {}
+  setReelReaction(cardId, reaction).catch(() => {});
 }
 
 /* ───── Card key helper ───── */
@@ -46,13 +41,21 @@ export default function MemoryReelFeed({
   birthYear: number;
   onClose: () => void;
 }) {
-  const [feed] = useState<FeedCard[]>(() => generateFeed({ birthYear }));
+  const [feed, setFeed] = useState<FeedCard[]>([]);
+  useEffect(() => {
+    generateFeed({ birthYear }).then(setFeed).catch(() => setFeed([{ type: 'end' as const }]));
+  }, [birthYear]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [reactions, setReactions] = useState<Record<string, string>>(loadReactions);
+  const [reactions, setReactions] = useState<Record<string, string>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
   const dragDelta = useRef(0);
+
+  // Load reactions from IDB
+  useEffect(() => {
+    getReelReactions().then(setReactions).catch(() => {});
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {

@@ -13,6 +13,7 @@ import {
   getGateFlickerEV,
   type PipelineConfig,
 } from '@/lib/image-pipeline';
+import { getAllCameraPhotos, addCameraPhoto, deleteCameraPhoto } from '@/lib/idb-store';
 
 /* ═══════ TYPES ═══════ */
 interface CapturedItem {
@@ -61,6 +62,35 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
   const [processing, setProcessing] = useState(false);
 
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dbObjectUrlsRef = useRef<string[]>([]);
+
+  /* ── Load persisted photos from IndexedDB on mount ── */
+  useEffect(() => {
+    let cancelled = false;
+    getAllCameraPhotos().then((photos) => {
+      if (cancelled) return;
+      const items: CapturedItem[] = photos.map((photo) => {
+        const url = URL.createObjectURL(photo.image_blob);
+        dbObjectUrlsRef.current.push(url);
+        return {
+          id: photo.id,
+          type: 'photo' as const,
+          url,
+          timestamp: photo.created_at,
+          blob: photo.image_blob,
+        };
+      });
+      if (items.length > 0) {
+        setGallery((prev) => {
+          // Avoid duplicates (e.g., if React StrictMode double-fires)
+          const existingIds = new Set(prev.map((i) => i.id));
+          const newItems = items.filter((i) => !existingIds.has(i.id));
+          return [...newItems, ...prev];
+        });
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   /* ── Get current preset config ── */
   const currentConfig: PipelineConfig = PIPELINE_PRESETS[filter] || PIPELINE_PRESETS['none'];
@@ -242,13 +272,15 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
     canvas.toBlob((blob) => {
       if (!blob) { setProcessing(false); return; }
       const url = URL.createObjectURL(blob);
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setGallery(prev => [{
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        id,
         type: 'photo',
         url,
         timestamp: Date.now(),
         blob,
       }, ...prev]);
+      addCameraPhoto({ id, image_blob: blob, filter_used: filter, created_at: Date.now() });
       setProcessing(false);
     }, 'image/jpeg', 0.92);
   }, [filter, facingMode]);
@@ -307,7 +339,14 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
   const deleteItem = useCallback((id: string) => {
     setGallery(prev => {
       const item = prev.find(i => i.id === id);
-      if (item) URL.revokeObjectURL(item.url);
+      if (item) {
+        URL.revokeObjectURL(item.url);
+        // Also remove from dbObjectUrlsRef tracking
+        dbObjectUrlsRef.current = dbObjectUrlsRef.current.filter(u => u !== item.url);
+      }
+      if (item?.type === 'photo') {
+        deleteCameraPhoto(id);
+      }
       return prev.filter(i => i.id !== id);
     });
   }, []);
@@ -327,6 +366,8 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
     return () => {
       stopCamera();
       gallery.forEach(item => URL.revokeObjectURL(item.url));
+      dbObjectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+      dbObjectUrlsRef.current = [];
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

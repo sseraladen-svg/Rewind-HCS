@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════
    Memory Reel — Feed Generation
    ═══════════════════════════════════════════════════
-   Reads from existing localStorage stores and the
+   Reads from IndexedDB stores and the
    nostalgia-data JSON. Returns a deterministic,
    ordered FeedCard[].
    ═══════════════════════════════════════════════════ */
@@ -12,6 +12,14 @@ import {
   type DecadeData,
   type NostalgiaItem,
 } from '@/lib/nostalgia-data';
+import {
+  getAllJournalEntries,
+  getAllMixtapes,
+  getAllStickers,
+  getAllReelReflections,
+  upsertReelReflection,
+  updateJournalEntry,
+} from '@/lib/idb-store';
 import type {
   FeedCard,
   MemoryCardData,
@@ -22,27 +30,6 @@ import type {
 } from './types';
 
 /* ───── Helpers ───── */
-
-function isClient(): boolean {
-  return typeof window !== 'undefined';
-}
-
-function loadJSON<T>(key: string, fallback: T): T {
-  if (!isClient()) return fallback;
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveJSON(key: string, data: unknown) {
-  if (!isClient()) return;
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch { /* quota or security error */ }
-}
 
 function timeAgo(isoDate: string): string {
   const now = Date.now();
@@ -107,37 +94,29 @@ interface ThenVsNowReflection {
 
 /* ───── Data Loaders ───── */
 
-function loadJournalEntries(): JournalEntry[] {
-  return loadJSON<JournalEntry[]>('rewind_journal_entries', []);
+async function loadJournalEntries(): Promise<JournalEntry[]> {
+  return getAllJournalEntries();
 }
 
-function loadMixtapes(): Mixtape[] {
-  return loadJSON<Mixtape[]>('rewind_mixtapes', []);
+async function loadMixtapes(): Promise<Mixtape[]> {
+  return getAllMixtapes();
 }
 
-function loadStickers(): PlacedSticker[] {
-  return loadJSON<PlacedSticker[]>('rewind_sticker_wall', []);
+async function loadStickers(): Promise<PlacedSticker[]> {
+  return getAllStickers();
 }
 
-function loadReflections(): ThenVsNowReflection[] {
-  return loadJSON<ThenVsNowReflection[]>('rewind_reel_reflections', []);
-}
-
-function saveReflection(r: ThenVsNowReflection) {
-  const existing = loadReflections();
-  const idx = existing.findIndex(e => e.sourceId === r.sourceId);
-  if (idx >= 0) existing[idx] = r;
-  else existing.push(r);
-  saveJSON('rewind_reel_reflections', existing);
+async function loadReflections(): Promise<ThenVsNowReflection[]> {
+  return getAllReelReflections();
 }
 
 /* ───── Card Builders ───── */
 
-function buildMemoryCards(): MemoryCardData[] {
+async function buildMemoryCards(): Promise<MemoryCardData[]> {
   const cards: MemoryCardData[] = [];
 
   // Journal entries
-  const journals = loadJournalEntries()
+  const journals = (await loadJournalEntries())
     .sort((a, b) => b.createdAt - a.createdAt);
 
   for (const j of journals) {
@@ -155,7 +134,7 @@ function buildMemoryCards(): MemoryCardData[] {
   }
 
   // Mixtapes — each track becomes a card
-  const mixtapes = loadMixtapes()
+  const mixtapes = (await loadMixtapes())
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   for (const m of mixtapes) {
@@ -175,7 +154,7 @@ function buildMemoryCards(): MemoryCardData[] {
   }
 
   // Stickers — group into clusters of 3–5 for a card
-  const stickers = loadStickers();
+  const stickers = await loadStickers();
   if (stickers.length > 0) {
     // Create 1–2 sticker cards, each showing a cluster
     const clusterSize = Math.min(5, Math.max(3, Math.ceil(stickers.length / 2)));
@@ -195,16 +174,16 @@ function buildMemoryCards(): MemoryCardData[] {
     }
   }
 
-  // Camera photos — NOT in localStorage (session only), skip for now
+  // Camera photos — NOT in IndexedDB (session only), skip for now
   // If later persisted, add here.
 
   return cards;
 }
 
-function buildThenVsNowCards(): ThenVsNowCardData[] {
-  const journals = loadJournalEntries()
+async function buildThenVsNowCards(): Promise<ThenVsNowCardData[]> {
+  const journals = (await loadJournalEntries())
     .sort((a, b) => b.createdAt - a.createdAt);
-  const reflections = loadReflections();
+  const reflections = await loadReflections();
 
   // Take every 4th journal entry (deterministic spacing)
   const cards: ThenVsNowCardData[] = [];
@@ -227,9 +206,9 @@ function buildThenVsNowCards(): ThenVsNowCardData[] {
   return cards;
 }
 
-function buildGrowthSignals(birthYear: number): GrowthSignalCardData[] {
+async function buildGrowthSignals(birthYear: number): Promise<GrowthSignalCardData[]> {
   const signals: GrowthSignalCardData[] = [];
-  const journals = loadJournalEntries()
+  const journals = (await loadJournalEntries())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // --- Mood streaks: 3+ consecutive positive moods ---
@@ -428,13 +407,13 @@ export interface UserData {
  * Generates a deterministic, ordered feed of cards.
  * Ratio: 3 personal cards (memory/then-vs-now/growth) : 1 discovery card
  */
-export function generateFeed(userData: UserData): FeedCard[] {
+export async function generateFeed(userData: UserData): Promise<FeedCard[]> {
   const { birthYear } = userData;
 
   // Build pools
-  const memories = buildMemoryCards();
-  const thenVsNows = buildThenVsNowCards();
-  const growths = buildGrowthSignals(birthYear);
+  const memories = await buildMemoryCards();
+  const thenVsNows = await buildThenVsNowCards();
+  const growths = await buildGrowthSignals(birthYear);
   const discoveries = buildDiscoveryCards(birthYear);
 
   // Interleave personal cards: memory, then-vs-now, growth (skip empty pools)
@@ -494,21 +473,16 @@ export function generateFeed(userData: UserData): FeedCard[] {
 
 /* ───── Reflection persistence (called from card) ───── */
 
-export function saveThenVsNowReflection(
+export async function saveThenVsNowReflection(
   sourceId: string,
   reflection: string,
   reflectionMood: string,
 ) {
-  saveReflection({ sourceId, reflection, reflectionMood });
+  await upsertReelReflection({ id: crypto.randomUUID(), sourceId, reflection, reflectionMood });
 }
 
-export function saveMoodTag(sourceId: string, sourceType: string, mood: string) {
+export async function saveMoodTag(sourceId: string, sourceType: string, mood: string) {
   if (sourceType === 'journal') {
-    const entries = loadJournalEntries();
-    const idx = entries.findIndex(e => e.id === sourceId);
-    if (idx >= 0) {
-      entries[idx].mood = mood;
-      saveJSON('rewind_journal_entries', entries);
-    }
+    await updateJournalEntry(sourceId, { mood });
   }
 }

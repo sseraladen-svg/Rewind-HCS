@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { nostalgiaData, type NostalgiaItem } from '@/lib/nostalgia-data';
+import { getLibraryFavorites, setLibraryFavorites } from '@/lib/idb-store';
 import { Input } from '@/components/ui/input';
 import { Heart, Search, Shuffle, ArrowDownAZ, ArrowUpZA, ArrowDown01, ArrowUp01, Library, Star } from 'lucide-react';
 
@@ -51,8 +52,6 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'random', label: 'Shuffle' },
 ];
 
-const FAVORITES_KEY = 'rewind_library_favorites';
-
 // ═══════════════════════════════════════════════════════════════
 // Helpers
 // ═══════════════════════════════════════════════════════════════
@@ -89,24 +88,15 @@ export default function ThrowbackLibrary() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [shuffleSeed, setShuffleSeed] = useState(0);
 
-  // Load favorites from localStorage
+  // Load favorites from IndexedDB
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(FAVORITES_KEY);
-      if (stored) setFavorites(JSON.parse(stored));
-    } catch {
-      // ignore
-    }
+    getLibraryFavorites().then(setFavorites).catch(() => {});
   }, []);
 
-  // Persist favorites to localStorage
+  // Persist favorites to IndexedDB
   const saveFavorites = useCallback((next: string[]) => {
     setFavorites(next);
-    try {
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
-    }
+    setLibraryFavorites(next).catch(() => {});
   }, []);
 
   const toggleFavorite = useCallback(

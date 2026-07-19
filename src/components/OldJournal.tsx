@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Feather, Plus, Trash2, ChevronLeft, ChevronRight,
@@ -39,21 +39,12 @@ const WEATHERS = [
   { id: 'snowy', emoji: '❄️', label: 'Snowy' },
 ];
 
-const STORAGE_KEY = 'rewind_journal_entries';
+import {
+  getAllJournalEntries, addJournalEntry, putJournalEntry, deleteJournalEntry,
+} from '@/lib/idb-store';
 
-function loadEntries(): JournalEntry[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveEntries(entries: JournalEntry[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+function loadEntriesFromDB() {
+  return getAllJournalEntries();
 }
 
 function formatDate(iso: string): string {
@@ -600,27 +591,32 @@ export default function OldJournal() {
   const [editEntry, setEditEntry] = useState<JournalEntry | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Load entries from localStorage
+  // Load entries from IndexedDB
+  const loadEntries = useMemo(() => loadEntriesFromDB, []);
   useEffect(() => {
-    setEntries(loadEntries());
-  }, []);
+    let cancelled = false;
+    loadEntries().then(data => {
+      if (!cancelled) setEntries(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [loadEntries]);
 
   const handleSave = useCallback((entry: Omit<JournalEntry, 'id' | 'createdAt'>) => {
-    setEntries(prev => {
-      let updated: JournalEntry[];
-      if (editEntry) {
-        updated = prev.map(e => e.id === editEntry.id ? { ...e, ...entry } : e);
-      } else {
-        const newEntry: JournalEntry = {
-          ...entry,
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          createdAt: Date.now(),
-        };
-        updated = [newEntry, ...prev];
-      }
-      saveEntries(updated);
-      return updated;
-    });
+    if (editEntry) {
+      // Update existing
+      const updated = { ...editEntry, ...entry };
+      setEntries(prev => prev.map(e => e.id === editEntry.id ? updated : e));
+      putJournalEntry(updated.id, entry).catch(() => {});
+    } else {
+      // Add new
+      const newEntry: JournalEntry = {
+        ...entry,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        createdAt: Date.now(),
+      };
+      setEntries(prev => [newEntry, ...prev]);
+      addJournalEntry(newEntry).catch(() => {});
+    }
     setEditEntry(undefined);
     setView('read');
   }, [editEntry]);
@@ -634,7 +630,7 @@ export default function OldJournal() {
     }
     setEntries(prev => {
       const updated = prev.filter(e => e.id !== selectedId);
-      saveEntries(updated);
+      deleteJournalEntry(selectedId).catch(() => {});
       return updated;
     });
     setSelectedId(null);

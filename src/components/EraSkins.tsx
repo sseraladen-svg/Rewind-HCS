@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { RotateCcw } from 'lucide-react';
+import { getEraSkinId, setEraSkinId, clearEraSkin } from '@/lib/idb-store';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -303,15 +304,13 @@ const ERA_SKINS: EraSkin[] = [
 // Helpers
 // ═══════════════════════════════════════════════════════════════
 
-const STORAGE_KEY = 'rewind_era_skin';
-
 function applySkin(skin: EraSkin) {
   const root = document.documentElement;
   Object.entries(skin.cssVars).forEach(([key, value]) => {
     root.style.setProperty(key, value);
   });
   root.setAttribute('data-era-skin', skin.id);
-  localStorage.setItem(STORAGE_KEY, skin.id);
+  setEraSkinId(skin.id).catch(() => {});
 }
 
 function applyDefault() {
@@ -320,12 +319,12 @@ function applyDefault() {
     root.style.setProperty(key, value);
   });
   root.removeAttribute('data-era-skin');
-  localStorage.removeItem(STORAGE_KEY);
+  clearEraSkin().catch(() => {});
 }
 
-function getStoredSkinId(): string | null {
+async function getStoredSkinId(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(STORAGE_KEY);
+  return getEraSkinId();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -337,14 +336,16 @@ export default function EraSkins() {
 
   // Load stored skin on mount
   useEffect(() => {
-    const stored = getStoredSkinId();
-    if (stored) {
-      const skin = ERA_SKINS.find((s) => s.id === stored);
-      if (skin) {
-        applySkin(skin);
-        setActiveSkinId(stored);
+    (async () => {
+      const stored = await getStoredSkinId();
+      if (stored) {
+        const skin = ERA_SKINS.find((s) => s.id === stored);
+        if (skin) {
+          applySkin(skin);
+          setActiveSkinId(stored);
+        }
       }
-    }
+    })();
   }, []);
 
   const handleApply = useCallback((skin: EraSkin) => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getAllVoicemails, addVoicemail, deleteVoicemail } from '@/lib/idb-store';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -9,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface VoicemailMessage {
   id: string;
-  dataUrl: string;
+  audioBlob: Blob;
   duration: number;
   timestamp: string;
 }
@@ -87,40 +88,27 @@ export default function VoiceMessages() {
 
   const MAX_RECORDING_SECONDS = 60;
   const MAX_SAVED_MESSAGES = 5;
-  const STORAGE_KEY = 'rewind_voicemails';
+  const objectUrlRef = useRef<string | null>(null);
 
-  // ── Load messages from localStorage ──
+  // ── Load messages from IndexedDB ──
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: VoicemailMessage[] = JSON.parse(raw);
-        setMessages(parsed);
-      }
-    } catch {
-      // corrupted data, start fresh
-    }
+    getAllVoicemails()
+      .then((records) => {
+        // records come sorted by timestamp ascending; reverse for newest-first
+        setMessages(
+          records.reverse().map((r) => ({
+            id: r.id,
+            audioBlob: r.audio_blob,
+            duration: r.duration,
+            timestamp: r.timestamp,
+          }))
+        );
+      })
+      .catch(() => {
+        // IDB unavailable, start fresh
+      });
   }, []);
-
-  // ── Persist messages ──
-  const persistMessages = useCallback(
-    (msgs: VoicemailMessage[]) => {
-      if (typeof window === 'undefined') return;
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
-      } catch {
-        // quota exceeded – remove oldest and retry
-        const trimmed = msgs.slice(0, MAX_SAVED_MESSAGES - 1);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-        } catch {
-          // give up silently
-        }
-      }
-    },
-    []
-  );
 
   // ── Check browser support ──
   useEffect(() => {
@@ -142,6 +130,10 @@ export default function VoiceMessages() {
         audioElRef.current = null;
       }
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
     };
   }, []);
 
@@ -161,23 +153,25 @@ export default function VoiceMessages() {
 
       recorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const dataUrl = reader.result as string;
-          const newMsg: VoicemailMessage = {
-            id: generateId(),
-            dataUrl,
-            duration: recordingTime || 1,
-            timestamp: new Date().toISOString(),
-          };
-          setMessages((prev) => {
-            const updated = [newMsg, ...prev];
-            const trimmed = updated.slice(0, MAX_SAVED_MESSAGES);
-            persistMessages(trimmed);
-            return trimmed;
-          });
-        };
-        reader.readAsDataURL(blob);
+        const id = generateId();
+        const duration = recordingTime || 1;
+        const timestamp = new Date().toISOString();
+
+        addVoicemail({ id, audio_blob: blob, duration, timestamp })
+          .then(() => {
+            const newMsg: VoicemailMessage = { id, audioBlob: blob, duration, timestamp };
+            setMessages((prev) => {
+              const updated = [newMsg, ...prev];
+              if (updated.length > MAX_SAVED_MESSAGES) {
+                // Delete overflow messages (oldest at the end)
+                const overflow = updated.slice(MAX_SAVED_MESSAGES);
+                overflow.forEach((m) => deleteVoicemail(m.id).catch(() => {}));
+                return updated.slice(0, MAX_SAVED_MESSAGES);
+              }
+              return updated;
+            });
+          })
+          .catch(() => {});
 
         // Clean up stream
         if (streamRef.current) {
@@ -211,7 +205,7 @@ export default function VoiceMessages() {
         setErrorMsg('Audio recording not supported in this browser... try Chrome or Firefox!');
       }
     }
-  }, [persistMessages, recordingTime]);
+  }, [recordingTime]);
 
   // ── Stop Recording ──
   const stopRecording = useCallback(() => {
@@ -246,14 +240,19 @@ export default function VoiceMessages() {
       setPlayProgress(0);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     } else {
-      // stop any current playback
+      // stop any current playback and revoke previous object URL
       if (audioElRef.current) {
         audioElRef.current.pause();
         audioElRef.current = null;
       }
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
 
-      const audio = new Audio(msg.dataUrl);
+      const url = URL.createObjectURL(msg.audioBlob);
+      objectUrlRef.current = url;
+      const audio = new Audio(url);
       audioElRef.current = audio;
 
       const updateProgress = () => {
@@ -274,17 +273,29 @@ export default function VoiceMessages() {
         setPlayProgress(0);
         setStatus('ready');
         if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current);
+          objectUrlRef.current = null;
+        }
       };
 
       audio.onerror = () => {
         setPlayingId(null);
         setPlayProgress(0);
         setStatus('ready');
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current);
+          objectUrlRef.current = null;
+        }
       };
 
       audio.play().catch(() => {
         setPlayingId(null);
         setStatus('ready');
+        if (objectUrlRef.current) {
+          URL.revokeObjectURL(objectUrlRef.current);
+          objectUrlRef.current = null;
+        }
       });
     }
   }, [playingId]);
@@ -298,13 +309,10 @@ export default function VoiceMessages() {
         setPlayingId(null);
         setStatus('ready');
       }
-      setMessages((prev) => {
-        const updated = prev.filter((m) => m.id !== id);
-        persistMessages(updated);
-        return updated;
-      });
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      deleteVoicemail(id).catch(() => {});
     },
-    [playingId, persistMessages]
+    [playingId]
   );
 
   // ── Render ──

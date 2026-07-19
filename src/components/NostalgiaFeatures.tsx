@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useSyncExternalStore, useEffect, useRef } from 'react';
+import { useState, useCallback, useSyncExternalStore, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen,
@@ -30,6 +30,16 @@ import EraPods from '@/components/EraPods';
 import MemoryVault from '@/components/MemoryVault';
 import EraSkins from '@/components/EraSkins';
 import VoiceMessages from '@/components/VoiceMessages';
+import {
+  getAllGuestbookEntries, putAllGuestbookEntries,
+  getAllMixtapes, clearMixtapes, addMixtape,
+  getTamagotchiState, saveTamagotchiState,
+  getFloppySavesCount, addFloppySave,
+  getAllStickers, putAllStickers,
+  getAllChatMessages, putAllChatMessages,
+  incrementVisitCount, getVisitCount,
+} from '@/lib/idb-store/index';
+import type { TamagotchiStateRecord } from '@/lib/idb-store/types';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -129,80 +139,44 @@ function useIsClient(): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// useStoredState — localStorage-backed state via useSyncExternalStore
+// useDBState — IndexedDB-backed state
 // ═══════════════════════════════════════════════════════════════
 
-function useStoredState<T>(
-  key: string,
+function useDBState<T>(
+  loader: () => Promise<T>,
+  saver: (val: T) => Promise<void>,
   initial: T,
 ): [T, (updater: T | ((prev: T) => T)) => void] {
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      const handler = (e: StorageEvent) => {
-        if (e.key === key || e.key === null) onStoreChange();
-      };
-      window.addEventListener('storage', handler);
-      return () => window.removeEventListener('storage', handler);
-    },
-    [key],
-  );
+  const [value, setValue] = useState<T>(initial);
 
-  const getSnapshot = useCallback(() => {
-    return localStorage.getItem(key);
-  }, [key]);
+  useEffect(() => {
+    loader().then((loaded) => setValue(loaded)).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const getServerSnapshot = useCallback(() => null, []);
-
-  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-
-  const value = useMemo<T>(() => {
-    if (raw === null) return initial;
-    try {
-      return JSON.parse(raw) as T;
-    } catch {
-      return initial;
-    }
-  }, [raw, initial]);
-
-  const setValue = useCallback(
+  const set = useCallback(
     (updater: T | ((prev: T) => T)) => {
-      try {
-        const currentRaw = localStorage.getItem(key);
-        const current: T =
-          currentRaw !== null ? (JSON.parse(currentRaw) as T) : initial;
-        const next =
-          typeof updater === 'function'
-            ? (updater as (prev: T) => T)(current)
-            : updater;
-        localStorage.setItem(key, JSON.stringify(next));
-        window.dispatchEvent(new StorageEvent('storage', { key }));
-      } catch {
-        /* ignore storage errors */
-      }
+      setValue((prev) => {
+        const next = typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater;
+        saver(next).catch(() => {});
+        return next;
+      });
     },
-    [key, initial],
+    [saver], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  return [value, setValue];
+  return [value, set];
 }
 
 // ═══════════════════════════════════════════════════════════════
 // useVisitCounter — auto-incrementing visit counter
 // ═══════════════════════════════════════════════════════════════
 
-// Only called when isClient is true, so localStorage is available.
-// The useState lazy initializer runs exactly once on first mount.
 function useVisitCounter(): number {
-  const [count] = useState(() => {
-    const stored = localStorage.getItem('rewind_visit_count');
-    let c = 1;
-    if (stored) {
-      const parsed = parseInt(stored, 10);
-      if (!isNaN(parsed)) c = parsed + 1;
-    }
-    localStorage.setItem('rewind_visit_count', String(c));
-    return c;
-  });
+  const [count, setCount] = useState(1); // default to 1 during load
+  useEffect(() => {
+    getVisitCount().then(c => setCount(Math.max(c, 1)));
+    incrementVisitCount();
+  }, []);
   return count;
 }
 
@@ -243,7 +217,11 @@ function SectionHeader({
 // ═══════════════════════════════════════════════════════════════
 
 function GuestbookSection({ visitorCount }: { visitorCount: number }) {
-  const [entries, setEntries] = useStoredState<GuestbookEntry[]>('rewind_guestbook', INITIAL_GUESTBOOK);
+  const [entries, setEntries] = useDBState<GuestbookEntry[]>(
+    () => getAllGuestbookEntries() as Promise<GuestbookEntry[]>,
+    (val) => putAllGuestbookEntries(val as any).catch(() => {}),
+    INITIAL_GUESTBOOK,
+  );
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
 
@@ -392,7 +370,11 @@ function GuestbookSection({ visitorCount }: { visitorCount: number }) {
 // ═══════════════════════════════════════════════════════════════
 
 function MixtapeSection() {
-  const [savedMixtapes, setSavedMixtapes] = useStoredState<Mixtape[]>('rewind_mixtapes', INITIAL_MIXTAPES);
+  const [savedMixtapes, setSavedMixtapes] = useDBState<Mixtape[]>(
+    () => getAllMixtapes() as Promise<Mixtape[]>,
+    (val) => clearMixtapes().then(() => Promise.all(val.map(m => addMixtape(m as any)))).then(() => {}).catch(() => {}),
+    INITIAL_MIXTAPES,
+  );
   const [to, setTo] = useState('');
   const [from, setFrom] = useState('');
   const [side, setSide] = useState<'A' | 'B'>('A');
@@ -1017,7 +999,18 @@ function VisitCounterSection({ count }: { count: number }) {
 interface PetState { hunger: number; happiness: number; energy: number; }
 
 function TamagotchiSection() {
-  const [pet, setPet] = useStoredState<PetState>('rewind_tamagotchi', { hunger: 80, happiness: 80, energy: 80 });
+  const [pet, setPet] = useDBState<PetState>(
+    async () => {
+      const r = await getTamagotchiState();
+      if (!r) return { hunger: 80, happiness: 80, energy: 80 };
+      return { hunger: r.hunger, happiness: r.happiness, energy: r.energy };
+    },
+    (val: PetState) => saveTamagotchiState({
+      id: 'pet-1', hunger: val.hunger, happiness: val.happiness, energy: val.energy,
+      last_updated: Date.now(), is_alive: !(val.hunger === 0 && val.happiness === 0 && val.energy === 0),
+    }),
+    { hunger: 80, happiness: 80, energy: 80 },
+  );
   const [ejecting, setEjecting] = useState(false);
 
   const avg = (pet.hunger + pet.happiness + pet.energy) / 3;
@@ -1110,7 +1103,11 @@ const FLOPPY_MESSAGES = [
 ];
 
 function FloppyDiskSection() {
-  const [count, setCount] = useStoredState<number>('rewind_floppy_saves', 0);
+  const [count, setCount] = useDBState<number>(
+    getFloppySavesCount,
+    () => addFloppySave('Save').catch(() => {}),
+    0,
+  );
   const [ejecting, setEjecting] = useState(false);
   const [statusText, setStatusText] = useState('');
 
@@ -1264,7 +1261,11 @@ const STICKER_EMOJIS = [
 interface PlacedSticker { id: string; emoji: string; x: number; y: number; rotation: number; }
 
 function StickerWallSection() {
-  const [stickers, setStickers] = useStoredState<PlacedSticker[]>('rewind_sticker_wall', []);
+  const [stickers, setStickers] = useDBState<PlacedSticker[]>(
+    () => getAllStickers() as Promise<PlacedSticker[]>,
+    (val) => putAllStickers(val as any).catch(() => {}),
+    [],
+  );
   const [pickedEmoji, setPickedEmoji] = useState<string | null>(null);
   const wallRef = useRef<HTMLDivElement>(null);
 
@@ -1376,7 +1377,11 @@ const BUDDY_NAMES = [
 ];
 
 function RetroChatSection() {
-  const [messages, setMessages] = useStoredState<ChatMessage[]>('rewind_chat_messages', []);
+  const [messages, setMessages] = useDBState<ChatMessage[]>(
+    () => getAllChatMessages() as Promise<ChatMessage[]>,
+    (val) => putAllChatMessages(val as any).catch(() => {}),
+    [],
+  );
   const [inputText, setInputText] = useState('');
   const [buddyName] = useState(() => BUDDY_NAMES[Math.floor(Math.random() * BUDDY_NAMES.length)]);
   const [statusText, setStatusText] = useState('Online');
