@@ -1,0 +1,1 @@
+export { default as MemoryReelFeed } from './MemoryReelFeed';

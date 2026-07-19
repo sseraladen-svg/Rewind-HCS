@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
   ChevronRight, Sparkles, ArrowLeft, RefreshCw,
-  RotateCcw, Play, CheckCircle2, XCircle, Camera, Smile, Timer,
+  RotateCcw, Play, CheckCircle2, XCircle, Camera, Smile, Timer, Clapperboard,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -15,6 +15,7 @@ import VintageCamera from '@/components/VintageCamera';
 import OldJournal from '@/components/OldJournal';
 import NostalgiaFeatures from '@/components/NostalgiaFeatures';
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
+import { MemoryReelFeed } from '@/components/memory-reel';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -1021,6 +1022,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const [activeTab, setActiveTab] = useState('memories');
   const [activeCategory, setActiveCategory] = useState('all');
   const [showCamera, setShowCamera] = useState(false);
+  const [showReel, setShowReel] = useState(false);
 
   const categoryMap: Record<string, { label: string; icon: React.ReactNode; items: NostalgiaItem[] }> = {
     cartoons: { label: 'Cartoons', icon: <Film className="h-4 w-4" />, items: data.cartoons },
@@ -1037,6 +1039,15 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   // Trigger old-style cassette loader when switching tabs
   const handleTabChange = useCallback((tabId: string) => {
     if (tabId === activeTab) return;
+    // Reel opens as a fullscreen overlay instead of tab switch
+    if (tabId === 'reel') {
+      triggerOldLoader('Threading the reel...');
+      const timer = setTimeout(() => {
+        setShowReel(true);
+        hideOldLoader();
+      }, 750);
+      return;
+    }
     triggerOldLoader();
     const timer = setTimeout(() => {
       setActiveTab(tabId);
@@ -1048,6 +1059,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   }, [activeTab]);
 
   const tabs = [
+    { id: 'reel', label: 'Reel', icon: <Clapperboard className="h-4 w-4" /> },
     { id: 'memories', label: 'Memories', icon: <Sparkles className="h-4 w-4" /> },
     { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
     { id: 'funstuff', label: 'Fun Stuff', icon: <Smile className="h-4 w-4" /> },
@@ -1289,6 +1301,11 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
       {/* ═══ VINTAGE CAMERA OVERLAY ═══ */}
       <AnimatePresence>
         {showCamera && <VintageCamera onClose={() => setShowCamera(false)} />}
+      </AnimatePresence>
+
+      {/* ═══ MEMORY REEL OVERLAY ═══ */}
+      <AnimatePresence>
+        {showReel && <MemoryReelFeed birthYear={birthYear} onClose={() => setShowReel(false)} />}
       </AnimatePresence>
 
       {/* Old-style cassette transition loader (global) */}
