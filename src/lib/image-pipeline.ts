@@ -662,7 +662,7 @@ export function processFrame(
       config.chromaticAberration.redShift,
       config.chromaticAberration.blueShift
     );
-    imageData = new ImageData(data, w, h);
+    imageData = new ImageData(data as unknown as Uint8ClampedArray<ArrayBuffer>, w, h);
   }
 
   // ── Stage 2: Tone Curve Distortion (Matte Effect) ──

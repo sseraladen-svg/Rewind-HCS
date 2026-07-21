@@ -176,12 +176,12 @@ export default function MemoryReelFeed({
     center: {
       y: 0,
       opacity: 1,
-      transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] },
+      transition: { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
     },
     exit: (d: number) => ({
       y: d >= 0 ? '-100%' : '100%',
       opacity: 0,
-      transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] },
+      transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number] },
     }),
   };
 

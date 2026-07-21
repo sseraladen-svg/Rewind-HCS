@@ -606,7 +606,7 @@ export default function OldJournal() {
       // Update existing
       const updated = { ...editEntry, ...entry };
       setEntries(prev => prev.map(e => e.id === editEntry.id ? updated : e));
-      putJournalEntry(updated.id, entry).catch(() => {});
+      putJournalEntry(updated).catch(() => {});
     } else {
       // Add new
       const newEntry: JournalEntry = {

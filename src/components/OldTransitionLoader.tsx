@@ -269,7 +269,7 @@ export function TypewriterText({ text, speed = 30, delay = 0, className = '', as
   speed?: number;
   delay?: number;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
 }) {
   const { displayed, done } = useTypewriter(text, speed, delay);
   const Component = Tag as React.ElementType;

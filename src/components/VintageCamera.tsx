@@ -214,7 +214,9 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
         }
 
         // Copy to visible preview canvas
-        previewCtx.drawImage(offscreenRef.current, 0, 0);
+        if (offscreenRef.current) {
+          previewCtx.drawImage(offscreenRef.current, 0, 0);
+        }
       }
 
       rafRef.current = requestAnimationFrame(renderLoop);

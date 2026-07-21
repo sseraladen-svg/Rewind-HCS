@@ -32,14 +32,17 @@ function getAllItems(): FlatItem[] {
     for (const cat of CATEGORY_KEYS) {
       const arr = data[cat];
       if (Array.isArray(arr)) {
-        for (const item of arr) {
-          items.push({
-            title: item.title,
-            description: item.description,
-            emoji: item.emoji,
-            category: item.category,
-            decade: data.decade,
-          });
+        for (const raw of arr) {
+          if (typeof raw === 'object' && raw !== null && 'title' in raw) {
+            const item = raw as NostalgiaItem;
+            items.push({
+              title: item.title,
+              description: item.description,
+              emoji: item.emoji,
+              category: item.category,
+              decade: data.decade,
+            });
+          }
         }
       }
     }

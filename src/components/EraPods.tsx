@@ -95,7 +95,9 @@ function getTopFive(data: DecadeData) {
     const items = data[cat];
     if (Array.isArray(items)) {
       for (const item of items) {
-        pool.push({ title: item.title, emoji: item.emoji, category: item.category });
+        if (typeof item === 'object' && item !== null && 'title' in item) {
+          pool.push({ title: (item as NostalgiaItem).title, emoji: (item as NostalgiaItem).emoji, category: (item as NostalgiaItem).category });
+        }
       }
     }
   }

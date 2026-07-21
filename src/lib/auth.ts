@@ -58,7 +58,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        (token as Record<string, unknown>).birthYear = (user as Record<string, unknown>).birthYear;
+        (token as Record<string, unknown>).birthYear = (user as unknown as Record<string, unknown>).birthYear;
       }
       return token;
     },
