@@ -3,24 +3,22 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
-  ChevronRight, Sparkles, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
-  Camera, Smile, Clapperboard, Phone,
+  Clock, Gamepad2, BookOpen,
+  ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
+  Clapperboard, Phone,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
-  type DecadeData, type NostalgiaItem,
 } from '@/lib/nostalgia-data';
-import VintageCamera from '@/components/VintageCamera';
 import OldJournal from '@/components/OldJournal';
-import NostalgiaFeatures from '@/components/NostalgiaFeatures';
+
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
 import { MemoryReelFeed } from '@/components/memory-reel';
 import LocalDataBadge from '@/components/ui/LocalDataBadge';
 import AuthModal from '@/components/AuthModal';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
 import GamesHub from '@/components/GamesHub';
-import VaultTab from '@/components/VaultTab';
+
 import SettingsTab from '@/components/SettingsTab';
 import ContactsTab from '@/components/ContactsTab';
 import { runMigration } from '@/lib/idb-store/migrate';
@@ -741,7 +739,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           {activeTab === 'camera' && (
             <AnimatePresence mode="wait">
               <motion.div key="camera" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <VintageCamera onClose={() => setActiveTab('memories')} />
               </motion.div>
             </AnimatePresence>
           )}
