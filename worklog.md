@@ -182,3 +182,29 @@ Stage Summary:
 - Cloud Sync: API endpoints for push/pull journal entries to server database
 - All new API routes: /api/auth/[...nextauth], /api/auth/register, /api/ai/insights, /api/user/profile, /api/sync/push
 - Build verified: 0 errors
+
+---
+Task ID: 5
+Agent: Super Z (Main)
+Task: Complete navigation reorganization — add Settings tab, create STRUCTURE_RULES.md, fix image-pipeline
+
+Work Log:
+- Created /src/components/SettingsTab.tsx — 4 collapsible sections (Era Themes, Data Management, Account, App Info), reuses EraSkins and LocalDataBadge as child components, inline DataManagementInline replaces ManageDataScreen overlay
+- Added Settings as 9th tab to Dashboard navigation bar in page.tsx
+- Redirected header gear icon from overlay to handleTabChange('settings')
+- Redirected footer "Manage Your Data" link from overlay to handleTabChange('settings')
+- Removed EraSkins overlay (old showEraSkins state + AnimatePresence block)
+- Removed ManageDataScreen overlay (old showSettings state + AnimatePresence block)
+- Removed unused ManageDataScreen and EraSkins imports from page.tsx
+- Removed stale showSettings state from Home root component
+- Fixed image-pipeline.ts: cast applyChromaticAberration return to Uint8ClampedArray<ArrayBuffer> at both call sites (lines 660/665 and 767/772)
+- Created /src/docs/STRUCTURE_RULES.md — 9-tab category definitions, 5 assignment rules, 24-feature verification table
+- Final consistency check: zero duplicate component imports, zero duplicate renders, every feature in exactly one tab
+- Build verified: 0 errors in src/
+
+Stage Summary:
+- Navigation is now 9 tabs: Reel, Memories, Journal, Camera, Vault, Fun Stuff, Games, Timeline, Settings
+- Gear icon and footer link both route to the Settings tab — no duplicate overlay code
+- EraSkins.tsx and ManageDataScreen.tsx preserved (reused as children, not deleted)
+- STRUCTURE_RULES.md enforces one-home-no-duplication rule for all future features
+- image-pipeline.ts ImageData constructor bug fixed

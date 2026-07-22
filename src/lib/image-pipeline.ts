@@ -661,8 +661,8 @@ export function processFrame(
       data, w, h,
       config.chromaticAberration.redShift,
       config.chromaticAberration.blueShift
-    );
-    imageData = new ImageData(data as unknown as Uint8ClampedArray<ArrayBufferLike>, w, h);
+    ) as Uint8ClampedArray<ArrayBuffer>;
+    imageData = new ImageData(data, w, h);
   }
 
   // ── Stage 2: Tone Curve Distortion (Matte Effect) ──
@@ -768,8 +768,8 @@ export function processPreviewFrame(
       data, w, h,
       config.chromaticAberration.redShift * 0.6,
       config.chromaticAberration.blueShift * 0.6
-    );
-    imageData = new ImageData(data as unknown as Uint8ClampedArray<ArrayBufferLike>, w, h);
+    ) as Uint8ClampedArray<ArrayBuffer>;
+    imageData = new ImageData(data, w, h);
   }
 
   // Tone curve

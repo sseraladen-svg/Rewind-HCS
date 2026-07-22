@@ -17,12 +17,11 @@ import NostalgiaFeatures from '@/components/NostalgiaFeatures';
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
 import { MemoryReelFeed } from '@/components/memory-reel';
 import LocalDataBadge from '@/components/ui/LocalDataBadge';
-import ManageDataScreen from '@/components/settings/ManageDataScreen';
 import AuthModal from '@/components/AuthModal';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
 import GamesHub from '@/components/GamesHub';
 import VaultTab from '@/components/VaultTab';
-import EraSkins from '@/components/EraSkins';
+import SettingsTab from '@/components/SettingsTab';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
 import { SessionProvider } from 'next-auth/react';
@@ -531,8 +530,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const [activeCategory, setActiveCategory] = useState('all');
   const [showReel, setShowReel] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showEraSkins, setShowEraSkins] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const { data: session } = useSession();
 
@@ -579,6 +576,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
     { id: 'funstuff', label: 'Fun Stuff', icon: <Smile className="h-4 w-4" /> },
     { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
   ];
 
   return (
@@ -600,9 +598,9 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
               {data.decade} &middot; Born {birthYear}
             </div>
             <button
-                onClick={() => setShowEraSkins(true)}
+                onClick={() => handleTabChange('settings')}
                 className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
-                title="Themes"
+                title="Settings"
               >
                 <Settings className="h-3.5 w-3.5 text-[#5c4033]" />
               </button>
@@ -814,6 +812,15 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
               </motion.div>
             </AnimatePresence>
           )}
+
+          {/* ═══ SETTINGS TAB ═══ */}
+          {activeTab === 'settings' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <SettingsTab onOpenAuth={() => setShowAuth(true)} />
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </main>
 
@@ -824,11 +831,11 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           </p>
           <LocalDataBadge />
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={() => handleTabChange('settings')}
             className="old-typewriter text-[9px] text-[#a89878] hover:text-[#d4a574]
               transition-colors cursor-pointer underline underline-offset-2 decoration-dotted"
           >
-            Manage Your Data
+            Settings
           </button>
         </div>
       </footer>
@@ -879,27 +886,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         />
       </motion.button>
 
-      {/* ═══ ERA SKINS OVERLAY ═══ */}
-      <AnimatePresence>
-        {showEraSkins && (
-          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowEraSkins(false)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-background rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="old-title text-xl font-bold text-[#5c4033]">Era Themes</h3>
-                <button onClick={() => setShowEraSkins(false)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs cursor-pointer">Close</button>
-              </div>
-              <EraSkins />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* ═══ MEMORY REEL OVERLAY ═══ */}
       <AnimatePresence>
         {showReel && <MemoryReelFeed birthYear={birthYear} onClose={() => setShowReel(false)} />}
@@ -916,11 +902,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         )}
       </AnimatePresence>
 
-      {/* ═══ MANAGE DATA OVERLAY ═══ */}
-      <AnimatePresence>
-        {showSettings && <ManageDataScreen onClose={() => setShowSettings(false)} />}
-      </AnimatePresence>
-
       {/* Old-style cassette transition loader (global) */}
       <OldTransitionLoader />
     </div>
@@ -933,7 +914,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
 export default function Home() {
   const [birthYear, setBirthYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
 
   // Run one-time localStorage → IndexedDB migration on first load
   useEffect(() => {
