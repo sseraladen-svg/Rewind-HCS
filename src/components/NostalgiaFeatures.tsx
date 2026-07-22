@@ -25,7 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import VoiceMessages from '@/components/VoiceMessages';
 import {
   getAllGuestbookEntries, putAllGuestbookEntries,
   getAllMixtapes, clearMixtapes, addMixtape,
@@ -1162,7 +1161,7 @@ const PHONE_MESSAGES = [
   'Connection established. Rewinding memories...',
 ];
 
-function RotaryPhoneSection() {
+export function RotaryPhoneSection() {
   const [dialed, setDialed] = useState<number[]>([]);
   const [spinning, setSpinning] = useState(false);
   const [ringing, setRinging] = useState(false);
@@ -1372,7 +1371,7 @@ const BUDDY_NAMES = [
   { name: 'PizzaLover42', color: '#008080' },
 ];
 
-function RetroChatSection() {
+export function RetroChatSection() {
   const [messages, setMessages] = useDBState<ChatMessage[]>(
     () => getAllChatMessages() as Promise<ChatMessage[]>,
     (val) => putAllChatMessages(val as any).catch(() => {}),
@@ -1708,23 +1707,8 @@ export default function NostalgiaFeatures() {
 
         <Separator className="opacity-30" />
 
-        {/* ── Rotary Phone ── */}
-        <RotaryPhoneSection />
-
-        <Separator className="opacity-30" />
-
         {/* ── Sticker Wall ── */}
         <StickerWallSection />
-
-        <Separator className="opacity-30" />
-
-        {/* ── Voice Messages ── */}
-        <VoiceMessages />
-
-        <Separator className="opacity-30" />
-
-        {/* ── Retro Chat ── */}
-        <RetroChatSection />
 
         {/* Footer */}
         <footer className="pt-8 pb-4 text-center">

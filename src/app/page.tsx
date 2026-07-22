@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
   ChevronRight, Sparkles, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
-  Camera, Smile, Clapperboard,
+  Camera, Smile, Clapperboard, Phone,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -22,6 +22,7 @@ import AiInsightsPanel from '@/components/AiInsightsPanel';
 import GamesHub from '@/components/GamesHub';
 import VaultTab from '@/components/VaultTab';
 import SettingsTab from '@/components/SettingsTab';
+import ContactsTab from '@/components/ContactsTab';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
 import { SessionProvider } from 'next-auth/react';
@@ -575,6 +576,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
     { id: 'vault', label: 'Vault', icon: <Star className="h-4 w-4" /> },
     { id: 'funstuff', label: 'Fun Stuff', icon: <Smile className="h-4 w-4" /> },
     { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
+    { id: 'contacts', label: 'Contacts', icon: <Phone className="h-4 w-4" /> },
     { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
   ];
@@ -758,6 +760,15 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             <AnimatePresence mode="wait">
               <motion.div key="games" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <GamesHub data={data} />
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+          {/* ═══ CONTACTS TAB ═══ */}
+          {activeTab === 'contacts' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="contacts" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <ContactsTab />
               </motion.div>
             </AnimatePresence>
           )}

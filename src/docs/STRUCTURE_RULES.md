@@ -1,6 +1,6 @@
 # REWIND Navigation Structure Rules
 
-> This file defines the canonical 9-tab navigation structure and the
+> This file defines the canonical 10-tab navigation structure and the
 > assignment rules for any new feature added to the app.
 > **Violating these rules causes navigation duplication and user confusion.**
 
@@ -50,23 +50,29 @@
   - `EraPods` — quick stats, category counts, and top-5 items per decade
 - **Rule:** Saved/bookmarked items and cross-decade library views only. Never duplicate the primary browsing experience from the Memories tab.
 
-### 6. FUN STUFF — Interactive Delight Features (Not Games, Not Browsing)
+### 6. FUN STUFF — Interactive Delight Features (Not Games, Not Browsing, Not Communication)
 
-- **What belongs:** Interactive novelty features that are NOT playable games with win/lose/score state and NOT nostalgia item browsing.
-- **Current contents (10 sub-sections):**
+- **What belongs:** Interactive novelty features that are NOT playable games with win/lose/score state, NOT nostalgia item browsing, and NOT communication/messaging features.
+- **Current contents (7 sub-sections):**
   1. `GuestbookSection` — sign-in guestbook with emoji avatars
   2. `MixtapeSection` — create mixtapes with track lists
   3. `Magic8BallSection` — ask a question, get a classic 8-ball answer
   4. `VisitCounterSection` — odometer-style visit counter
   5. `TamagotchiSection` — virtual pet with hunger/happiness/energy
   6. `FloppyDiskSection` — "save to floppy" state snapshot
-  7. `RotaryPhoneSection` — interactive rotary dial with nostalgic messages
-  8. `StickerWallSection` — place and drag emoji stickers on a wall
-  9. `VoiceMessages` — record/play audio with waveform visualization
-  10. `RetroChatSection` — fake chat with auto-reply buddy
-- **Rule:** If it has a score, win state, or lose state, it's a Game. If it browses nostalgia items, it's Memories. Everything else delightful goes here.
+  7. `StickerWallSection` — place and drag emoji stickers on a wall
+- **Rule:** If it has a score, win state, or lose state, it's a Game. If it browses nostalgia items, it's Memories. If it involves messaging, calling, or chatting, it's Contacts. Everything else delightful goes here.
 
-### 7. GAMES — Playable Games with Win/Lose/Score State Only
+### 7. CONTACTS — Communication and Messaging Features Only
+
+- **What belongs:** Any feature involving voice, phone, chat, or messaging interactions.
+- **Current contents (3 sub-sections via `ContactsTab`):**
+  1. `RotaryPhoneSection` — interactive rotary dial with nostalgic phone messages
+  2. `VoiceMessages` — record/play audio messages with waveform visualization
+  3. `RetroChatSection` — fake AIM-style chat with auto-reply buddy
+- **Rule:** Only communication features. No games, no browsing, no data management.
+
+### 8. GAMES — Playable Games with Win/Lose/Score State Only
 
 - **What belongs:** Actual playable games with clear score, win, or lose conditions.
 - **Current contents (3 games via `GamesHub`):**
@@ -76,7 +82,7 @@
 - **Entry point:** Hub screen with 3 game tiles, then individual game view.
 - **Rule:** Only scored/competitive games. No open-ended toys (those are Fun Stuff).
 
-### 8. TIMELINE — Personal Life Timeline + AI Insights Only
+### 9. TIMELINE — Personal Life Timeline + AI Insights Only
 
 - **What belongs:** The user's personal life timeline and AI-generated analysis.
 - **Current contents:**
@@ -86,7 +92,7 @@
   - Closing message ("You made it through.")
 - **Rule:** Timeline and insights only. No browsing, no games, no data management.
 
-### 9. SETTINGS — App Configuration, Account, Data Management Only
+### 10. SETTINGS — App Configuration, Account, Data Management Only
 
 - **What belongs:** Everything related to configuring the app, managing the user's account, and managing stored data.
 - **Current contents (4 collapsible sections via `SettingsTab`):**
@@ -105,7 +111,7 @@
 Every feature must live in **exactly one** tab. A feature must never be imported or rendered in two different tabs.
 
 ### Rule 2: Category Assignment
-Before building any new feature, assign it to exactly ONE of the 9 categories above based on the definition list. If a feature doesn't clearly fit one category, that's a signal to either:
+Before building any new feature, assign it to exactly ONE of the 10 categories above based on the definition list. If a feature doesn't clearly fit one category, that's a signal to either:
 - **Redefine the categories** (update this file), or
 - **Split the feature** into parts that each belong to one category.
 
@@ -143,10 +149,10 @@ Everything else (EraSkins, ManageData, etc.) lives inline inside its tab.
 | 13 | Visit Counter | Fun Stuff | `VisitCounterSection` |
 | 14 | Tamagotchi | Fun Stuff | `TamagotchiSection` |
 | 15 | Floppy Disk Saver | Fun Stuff | `FloppyDiskSection` |
-| 16 | Rotary Phone | Fun Stuff | `RotaryPhoneSection` |
-| 17 | Sticker Wall | Fun Stuff | `StickerWallSection` |
-| 18 | Voice Messages | Fun Stuff | `VoiceMessages` |
-| 19 | Retro Chat | Fun Stuff | `RetroChatSection` |
+| 16 | Sticker Wall | Fun Stuff | `StickerWallSection` |
+| 17 | Rotary Phone | Contacts | `RotaryPhoneSection` |
+| 18 | Voice Messages | Contacts | `VoiceMessages` |
+| 19 | Retro Chat | Contacts | `RetroChatSection` |
 | 20 | Memory Match Game | Games | `MemoryMatchGame` |
 | 21 | Guess The Year Game | Games | `GuessTheYearGame` |
 | 22 | Tap The Memory Game | Games | `WhackGame` |
@@ -160,3 +166,5 @@ Everything else (EraSkins, ManageData, etc.) lives inline inside its tab.
 - App Info -> `AppInfoSection`
 
 **Total: 24 content features + 4 config sections = 28 features, 0 duplications.**
+
+**10 tabs: Reel, Memories, Journal, Camera, Vault, Fun Stuff, Games, Contacts, Timeline, Settings.**
