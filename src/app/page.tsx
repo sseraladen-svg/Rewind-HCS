@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Heart, Music, Gamepad2, Film, Star, BookOpen, Monitor,
-  ChevronRight, Sparkles, ArrowLeft, RefreshCw,
-  Camera, Smile, Clapperboard, Brain, User, LogOut, Settings,
+  ChevronRight, Sparkles, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
+  Camera, Smile, Clapperboard,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -22,6 +22,7 @@ import AuthModal from '@/components/AuthModal';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
 import GamesHub from '@/components/GamesHub';
 import VaultTab from '@/components/VaultTab';
+import EraSkins from '@/components/EraSkins';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
 import { SessionProvider } from 'next-auth/react';
@@ -532,6 +533,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const [showAuth, setShowAuth] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showEraSkins, setShowEraSkins] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const { data: session } = useSession();
 
   const categoryMap: Record<string, { label: string; icon: React.ReactNode; items: NostalgiaItem[] }> = {
@@ -735,50 +737,34 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             </AnimatePresence>
           )}
 
+          {/* ═══ CAMERA TAB ═══ */}
+          {activeTab === 'camera' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="camera" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <VintageCamera onClose={() => setActiveTab('memories')} />
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+          {/* ═══ VAULT TAB ═══ */}
+          {activeTab === 'vault' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="vault" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <VaultTab />
+              </motion.div>
+            </AnimatePresence>
+          )}
+
           {/* ═══ GAMES TAB ═══ */}
           {activeTab === 'games' && (
             <AnimatePresence mode="wait">
               <motion.div key="games" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <div className="text-center mb-5">
-                  <p className="old-body text-sm text-[#5c4033] font-medium">Take a break from the rush. Play some games from the heart.</p>
-                </div>
-                <div className="space-y-6">
-                  <MemoryMatchGame data={data} />
-                  <GuessTheYearGame data={data} />
-                  <WhackGame data={data} />
-                </div>
+                <GamesHub data={data} />
               </motion.div>
             </AnimatePresence>
           )}
 
-          {/* ═══ INSIGHTS TAB ═══ */}
-          {activeTab === 'insights' && (
-            <AnimatePresence mode="wait">
-              <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <div className="text-center mb-5">
-                  <p className="old-body text-sm text-[#5c4033] font-medium">Your journal holds more than words. Let AI help you see the patterns.</p>
-                </div>
-                <AiInsightsPanel birthYear={birthYear} />
-                <div className="mt-6 sk-paper rounded-xl p-4 sk-noise text-center">
-                  <p className="old-body text-xs text-[#8b7355]">
-                    {session?.user
-                      ? 'Insights are generated locally using AI. They never leave your device.'
-                      : 'Sign in to save your insights history and access them from any device.'}
-                  </p>
-                  {!session?.user && (
-                    <button
-                      onClick={() => setShowAuth(true)}
-                      className="sk-btn old-btn px-4 py-2 rounded-lg text-xs font-bold mt-3 cursor-pointer flex items-center gap-2 mx-auto"
-                    >
-                      <User className="h-3.5 w-3.5" /> Create Account
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          )}
-
-          {/* ═══ TIMELINE TAB ═══ */}
+          {/* ═══ TIMELINE TAB ═══ (includes AI Insights) */}
           {activeTab === 'timeline' && (
             <AnimatePresence mode="wait">
               <motion.div key="timeline" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
@@ -786,6 +772,28 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                   <Clock className="h-4 w-4" style={{ color: data.color }} /> Your Life Timeline
                 </h2>
                 <PersonalTimeline birthYear={birthYear} />
+
+                <div className="mt-10 mb-4">
+                  <h2 className="old-label text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Brain className="h-4 w-4" style={{ color: data.color }} /> AI Insights
+                  </h2>
+                  <AiInsightsPanel birthYear={birthYear} />
+                  <div className="mt-4 sk-paper rounded-xl p-4 sk-noise text-center">
+                    <p className="old-body text-xs text-[#8b7355]">
+                      {session?.user
+                        ? 'Insights are generated locally using AI. They never leave your device.'
+                        : 'Sign in to save your insights history and access them from any device.'}
+                    </p>
+                    {!session?.user && (
+                      <button
+                        onClick={() => setShowAuth(true)}
+                        className="sk-btn old-btn px-4 py-2 rounded-lg text-xs font-bold mt-3 cursor-pointer flex items-center gap-2 mx-auto"
+                      >
+                        <User className="h-3.5 w-3.5" /> Create Account
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mt-10">
                   <div className="sk-paper rounded-xl p-6 sk-noise relative overflow-hidden max-w-md mx-auto">
@@ -830,13 +838,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 1 }}
-        onClick={() => {
-          triggerOldLoader('Loading film...');
-          setTimeout(() => {
-            setShowCamera(true);
-            hideOldLoader();
-          }, 750);
-        }}
+        onClick={() => setActiveTab('camera')}
         className="fixed bottom-6 right-6 z-40 cursor-pointer group"
         title="Open Vintage Camera"
       >
@@ -877,9 +879,25 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         />
       </motion.button>
 
-      {/* ═══ VINTAGE CAMERA OVERLAY ═══ */}
+      {/* ═══ ERA SKINS OVERLAY ═══ */}
       <AnimatePresence>
-        {showCamera && <VintageCamera onClose={() => setShowCamera(false)} />}
+        {showEraSkins && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowEraSkins(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-background rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="old-title text-xl font-bold text-[#5c4033]">Era Themes</h3>
+                <button onClick={() => setShowEraSkins(false)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs cursor-pointer">Close</button>
+              </div>
+              <EraSkins />
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
       {/* ═══ MEMORY REEL OVERLAY ═══ */}

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { nostalgiaData, DecadeData } from '@/lib/nostalgia-data';
+import { nostalgiaData, DecadeData, NostalgiaItem } from '@/lib/nostalgia-data';
 import { ChevronDown } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
