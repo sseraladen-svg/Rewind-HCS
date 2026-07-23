@@ -140,7 +140,7 @@ export default function MoviesTab({ birthYear }: { birthYear: number }) {
       className={`space-y-5 relative ${themeClass}`}
       style={themeStyle}
     >
-      {/* 80s scanlines overlay */
+      {/* 80s scanlines overlay */}
       {decadeTheme === '80s' && (
         <div
           style={{
@@ -149,7 +149,7 @@ export default function MoviesTab({ birthYear }: { birthYear: number }) {
           }}
         />
       )}
-      {/* 80s synthwave grid */
+      {/* 80s synthwave grid */}
       {decadeTheme === '80s' && (
         <div
           style={{
