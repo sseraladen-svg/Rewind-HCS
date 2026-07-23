@@ -1,0 +1,847 @@
+     1→'use client';
+     2→
+     3→import { useState, useRef, useCallback, useEffect } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Camera, Video, X, Download, Trash2, Image as ImageIcon,
+     7→  RotateCcw, SwitchCamera, Zap, Circle, Square, Play,
+     8→} from 'lucide-react';
+     9→import {
+    10→  PIPELINE_PRESETS,
+    11→  processFrame,
+    12→  processPreviewFrame,
+    13→  getGateFlickerEV,
+    14→  type PipelineConfig,
+    15→} from '@/lib/image-pipeline';
+    16→import { getAllCameraPhotos, addCameraPhoto, deleteCameraPhoto } from '@/lib/idb-store';
+    17→
+    18→/* ═══════ TYPES ═══════ */
+    19→interface CapturedItem {
+    20→  id: string;
+    21→  type: 'photo' | 'video';
+    22→  url: string;
+    23→  timestamp: number;
+    24→  blob?: Blob;
+    25→}
+    26→
+    27→type FilterPreset = 'none' | 'sepia70s' | 'faded80s' | 'warm90s' | 'bw60s' | 'polaroid' | 'vhs' | 'kodak';
+    28→
+    29→/* Real-time preview resolution (low for performance) */
+    30→const PREVIEW_W = 360;
+    31→const PREVIEW_H = 202;
+    32→const TARGET_FPS = 24;
+    33→const FRAME_INTERVAL = 1000 / TARGET_FPS;
+    34→
+    35→/* ═══════ VINTAGE CAMERA COMPONENT ═══════ */
+    36→export default function VintageCamera({ onClose }: { onClose: () => void }) {
+    37→  const videoRef = useRef<HTMLVideoElement>(null);
+    38→  const captureCanvasRef = useRef<HTMLCanvasElement>(null);   // full-res for capture
+    39→  const previewCanvasRef = useRef<HTMLCanvasElement>(null);   // live processed preview
+    40→  const offscreenRef = useRef<HTMLCanvasElement | null>(null);
+    41→  const streamRef = useRef<MediaStream | null>(null);
+    42→  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    43→  const recordedChunksRef = useRef<Blob[]>([]);
+    44→  const flashRef = useRef<HTMLDivElement>(null);
+    45→  const rafRef = useRef<number>(0);
+    46→  const lastFrameTimeRef = useRef<number>(0);
+    47→  const frameCountRef = useRef<number>(0);
+    48→  const flickerEvRef = useRef<number>(0);
+    49→
+    50→  const [cameraOpen, setCameraOpen] = useState(false);
+    51→  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+    52→  const [mode, setMode] = useState<'photo' | 'video'>('photo');
+    53→  const [filter, setFilter] = useState<FilterPreset>('sepia70s');
+    54→  const [recording, setRecording] = useState(false);
+    55→  const [recordTime, setRecordTime] = useState(0);
+    56→  const [flash, setFlash] = useState(false);
+    57→  const [gallery, setGallery] = useState<CapturedItem[]>([]);
+    58→  const [viewItem, setViewItem] = useState<CapturedItem | null>(null);
+    59→  const [cameraError, setCameraError] = useState<string | null>(null);
+    60→  const [showFilters, setShowFilters] = useState(false);
+    61→  const [shutterAnim, setShutterAnim] = useState(false);
+    62→  const [processing, setProcessing] = useState(false);
+    63→
+    64→  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    65→  const dbObjectUrlsRef = useRef<string[]>([]);
+    66→
+    67→  /* ── Load persisted photos from IndexedDB on mount ── */
+    68→  useEffect(() => {
+    69→    let cancelled = false;
+    70→    getAllCameraPhotos().then((photos) => {
+    71→      if (cancelled) return;
+    72→      const items: CapturedItem[] = photos.map((photo) => {
+    73→        const url = URL.createObjectURL(photo.image_blob);
+    74→        dbObjectUrlsRef.current.push(url);
+    75→        return {
+    76→          id: photo.id,
+    77→          type: 'photo' as const,
+    78→          url,
+    79→          timestamp: photo.created_at,
+    80→          blob: photo.image_blob,
+    81→        };
+    82→      });
+    83→      if (items.length > 0) {
+    84→        setGallery((prev) => {
+    85→          // Avoid duplicates (e.g., if React StrictMode double-fires)
+    86→          const existingIds = new Set(prev.map((i) => i.id));
+    87→          const newItems = items.filter((i) => !existingIds.has(i.id));
+    88→          return [...newItems, ...prev];
+    89→        });
+    90→      }
+    91→    });
+    92→    return () => { cancelled = true; };
+    93→  }, []);
+    94→
+    95→  /* ── Get current preset config ── */
+    96→  const currentConfig: PipelineConfig = PIPELINE_PRESETS[filter] || PIPELINE_PRESETS['none'];
+    97→
+    98→  /* ── Start Camera ── */
+    99→  const startCamera = useCallback(async () => {
+   100→    try {
+   101→      if (streamRef.current) {
+   102→        streamRef.current.getTracks().forEach(t => t.stop());
+   103→      }
+   104→      const stream = await navigator.mediaDevices.getUserMedia({
+   105→        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+   106→        audio: mode === 'video',
+   107→      });
+   108→      streamRef.current = stream;
+   109→      if (videoRef.current) {
+   110→        videoRef.current.srcObject = stream;
+   111→        await videoRef.current.play();
+   112→      }
+   113→      setCameraOpen(true);
+   114→      setCameraError(null);
+   115→    } catch (err) {
+   116→      console.error('Camera error:', err);
+   117→      setCameraError('Camera access denied or not available. Please allow camera permissions.');
+   118→    }
+   119→  }, [facingMode, mode]);
+   120→
+   121→  /* ── Stop Camera ── */
+   122→  const stopCamera = useCallback(() => {
+   123→    if (rafRef.current) {
+   124→      cancelAnimationFrame(rafRef.current);
+   125→      rafRef.current = 0;
+   126→    }
+   127→    if (streamRef.current) {
+   128→      streamRef.current.getTracks().forEach(t => t.stop());
+   129→      streamRef.current = null;
+   130→    }
+   131→    setCameraOpen(false);
+   132→    if (recordTimerRef.current) {
+   133→      clearInterval(recordTimerRef.current);
+   134→      recordTimerRef.current = null;
+   135→    }
+   136→  }, []);
+   137→
+   138→  /* ── Switch Camera ── */
+   139→  const handleSwitchCamera = useCallback(() => {
+   140→    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+   141→  }, []);
+   142→
+   143→  /* ── Restart on facing/mode change ── */
+   144→  useEffect(() => {
+   145→    if (cameraOpen) {
+   146→      startCamera();
+   147→    }
+   148→    return () => {};
+   149→  }, [facingMode, mode, cameraOpen, startCamera]);
+   150→
+   151→  /* ── Real-time preview loop ── */
+   152→  useEffect(() => {
+   153→    if (!cameraOpen || !videoRef.current || !previewCanvasRef.current) return;
+   154→
+   155→    // Create offscreen canvas for drawing video frames
+   156→    if (!offscreenRef.current) {
+   157→      offscreenRef.current = document.createElement('canvas');
+   158→    }
+   159→    offscreenRef.current.width = PREVIEW_W;
+   160→    offscreenRef.current.height = PREVIEW_H;
+   161→    const offCtx = offscreenRef.current.getContext('2d', { willReadFrequently: true });
+   162→    if (!offCtx) return;
+   163→
+   164→    const previewCanvas = previewCanvasRef.current;
+   165→    previewCanvas.width = PREVIEW_W;
+   166→    previewCanvas.height = PREVIEW_H;
+   167→    const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
+   168→    if (!previewCtx) return;
+   169→
+   170→    let running = true;
+   171→
+   172→    const renderLoop = (timestamp: number) => {
+   173→      if (!running) return;
+   174→
+   175→      const elapsed = timestamp - lastFrameTimeRef.current;
+   176→      if (elapsed >= FRAME_INTERVAL) {
+   177→        lastFrameTimeRef.current = timestamp - (elapsed % FRAME_INTERVAL);
+   178→        frameCountRef.current++;
+   179→
+   180→        const video = videoRef.current;
+   181→        if (!video || video.readyState < 2) {
+   182→          rafRef.current = requestAnimationFrame(renderLoop);
+   183→          return;
+   184→        }
+   185→
+   186→        // Draw video frame to offscreen canvas (mirrored if front camera)
+   187→        offCtx.save();
+   188→        if (facingMode === 'user') {
+   189→          offCtx.translate(PREVIEW_W, 0);
+   190→          offCtx.scale(-1, 1);
+   191→        }
+   192→        offCtx.drawImage(video, 0, 0, PREVIEW_W, PREVIEW_H);
+   193→        offCtx.restore();
+   194→
+   195→        // Apply lightweight preview pipeline
+   196→        try {
+   197→          processPreviewFrame(offCtx, PREVIEW_W, PREVIEW_H, filter, frameCountRef.current);
+   198→
+   199→          // Gate flicker for video mode
+   200→          if (mode === 'video' && currentConfig.gateFlicker.enabled) {
+   201→            flickerEvRef.current = getGateFlickerEV(currentConfig.gateFlicker.intensity);
+   202→            const imgData = offCtx.getImageData(0, 0, PREVIEW_W, PREVIEW_H);
+   203→            const d = imgData.data;
+   204→            const mult = 1 + flickerEvRef.current * 0.5;
+   205→            for (let i = 0; i < d.length; i += 4) {
+   206→              d[i] = Math.max(0, Math.min(255, Math.round(d[i] * mult)));
+   207→              d[i + 1] = Math.max(0, Math.min(255, Math.round(d[i + 1] * mult)));
+   208→              d[i + 2] = Math.max(0, Math.min(255, Math.round(d[i + 2] * mult)));
+   209→            }
+   210→            offCtx.putImageData(imgData, 0, 0);
+   211→          }
+   212→        } catch {
+   213→          // silently skip if processing errors (e.g., tab not visible)
+   214→        }
+   215→
+   216→        // Copy to visible preview canvas
+   217→        if (offscreenRef.current) {
+   218→          previewCtx.drawImage(offscreenRef.current, 0, 0);
+   219→        }
+   220→      }
+   221→
+   222→      rafRef.current = requestAnimationFrame(renderLoop);
+   223→    };
+   224→
+   225→    rafRef.current = requestAnimationFrame(renderLoop);
+   226→
+   227→    return () => {
+   228→      running = false;
+   229→      if (rafRef.current) {
+   230→        cancelAnimationFrame(rafRef.current);
+   231→        rafRef.current = 0;
+   232→      }
+   233→    };
+   234→  }, [cameraOpen, filter, facingMode, mode, currentConfig.gateFlicker.enabled, currentConfig.gateFlicker.intensity]);
+   235→
+   236→  /* ── Capture Photo (Full Pipeline) ── */
+   237→  const capturePhoto = useCallback(() => {
+   238→    if (!videoRef.current || !captureCanvasRef.current) return;
+   239→    const video = videoRef.current;
+   240→    const canvas = captureCanvasRef.current;
+   241→    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+   242→    if (!ctx) return;
+   243→
+   244→    setProcessing(true);
+   245→
+   246→    // Use full resolution
+   247→    const w = video.videoWidth || 1280;
+   248→    const h = video.videoHeight || 720;
+   249→    canvas.width = w;
+   250→    canvas.height = h;
+   251→
+   252→    // Mirror if front camera
+   253→    if (facingMode === 'user') {
+   254→      ctx.translate(w, 0);
+   255→      ctx.scale(-1, 1);
+   256→    }
+   257→    ctx.drawImage(video, 0, 0, w, h);
+   258→    ctx.setTransform(1, 0, 0, 1, 0, 0);
+   259→
+   260→    // Apply full pipeline
+   261→    try {
+   262→      processFrame(ctx, w, h, filter, { addStamp: true });
+   263→    } catch (e) {
+   264→      console.error('Pipeline error:', e);
+   265→    }
+   266→
+   267→    // Flash effect
+   268→    setFlash(true);
+   269→    setShutterAnim(true);
+   270→    setTimeout(() => setFlash(false), 200);
+   271→    setTimeout(() => setShutterAnim(false), 300);
+   272→
+   273→    // Save to gallery
+   274→    canvas.toBlob((blob) => {
+   275→      if (!blob) { setProcessing(false); return; }
+   276→      const url = URL.createObjectURL(blob);
+   277→      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+   278→      setGallery(prev => [{
+   279→        id,
+   280→        type: 'photo',
+   281→        url,
+   282→        timestamp: Date.now(),
+   283→        blob,
+   284→      }, ...prev]);
+   285→      addCameraPhoto({ id, image_blob: blob, filter_used: filter, created_at: Date.now() });
+   286→      setProcessing(false);
+   287→    }, 'image/jpeg', 0.92);
+   288→  }, [filter, facingMode]);
+   289→
+   290→  /* ── Start/Stop Video Recording ── */
+   291→  const toggleRecording = useCallback(() => {
+   292→    if (!recording && streamRef.current) {
+   293→      const options = { mimeType: 'video/webm;codecs=vp9' };
+   294→      const tryStart = (mimeType: string) => {
+   295→        try {
+   296→          const mediaRecorder = new MediaRecorder(streamRef.current!, { mimeType });
+   297→          recordedChunksRef.current = [];
+   298→          mediaRecorder.ondataavailable = (e) => {
+   299→            if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+   300→          };
+   301→          mediaRecorder.onstop = () => {
+   302→            const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+   303→            const url = URL.createObjectURL(blob);
+   304→            setGallery(prev => [{
+   305→              id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+   306→              type: 'video',
+   307→              url,
+   308→              timestamp: Date.now(),
+   309→              blob,
+   310→            }, ...prev]);
+   311→            recordedChunksRef.current = [];
+   312→          };
+   313→          mediaRecorder.start(100);
+   314→          mediaRecorderRef.current = mediaRecorder;
+   315→          setRecording(true);
+   316→          setRecordTime(0);
+   317→          recordTimerRef.current = setInterval(() => {
+   318→            setRecordTime(prev => prev + 1);
+   319→          }, 1000);
+   320→        } catch {
+   321→          if (mimeType.includes('vp9')) {
+   322→            tryStart('video/webm;codecs=vp8');
+   323→          } else {
+   324→            setCameraError('Video recording not supported in this browser.');
+   325→          }
+   326→        }
+   327→      };
+   328→      tryStart(options.mimeType);
+   329→    } else if (recording && mediaRecorderRef.current) {
+   330→      mediaRecorderRef.current.stop();
+   331→      mediaRecorderRef.current = null;
+   332→      setRecording(false);
+   333→      if (recordTimerRef.current) {
+   334→        clearInterval(recordTimerRef.current);
+   335→        recordTimerRef.current = null;
+   336→      }
+   337→    }
+   338→  }, [recording]);
+   339→
+   340→  /* ── Delete from gallery ── */
+   341→  const deleteItem = useCallback((id: string) => {
+   342→    setGallery(prev => {
+   343→      const item = prev.find(i => i.id === id);
+   344→      if (item) {
+   345→        URL.revokeObjectURL(item.url);
+   346→        // Also remove from dbObjectUrlsRef tracking
+   347→        dbObjectUrlsRef.current = dbObjectUrlsRef.current.filter(u => u !== item.url);
+   348→      }
+   349→      if (item?.type === 'photo') {
+   350→        deleteCameraPhoto(id);
+   351→      }
+   352→      return prev.filter(i => i.id !== id);
+   353→    });
+   354→  }, []);
+   355→
+   356→  /* ── Download ── */
+   357→  const downloadItem = useCallback((item: CapturedItem) => {
+   358→    const a = document.createElement('a');
+   359→    a.href = item.url;
+   360→    a.download = `rewind_${item.type}_${new Date(item.timestamp).toISOString().replace(/[:.]/g, '-')}.${item.type === 'photo' ? 'jpg' : 'webm'}`;
+   361→    document.body.appendChild(a);
+   362→    a.click();
+   363→    document.body.removeChild(a);
+   364→  }, []);
+   365→
+   366→  /* ── Cleanup on close ── */
+   367→  useEffect(() => {
+   368→    return () => {
+   369→      stopCamera();
+   370→      gallery.forEach(item => URL.revokeObjectURL(item.url));
+   371→      dbObjectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+   372→      dbObjectUrlsRef.current = [];
+   373→    };
+   374→  // eslint-disable-next-line react-hooks/exhaustive-deps
+   375→  }, []);
+   376→
+   377→  /* ── Format time ── */
+   378→  const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+   379→
+   380→  /* ── Pipeline info for HUD ── */
+   381→  const pipelineStages = [
+   382→    currentConfig.chromaticAberration.enabled && 'CA',
+   383→    currentConfig.toneCurve.blackLift > 0 && 'MATTE',
+   384→    currentConfig.contrastReduce > 0 && 'FLAT',
+   385→    currentConfig.antiClarity.enabled && 'SOFT',
+   386→    currentConfig.grain.enabled && 'GRAIN',
+   387→    currentConfig.halation.enabled && 'GLOW',
+   388→    currentConfig.vignette.intensity > 0 && 'VIG',
+   389→  ].filter(Boolean);
+   390→
+   391→  return (
+   392→    <>
+   393→      {/* Hidden canvases */}
+   394→      <canvas ref={captureCanvasRef} className="hidden" />
+   395→
+   396→      <AnimatePresence>
+   397→        <motion.div
+   398→          initial={{ opacity: 0 }}
+   399→          animate={{ opacity: 1 }}
+   400→          exit={{ opacity: 0 }}
+   401→          className="fixed inset-0 z-50 flex flex-col"
+   402→          style={{ background: '#1a1208' }}
+   403→        >
+   404→          {/* ═══ HEADER - Camera Top Bar ═══ */}
+   405→          <div className="sk-leather px-3 py-2.5 flex items-center justify-between z-10">
+   406→            <button onClick={() => { stopCamera(); onClose(); }} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1 text-[#faf6eb]">
+   407→              <X className="h-4 w-4" /> Close
+   408→            </button>
+   409→            <h2 className="old-title font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+   410→              📷 Vintage Camera
+   411→            </h2>
+   412→            <div className="w-16" />
+   413→          </div>
+   414→
+   415→          {/* ═══ VIEWFINDER ═══ */}
+   416→          <div className="flex-1 relative overflow-hidden flex items-center justify-center">
+   417→            {!cameraOpen && !cameraError && (
+   418→              <div className="text-center px-6">
+   419→                <motion.div
+   420→                  animate={{ rotate: [0, 5, -5, 0] }}
+   421→                  transition={{ duration: 4, repeat: Infinity }}
+   422→                  className="text-6xl mb-4"
+   423→                >📸</motion.div>
+   424→                <p className="old-body text-[#d4a574] mb-2 text-sm">Open the camera to capture memories in vintage style</p>
+   425→                <p className="old-typewriter text-[10px] text-[#8b7355] mb-6">
+   426→                  Full image processing pipeline: chromatic aberration, tone curves, Perlin grain, halation glow
+   427→                </p>
+   428→                <button onClick={startCamera} className="sk-btn old-btn px-6 py-3 rounded-xl font-bold text-base cursor-pointer flex items-center gap-2 mx-auto">
+   429→                  <Camera className="h-5 w-5" /> Open Camera
+   430→                </button>
+   431→              </div>
+   432→            )}
+   433→
+   434→            {cameraError && (
+   435→              <div className="text-center px-6">
+   436→                <div className="text-5xl mb-4">😵</div>
+   437→                <p className="old-body text-[#d4a574] mb-4 text-sm">{cameraError}</p>
+   438→                <button onClick={startCamera} className="sk-btn old-btn px-5 py-2.5 rounded-lg font-bold cursor-pointer flex items-center gap-2 mx-auto">
+   439→                  <RotateCcw className="h-4 w-4" /> Try Again
+   440→                </button>
+   441→              </div>
+   442→            )}
+   443→
+   444→            {cameraOpen && (
+   445→              <>
+   446→                {/* Hidden video source (never shown directly) */}
+   447→                <video
+   448→                  ref={videoRef}
+   449→                  className="hidden"
+   450→                  playsInline
+   451→                  muted
+   452→                />
+   453→
+   454→                {/* Real-time processed canvas preview */}
+   455→                <canvas
+   456→                  ref={previewCanvasRef}
+   457→                  className="absolute inset-0 w-full h-full object-cover"
+   458→                  style={{
+   459→                    imageRendering: 'auto', // smooth upscaling for that vintage soft look
+   460→                  }}
+   461→                />
+   462→
+   463→                {/* Halation glow overlay (CSS-based, adds dreamy ambient light) */}
+   464→                {currentConfig.halation.enabled && (
+   465→                  <div
+   466→                    className="absolute inset-0 pointer-events-none mix-blend-screen"
+   467→                    style={{
+   468→                      background: `radial-gradient(ellipse at 50% 50%, rgba(255,240,200,${currentConfig.halation.intensity * 0.06}) 0%, transparent 70%)`,
+   469→                    }}
+   470→                  />
+   471→                )}
+   472→
+   473→                {/* Scanline overlay (VHS era feel) */}
+   474→                <div className="absolute inset-0 pointer-events-none opacity-[0.07]" style={{
+   475→                  background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)',
+   476→                }} />
+   477→
+   478→                {/* Film border overlay - viewfinder frame */}
+   479→                <div className="absolute inset-0 pointer-events-none border-[6px] border-[#1a1208] rounded-none" />
+   480→
+   481→                {/* Corner brackets */}
+   482→                <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-[#d4a574]/50 pointer-events-none" />
+   483→                <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-[#d4a574]/50 pointer-events-none" />
+   484→                <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-[#d4a574]/50 pointer-events-none" />
+   485→                <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-[#d4a574]/50 pointer-events-none" />
+   486→
+   487→                {/* Center crosshair */}
+   488→                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+   489→                  <div className="w-px h-6 bg-[#d4a574]/30" />
+   490→                  <div className="h-px w-6 bg-[#d4a574]/30 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+   491→                </div>
+   492→
+   493→                {/* Recording indicator */}
+   494→                {recording && (
+   495→                  <motion.div
+   496→                    initial={{ opacity: 0, scale: 0.8 }}
+   497→                    animate={{ opacity: 1, scale: 1 }}
+   498→                    className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 sk-vhs-label px-3 py-1 rounded-full z-10"
+   499→                  >
+   500→                    <motion.div
+   501→                      animate={{ opacity: [1, 0.3, 1] }}
+   502→                      transition={{ duration: 1, repeat: Infinity }}
+   503→                      className="w-2.5 h-2.5 rounded-full bg-red-500"
+   504→                    />
+   505→                    <span className="old-typewriter text-xs font-bold text-red-600">REC {formatTime(recordTime)}</span>
+   506→                  </motion.div>
+   507→                )}
+   508→
+   509→                {/* Filter label + Pipeline HUD */}
+   510→                <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1">
+   511→                  <div className="sk-vhs-label px-2 py-1 rounded">
+   512→                    <span className="old-typewriter text-[10px] font-bold text-[#5c4033]">
+   513→                      {currentConfig.emoji} {currentConfig.name}
+   514→                    </span>
+   515→                  </div>
+   516→                  {/* Pipeline stages HUD */}
+   517→                  {pipelineStages.length > 0 && (
+   518→                    <div className="sk-vhs-label px-2 py-0.5 rounded opacity-70">
+   519→                      <span className="old-typewriter text-[7px] text-[#8b7355] tracking-wider">
+   520→                        {pipelineStages.join(' · ')}
+   521→                      </span>
+   522→                    </div>
+   523→                  )}
+   524→                </div>
+   525→
+   526→                {/* Gate flicker indicator (video mode) */}
+   527→                {mode === 'video' && currentConfig.gateFlicker.enabled && (
+   528→                  <div className="absolute bottom-4 left-4 sk-vhs-label px-2 py-0.5 rounded opacity-60 z-10">
+   529→                    <span className="old-typewriter text-[7px] text-[#8b7355]">
+   530→                      GATE FLICKER: {flickerEvRef.current >= 0 ? '+' : ''}{flickerEvRef.current.toFixed(3)} EV
+   531→                    </span>
+   532→                  </div>
+   533→                )}
+   534→
+   535→                {/* FPS counter (subtle) */}
+   536→                <div className="absolute bottom-4 right-4 opacity-40 z-10">
+   537→                  <span className="old-typewriter text-[7px] text-[#8b7355]">
+   538→                    {TARGET_FPS}fps · {PREVIEW_W}x{PREVIEW_H} preview
+   539→                  </span>
+   540→                </div>
+   541→
+   542→                {/* Processing indicator */}
+   543→                {processing && (
+   544→                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+   545→                    <motion.div
+   546→                      animate={{ rotate: 360 }}
+   547→                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+   548→                      className="w-12 h-12 border-2 border-[#d4a574] border-t-transparent rounded-full"
+   549→                    />
+   550→                  </div>
+   551→                )}
+   552→
+   553→                {/* Flash effect */}
+   554→                <AnimatePresence>
+   555→                  {flash && (
+   556→                    <motion.div
+   557→                      initial={{ opacity: 0.9 }}
+   558→                      animate={{ opacity: 0 }}
+   559→                      exit={{ opacity: 0 }}
+   560→                      transition={{ duration: 0.2 }}
+   561→                      className="absolute inset-0 bg-white z-20 pointer-events-none"
+   562→                    />
+   563→                  )}
+   564→                </AnimatePresence>
+   565→
+   566→                {/* Shutter animation */}
+   567→                <AnimatePresence>
+   568→                  {shutterAnim && (
+   569→                    <motion.div
+   570→                      initial={{ scaleY: 0 }}
+   571→                      animate={{ scaleY: 1 }}
+   572→                      exit={{ scaleY: 1, opacity: 0 }}
+   573→                      transition={{ duration: 0.15 }}
+   574→                      className="absolute inset-x-0 top-0 bottom-0 bg-black z-20 origin-top pointer-events-none"
+   575→                    />
+   576→                  )}
+   577→                </AnimatePresence>
+   578→              </>
+   579→            )}
+   580→          </div>
+   581→
+   582→          {/* ═══ FILTER STRIP ═══ */}
+   583→          {cameraOpen && (
+   584→            <AnimatePresence>
+   585→              {showFilters && (
+   586→                <motion.div
+   587→                  initial={{ height: 0, opacity: 0 }}
+   588→                  animate={{ height: 'auto', opacity: 1 }}
+   589→                  exit={{ height: 0, opacity: 0 }}
+   590→                  className="overflow-hidden sk-paper-aged"
+   591→                >
+   592→                  <div className="px-3 py-3">
+   593→                    <p className="old-label text-[10px] text-[#8b7355] mb-1">CHOOSE FILM TYPE</p>
+   594→                    <p className="old-typewriter text-[7px] text-[#a89070] mb-2">
+   595→                      Each preset applies a unique processing pipeline: tone curves, grain, optical effects
+   596→                    </p>
+   597→                    <div className="flex gap-2 overflow-x-auto pb-1 sk-scrollbar">
+   598→                      {(Object.entries(PIPELINE_PRESETS) as [string, PipelineConfig][]).map(([key, cfg]) => (
+   599→                        <button
+   600→                          key={key}
+   601→                          onClick={() => setFilter(key as FilterPreset)}
+   602→                          className={`flex-shrink-0 w-16 rounded-lg p-1.5 text-center transition-all cursor-pointer ${
+   603→                            filter === key
+   604→                              ? 'sk-leather shadow-lg scale-105'
+   605→                              : 'sk-btn hover:scale-105'
+   606→                          }`}
+   607→                        >
+   608→                          <div className="text-xl mb-0.5">{cfg.emoji}</div>
+   609→                          <div className="old-typewriter text-[8px] font-bold truncate"
+   610→                            style={{ color: filter === key ? '#faf6eb' : '#5c4033' }}>
+   611→                            {cfg.name}
+   612→                          </div>
+   613→                          {/* Mini pipeline badge */}
+   614→                          {filter === key && (
+   615→                            <div className="old-typewriter text-[5px] text-[#d4a574] mt-0.5 leading-tight">
+   616→                              {[
+   617→                                cfg.chromaticAberration.enabled && 'CA',
+   618→                                cfg.grain.enabled && 'Grain',
+   619→                                cfg.halation.enabled && 'Glow',
+   620→                                cfg.antiClarity.enabled && 'Soft',
+   621→                              ].filter(Boolean).join(' ')}
+   622→                            </div>
+   623→                          )}
+   624→                        </button>
+   625→                      ))}
+   626→                    </div>
+   627→                  </div>
+   628→                </motion.div>
+   629→              )}
+   630→            </AnimatePresence>
+   631→          )}
+   632→
+   633→          {/* ═══ GALLERY ═══ */}
+   634→          {gallery.length > 0 && (
+   635→            <div className="sk-paper-aged border-t border-[#c4b594]">
+   636→              <div className="px-3 py-2">
+   637→                <p className="old-label text-[10px] text-[#8b7355] mb-2">GALLERY ({gallery.length})</p>
+   638→                <div className="flex gap-2 overflow-x-auto pb-1 sk-scrollbar">
+   639→                  {gallery.map(item => (
+   640→                    <button
+   641→                      key={item.id}
+   642→                      onClick={() => setViewItem(item)}
+   643→                      className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 border-[#c4b594] relative cursor-pointer hover:scale-105 transition-transform"
+   644→                      style={{ '--rotate': `${-2 + Math.random() * 4}deg` } as React.CSSProperties}
+   645→                    >
+   646→                      {item.type === 'photo' ? (
+   647→                        <img src={item.url} alt="" className="w-full h-full object-cover" />
+   648→                      ) : (
+   649→                        <div className="w-full h-full bg-[#2a1f14] flex items-center justify-center relative">
+   650→                          <Play className="h-5 w-5 text-[#d4a574]" />
+   651→                          <div className="absolute bottom-0.5 right-1 old-typewriter text-[7px] text-[#d4a574] bg-black/50 px-1 rounded">
+   652→                            VID
+   653→                          </div>
+   654→                        </div>
+   655→                      )}
+   656→                      <div className="absolute top-0.5 left-0.5 w-2 h-2 rounded-full bg-white/60" />
+   657→                    </button>
+   658→                  ))}
+   659→                </div>
+   660→              </div>
+   661→            </div>
+   662→          )}
+   663→
+   664→          {/* ═══ CONTROLS BAR ═══ */}
+   665→          <div className="sk-wood px-4 py-3 flex items-center justify-around">
+   666→            {/* Gallery toggle */}
+   667→            <button
+   668→              onClick={() => gallery.length > 0 && setViewItem(gallery[0])}
+   669→              className="relative cursor-pointer p-2"
+   670→              disabled={gallery.length === 0}
+   671→            >
+   672→              <ImageIcon className="h-6 w-6 text-[#d4a574]" />
+   673→              {gallery.length > 0 && (
+   674→                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] old-typewriter font-bold rounded-full w-4 h-4 flex items-center justify-center">
+   675→                  {gallery.length}
+   676→                </span>
+   677→              )}
+   678→            </button>
+   679→
+   680→            {/* Shutter / Record button */}
+   681→            <div className="relative">
+   682→              <div className="w-20 h-20 rounded-full p-1.5" style={{
+   683→                background: 'linear-gradient(145deg, #a08868, #6b5a40)',
+   684→                boxShadow: '0 3px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+   685→              }}>
+   686→                <div className="w-full h-full rounded-full p-1" style={{
+   687→                  background: 'linear-gradient(145deg, #3d2b1f, #2a1f14)',
+   688→                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+   689→                }}>
+   690→                  <button
+   691→                    onClick={mode === 'photo' ? capturePhoto : toggleRecording}
+   692→                    disabled={processing}
+   693→                    className={`w-full h-full rounded-full cursor-pointer flex items-center justify-center transition-all duration-200 disabled:opacity-50 ${
+   694→                      recording ? 'animate-pulse' : ''
+   695→                    }`}
+   696→                    style={{
+   697→                      background: recording
+   698→                        ? 'linear-gradient(145deg, #c0392b, #922b21)'
+   699→                        : mode === 'photo'
+   700→                          ? 'linear-gradient(145deg, #f0e6d3, #d4c5a9)'
+   701→                          : 'linear-gradient(145deg, #e74c3c, #c0392b)',
+   702→                      boxShadow: recording
+   703→                        ? '0 0 15px rgba(231,76,60,0.6), inset 0 1px 0 rgba(255,255,255,0.2)'
+   704→                        : '0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)',
+   705→                      transform: recording ? 'scale(0.9)' : 'scale(1)',
+   706→                    }}
+   707→                  >
+   708→                    {processing ? (
+   709→                      <motion.div
+   710→                        animate={{ rotate: 360 }}
+   711→                        transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+   712→                        className="w-6 h-6 border-2 border-[#5c4033] border-t-transparent rounded-full"
+   713→                      />
+   714→                    ) : mode === 'photo' ? (
+   715→                      <Camera className="h-7 w-7 text-[#5c4033]" />
+   716→                    ) : (
+   717→                      recording ? (
+   718→                        <Square className="h-6 w-6 text-white fill-white" />
+   719→                      ) : (
+   720→                        <Circle className="h-7 w-7 text-white fill-white" />
+   721→                      )
+   722→                    )}
+   723→                  </button>
+   724→                </div>
+   725→              </div>
+   726→              <div className="absolute -inset-3 rounded-full opacity-20" style={{
+   727→                border: '2px dashed #a08868',
+   728→              }} />
+   729→            </div>
+   730→
+   731→            {/* Switch camera / Mode toggle */}
+   732→            <div className="flex flex-col items-center gap-1">
+   733→              <button onClick={handleSwitchCamera} className="cursor-pointer p-2">
+   734→                <SwitchCamera className="h-6 w-6 text-[#d4a574]" />
+   735→              </button>
+   736→              <button
+   737→                onClick={() => { setMode(m => m === 'photo' ? 'video' : 'photo'); if (recording) toggleRecording(); }}
+   738→                className="cursor-pointer p-1"
+   739→              >
+   740→                {mode === 'photo' ? (
+   741→                  <Video className="h-4 w-4 text-[#d4a574]" />
+   742→                ) : (
+   743→                  <Camera className="h-4 w-4 text-[#d4a574]" />
+   744→                )}
+   745→              </button>
+   746→            </div>
+   747→          </div>
+   748→
+   749→          {/* Filter toggle button */}
+   750→          {cameraOpen && (
+   751→            <button
+   752→              onClick={() => setShowFilters(f => !f)}
+   753→              className="sk-vhs-label old-btn text-[10px] font-bold px-3 py-1.5 rounded cursor-pointer flex items-center gap-1.5 mx-auto mb-2"
+   754→              style={{ color: showFilters ? '#c0392b' : '#5c4033' }}
+   755→            >
+   756→              <Zap className="h-3 w-3" />
+   757→              {showFilters ? 'Hide Filters' : 'Film Filters'}
+   758→            </button>
+   759→          )}
+   760→        </motion.div>
+   761→      </AnimatePresence>
+   762→
+   763→      {/* ═══ FULLSCREEN VIEWER ═══ */}
+   764→      <AnimatePresence>
+   765→        {viewItem && (
+   766→          <motion.div
+   767→            initial={{ opacity: 0 }}
+   768→            animate={{ opacity: 1 }}
+   769→            exit={{ opacity: 0 }}
+   770→            className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center"
+   771→          >
+   772→            <div className="absolute top-3 right-3 z-10 flex gap-2">
+   773→              <button onClick={() => downloadItem(viewItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   774→                <Download className="h-4 w-4 inline mr-1" /> Save
+   775→              </button>
+   776→              <button onClick={() => deleteItem(viewItem.id)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-red-400">
+   777→                <Trash2 className="h-4 w-4 inline mr-1" /> Delete
+   778→              </button>
+   779→              <button onClick={() => setViewItem(null)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   780→                <X className="h-4 w-4" />
+   781→              </button>
+   782→            </div>
+   783→
+   784→            <div className="absolute top-4 left-4 z-10">
+   785→              <span className="old-typewriter text-xs text-[#d4a574]/70">
+   786→                {new Date(viewItem.timestamp).toLocaleDateString('en-US', {
+   787→                  year: 'numeric', month: 'short', day: 'numeric',
+   788→                  hour: '2-digit', minute: '2-digit',
+   789→                })}
+   790→              </span>
+   791→            </div>
+   792→
+   793→            <div className="max-w-lg w-full mx-4">
+   794→              {viewItem.type === 'photo' ? (
+   795→                <div className="sk-polaroid mx-auto max-w-sm" style={{ '--rotate': `${-1 + Math.random() * 2}deg` } as React.CSSProperties}>
+   796→                  <img
+   797→                    src={viewItem.url}
+   798→                    alt="Captured memory"
+   799→                    className="w-full h-auto rounded-sm"
+   800→                  />
+   801→                  <p className="old-handwritten text-xs text-[#8b7355] text-center mt-2 px-2">
+   802→                    A moment captured with love
+   803→                  </p>
+   804→                </div>
+   805→              ) : (
+   806→                <div className="sk-tv-screen rounded-lg overflow-hidden p-1">
+   807→                  <video
+   808→                    src={viewItem.url}
+   809→                    controls
+   810→                    className="w-full rounded"
+   811→                    style={{ filter: PIPELINE_PRESETS[filter]?.cssPreview || 'none' }}
+   812→                  />
+   813→                  <div className="text-center mt-2">
+   814→                    <span className="old-typewriter text-[10px] text-[#d4a574]/70">VHS Recording</span>
+   815→                  </div>
+   816→                </div>
+   817→              )}
+   818→            </div>
+   819→
+   820→            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
+   821→              {gallery.length > 1 && (
+   822→                (() => {
+   823→                  const idx = gallery.findIndex(i => i.id === viewItem.id);
+   824→                  const prevItem = gallery[(idx + 1) % gallery.length];
+   825→                  const nextItem = gallery[(idx - 1 + gallery.length) % gallery.length];
+   826→                  return (
+   827→                    <>
+   828→                      <button onClick={() => setViewItem(prevItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   829→                        ◀ Prev
+   830→                      </button>
+   831→                      <span className="old-typewriter text-xs text-[#8b7355] self-center">
+   832→                        {idx + 1} / {gallery.length}
+   833→                      </span>
+   834→                      <button onClick={() => setViewItem(nextItem)} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-white">
+   835→                        Next ▶
+   836→                      </button>
+   837→                    </>
+   838→                  );
+   839→                })()
+   840→              )}
+   841→            </div>
+   842→          </motion.div>
+   843→        )}
+   844→      </AnimatePresence>
+   845→    </>
+   846→  );
+   847→}

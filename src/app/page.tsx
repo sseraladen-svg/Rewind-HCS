@@ -382,9 +382,24 @@ function PersonalTimeline({ birthYear }: { birthYear: number }) {
 /* ═══════════════════════════════════════════════════
    DASHBOARD
    ═══════════════════════════════════════════════════ */
+function getDecadeTheme(birthYear: number): string {
+  const decade = Math.floor(birthYear / 10) * 10;
+  if (decade === 1980) return '80s';
+  if (decade === 1990) return '90s';
+  if (decade === 2000) return '2000s';
+  return '';
+}
+
+const DECADE_BG: Record<string, string> = {
+  '80s': '#0a0a0a',
+  '90s': '#c0c0c0',
+  '2000s': '#d6eaff',
+};
+
 function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => void }) {
   const decadeKey = getDecadeForYear(birthYear);
   const data = nostalgiaData[decadeKey];
+  const decadeTheme = getDecadeTheme(birthYear);
   const [activeTab, setActiveTab] = useState('journal');
   const [showReel, setShowReel] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -422,7 +437,11 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      data-decade-theme={decadeTheme || undefined}
+      style={{ position: 'relative' as const, background: DECADE_BG[decadeTheme || ''] || undefined, overflowX: 'hidden' as const }}
+    >
       {/* Header - wood grain */}
       <header className="sticky top-0 z-30 sk-wood px-2 py-0">
         <div className="max-w-5xl mx-auto py-2.5 flex items-center justify-between">

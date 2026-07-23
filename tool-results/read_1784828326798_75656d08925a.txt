@@ -1,0 +1,701 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useRef, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { getAllVoicemails, addVoicemail, deleteVoicemail } from '@/lib/idb-store';
+     6→
+     7→// ═══════════════════════════════════════════════════════════════
+     8→// Types
+     9→// ═══════════════════════════════════════════════════════════════
+    10→
+    11→interface VoicemailMessage {
+    12→  id: string;
+    13→  audioBlob: Blob;
+    14→  duration: number;
+    15→  timestamp: string;
+    16→}
+    17→
+    18→type Status = 'idle' | 'error-unsupported' | 'error-denied' | 'ready' | 'recording' | 'playing';
+    19→
+    20→// ═══════════════════════════════════════════════════════════════
+    21→// Helpers
+    22→// ═══════════════════════════════════════════════════════════════
+    23→
+    24→function formatTime(seconds: number): string {
+    25→  const m = Math.floor(seconds / 60);
+    26→  const s = Math.floor(seconds % 60);
+    27→  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    28→}
+    29→
+    30→function generateId(): string {
+    31→  return `vm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    32→}
+    33→
+    34→function formatDate(iso: string): string {
+    35→  const d = new Date(iso);
+    36→  const month = d.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+    37→  const day = d.getDate();
+    38→  const hour = d.getHours();
+    39→  const ampm = hour >= 12 ? 'PM' : 'AM';
+    40→  const h12 = hour % 12 || 12;
+    41→  const min = String(d.getMinutes()).padStart(2, '0');
+    42→  return `${month} ${day}, ${h12}:${min} ${ampm}`;
+    43→}
+    44→
+    45→/** Play a short beep using Web Audio API */
+    46→function playBeep(frequency = 1000, duration = 0.15, type: OscillatorType = 'square') {
+    47→  if (typeof window === 'undefined') return;
+    48→  try {
+    49→    const ctx = new AudioContext();
+    50→    const osc = ctx.createOscillator();
+    51→    const gain = ctx.createGain();
+    52→    osc.type = type;
+    53→    osc.frequency.value = frequency;
+    54→    gain.gain.value = 0.12;
+    55→    osc.connect(gain);
+    56→    gain.connect(ctx.destination);
+    57→    osc.start(ctx.currentTime);
+    58→    osc.stop(ctx.currentTime + duration);
+    59→    osc.onended = () => ctx.close();
+    60→  } catch {
+    61→    // silently ignore audio errors
+    62→  }
+    63→}
+    64→
+    65→/** Generate fake waveform bar heights for visual display */
+    66→function generateWaveformBars(count = 32): number[] {
+    67→  return Array.from({ length: count }, () => Math.random() * 0.7 + 0.15);
+    68→}
+    69→
+    70→// ═══════════════════════════════════════════════════════════════
+    71→// Component
+    72→// ═══════════════════════════════════════════════════════════════
+    73→
+    74→export default function VoiceMessages() {
+    75→  const [status, setStatus] = useState<Status>('ready');
+    76→  const [messages, setMessages] = useState<VoicemailMessage[]>([]);
+    77→  const [recordingTime, setRecordingTime] = useState(0);
+    78→  const [playingId, setPlayingId] = useState<string | null>(null);
+    79→  const [playProgress, setPlayProgress] = useState(0);
+    80→  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    81→
+    82→  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    83→  const audioChunksRef = useRef<Blob[]>([]);
+    84→  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    85→  const audioElRef = useRef<HTMLAudioElement | null>(null);
+    86→  const animFrameRef = useRef<number>(0);
+    87→  const streamRef = useRef<MediaStream | null>(null);
+    88→
+    89→  const MAX_RECORDING_SECONDS = 60;
+    90→  const MAX_SAVED_MESSAGES = 5;
+    91→  const objectUrlRef = useRef<string | null>(null);
+    92→
+    93→  // ── Load messages from IndexedDB ──
+    94→  useEffect(() => {
+    95→    if (typeof window === 'undefined') return;
+    96→    getAllVoicemails()
+    97→      .then((records) => {
+    98→        // records come sorted by timestamp ascending; reverse for newest-first
+    99→        setMessages(
+   100→          records.reverse().map((r) => ({
+   101→            id: r.id,
+   102→            audioBlob: r.audio_blob,
+   103→            duration: r.duration,
+   104→            timestamp: r.timestamp,
+   105→          }))
+   106→        );
+   107→      })
+   108→      .catch(() => {
+   109→        // IDB unavailable, start fresh
+   110→      });
+   111→  }, []);
+   112→
+   113→  // ── Check browser support ──
+   114→  useEffect(() => {
+   115→    if (typeof window === 'undefined') return;
+   116→    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+   117→      setStatus('error-unsupported');
+   118→    }
+   119→  }, []);
+   120→
+   121→  // ── Cleanup on unmount ──
+   122→  useEffect(() => {
+   123→    return () => {
+   124→      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+   125→      if (streamRef.current) {
+   126→        streamRef.current.getTracks().forEach((t) => t.stop());
+   127→      }
+   128→      if (audioElRef.current) {
+   129→        audioElRef.current.pause();
+   130→        audioElRef.current = null;
+   131→      }
+   132→      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+   133→      if (objectUrlRef.current) {
+   134→        URL.revokeObjectURL(objectUrlRef.current);
+   135→        objectUrlRef.current = null;
+   136→      }
+   137→    };
+   138→  }, []);
+   139→
+   140→  // ── Start Recording ──
+   141→  const startRecording = useCallback(async () => {
+   142→    try {
+   143→      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+   144→      streamRef.current = stream;
+   145→
+   146→      const recorder = new MediaRecorder(stream);
+   147→      mediaRecorderRef.current = recorder;
+   148→      audioChunksRef.current = [];
+   149→
+   150→      recorder.ondataavailable = (e) => {
+   151→        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+   152→      };
+   153→
+   154→      recorder.onstop = () => {
+   155→        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+   156→        const id = generateId();
+   157→        const duration = recordingTime || 1;
+   158→        const timestamp = new Date().toISOString();
+   159→
+   160→        addVoicemail({ id, audio_blob: blob, duration, timestamp })
+   161→          .then(() => {
+   162→            const newMsg: VoicemailMessage = { id, audioBlob: blob, duration, timestamp };
+   163→            setMessages((prev) => {
+   164→              const updated = [newMsg, ...prev];
+   165→              if (updated.length > MAX_SAVED_MESSAGES) {
+   166→                // Delete overflow messages (oldest at the end)
+   167→                const overflow = updated.slice(MAX_SAVED_MESSAGES);
+   168→                overflow.forEach((m) => deleteVoicemail(m.id).catch(() => {}));
+   169→                return updated.slice(0, MAX_SAVED_MESSAGES);
+   170→              }
+   171→              return updated;
+   172→            });
+   173→          })
+   174→          .catch(() => {});
+   175→
+   176→        // Clean up stream
+   177→        if (streamRef.current) {
+   178→          streamRef.current.getTracks().forEach((t) => t.stop());
+   179→          streamRef.current = null;
+   180→        }
+   181→      };
+   182→
+   183→      recorder.start();
+   184→      playBeep(800, 0.1, 'square');
+   185→      setStatus('recording');
+   186→      setRecordingTime(0);
+   187→
+   188→      recordingTimerRef.current = setInterval(() => {
+   189→        setRecordingTime((prev) => {
+   190→          const next = prev + 1;
+   191→          if (next >= MAX_RECORDING_SECONDS) {
+   192→            stopRecording();
+   193→            return prev;
+   194→          }
+   195→          return next;
+   196→        });
+   197→      }, 1000);
+   198→    } catch (err: unknown) {
+   199→      const name = (err as DOMException)?.name;
+   200→      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+   201→        setStatus('error-denied');
+   202→        setErrorMsg('Microphone access denied. Please allow microphone access.');
+   203→      } else {
+   204→        setStatus('error-unsupported');
+   205→        setErrorMsg('Audio recording not supported in this browser... try Chrome or Firefox!');
+   206→      }
+   207→    }
+   208→  }, [recordingTime]);
+   209→
+   210→  // ── Stop Recording ──
+   211→  const stopRecording = useCallback(() => {
+   212→    if (recordingTimerRef.current) {
+   213→      clearInterval(recordingTimerRef.current);
+   214→      recordingTimerRef.current = null;
+   215→    }
+   216→    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+   217→      mediaRecorderRef.current.stop();
+   218→    }
+   219→    playBeep(600, 0.2, 'sine');
+   220→    setStatus('ready');
+   221→  }, []);
+   222→
+   223→  // ── Toggle Recording ──
+   224→  const toggleRecording = useCallback(() => {
+   225→    if (status === 'recording') {
+   226→      stopRecording();
+   227→    } else if (status === 'ready') {
+   228→      startRecording();
+   229→    }
+   230→  }, [status, startRecording, stopRecording]);
+   231→
+   232→  // ── Play / Pause a message ──
+   233→  const togglePlay = useCallback((msg: VoicemailMessage) => {
+   234→    if (playingId === msg.id) {
+   235→      // pause
+   236→      if (audioElRef.current) {
+   237→        audioElRef.current.pause();
+   238→      }
+   239→      setPlayingId(null);
+   240→      setPlayProgress(0);
+   241→      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+   242→    } else {
+   243→      // stop any current playback and revoke previous object URL
+   244→      if (audioElRef.current) {
+   245→        audioElRef.current.pause();
+   246→        audioElRef.current = null;
+   247→      }
+   248→      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+   249→      if (objectUrlRef.current) {
+   250→        URL.revokeObjectURL(objectUrlRef.current);
+   251→      }
+   252→
+   253→      const url = URL.createObjectURL(msg.audioBlob);
+   254→      objectUrlRef.current = url;
+   255→      const audio = new Audio(url);
+   256→      audioElRef.current = audio;
+   257→
+   258→      const updateProgress = () => {
+   259→        if (audio.duration) {
+   260→          setPlayProgress(audio.currentTime / audio.duration);
+   261→        }
+   262→        animFrameRef.current = requestAnimationFrame(updateProgress);
+   263→      };
+   264→
+   265→      audio.onplay = () => {
+   266→        setStatus('playing');
+   267→        setPlayingId(msg.id);
+   268→        animFrameRef.current = requestAnimationFrame(updateProgress);
+   269→      };
+   270→
+   271→      audio.onended = () => {
+   272→        setPlayingId(null);
+   273→        setPlayProgress(0);
+   274→        setStatus('ready');
+   275→        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+   276→        if (objectUrlRef.current) {
+   277→          URL.revokeObjectURL(objectUrlRef.current);
+   278→          objectUrlRef.current = null;
+   279→        }
+   280→      };
+   281→
+   282→      audio.onerror = () => {
+   283→        setPlayingId(null);
+   284→        setPlayProgress(0);
+   285→        setStatus('ready');
+   286→        if (objectUrlRef.current) {
+   287→          URL.revokeObjectURL(objectUrlRef.current);
+   288→          objectUrlRef.current = null;
+   289→        }
+   290→      };
+   291→
+   292→      audio.play().catch(() => {
+   293→        setPlayingId(null);
+   294→        setStatus('ready');
+   295→        if (objectUrlRef.current) {
+   296→          URL.revokeObjectURL(objectUrlRef.current);
+   297→          objectUrlRef.current = null;
+   298→        }
+   299→      });
+   300→    }
+   301→  }, [playingId]);
+   302→
+   303→  // ── Delete a message ──
+   304→  const deleteMessage = useCallback(
+   305→    (id: string) => {
+   306→      if (playingId === id && audioElRef.current) {
+   307→        audioElRef.current.pause();
+   308→        audioElRef.current = null;
+   309→        setPlayingId(null);
+   310→        setStatus('ready');
+   311→      }
+   312→      setMessages((prev) => prev.filter((m) => m.id !== id));
+   313→      deleteVoicemail(id).catch(() => {});
+   314→    },
+   315→    [playingId]
+   316→  );
+   317→
+   318→  // ── Render ──
+   319→
+   320→  const isRecording = status === 'recording';
+   321→  const isPlaying = status === 'playing';
+   322→
+   323→  return (
+   324→    <section className="py-8 px-2">
+   325→      {/* Section Header */}
+   326→      <motion.div
+   327→        initial={{ opacity: 0, y: 12 }}
+   328→        whileInView={{ opacity: 1, y: 0 }}
+   329→        viewport={{ once: true }}
+   330→        transition={{ duration: 0.6 }}
+   331→        className="text-center mb-8"
+   332→      >
+   333→        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full sk-leather mb-4">
+   334→          <span className="text-2xl">🎙️</span>
+   335→        </div>
+   336→        <h2 className="old-typewriter text-xl md:text-2xl font-bold text-[#3d2b1f] mb-2">
+   337→          ✦ VOICE MESSAGES ✦
+   338→        </h2>
+   339→        <p className="old-body text-muted-foreground text-sm md:text-base max-w-md mx-auto">
+   340→          Leave a message after the beep... just like the old answering machine.
+   341→        </p>
+   342→      </motion.div>
+   343→
+   344→      {/* Error States */}
+   345→      {(status === 'error-unsupported' || status === 'error-denied') && (
+   346→        <div className="sk-paper rounded-xl p-6 text-center mb-6">
+   347→          <p className="old-typewriter text-sm text-red-800">
+   348→            {errorMsg || 'Audio recording not supported in this browser... try Chrome or Firefox!'}
+   349→          </p>
+   350→        </div>
+   351→      )}
+   352→
+   353→      {/* ── Answering Machine Body ── */}
+   354→      <div className="sk-leather rounded-2xl p-5 md:p-8 max-w-lg mx-auto shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),0_8px_24px_rgba(0,0,0,0.3)] relative overflow-hidden">
+   355→        <div className="absolute inset-0 sk-noise pointer-events-none opacity-30" />
+   356→
+   357→        {/* Brand label */}
+   358→        <div className="text-center mb-4 relative">
+   359→          <p className="old-label text-[9px] tracking-[0.3em] text-[#c9a96e] uppercase">
+   360→            REWIND™ ANSWERING MACHINE
+   361→          </p>
+   362→          <p className="old-typewriter text-[8px] text-[#a08060] mt-0.5">
+   363→            MODEL VM-1987
+   364→          </p>
+   365→        </div>
+   366→
+   367→        {/* ── Tape Deck Area ── */}
+   368→        <div className="bg-[#1a1410] rounded-xl p-4 mb-5 relative shadow-[inset_0_2px_8px_rgba(0,0,0,0.6)] border border-[#2a2218]">
+   369→          {/* Cassette Tape Visual */}
+   370→          <div className="flex items-center justify-center gap-6 mb-4">
+   371→            {/* Left Reel */}
+   372→            <div className="relative w-14 h-14">
+   373→              <div
+   374→                className={`absolute inset-0 rounded-full border-2 border-[#5a4a3a] ${
+   375→                  isRecording || isPlaying ? 'animate-spin' : ''
+   376→                }`}
+   377→                style={{ animationDuration: '2s' }}
+   378→              >
+   379→                <div className="absolute inset-1.5 rounded-full bg-[#2a2218] flex items-center justify-center">
+   380→                  <div className="w-2.5 h-2.5 rounded-full bg-[#1a1410] border border-[#5a4a3a]" />
+   381→                </div>
+   382→                {/* Spokes */}
+   383→                <div className="absolute inset-2 rounded-full">
+   384→                  {isRecording || isPlaying ? (
+   385→                    <svg viewBox="0 0 40 40" className="w-full h-full animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}>
+   386→                      {[0, 60, 120, 180, 240, 300].map((deg) => (
+   387→                        <line
+   388→                          key={deg}
+   389→                          x1="20"
+   390→                          y1="4"
+   391→                          x2="20"
+   392→                          y2="12"
+   393→                          stroke="#5a4a3a"
+   394→                          strokeWidth="1.5"
+   395→                          transform={`rotate(${deg} 20 20)`}
+   396→                        />
+   397→                      ))}
+   398→                    </svg>
+   399→                  ) : (
+   400→                    <svg viewBox="0 0 40 40" className="w-full h-full">
+   401→                      {[0, 60, 120, 180, 240, 300].map((deg) => (
+   402→                        <line
+   403→                          key={deg}
+   404→                          x1="20"
+   405→                          y1="4"
+   406→                          x2="20"
+   407→                          y2="12"
+   408→                          stroke="#5a4a3a"
+   409→                          strokeWidth="1.5"
+   410→                          transform={`rotate(${deg} 20 20)`}
+   411→                        />
+   412→                      ))}
+   413→                    </svg>
+   414→                  )}
+   415→                </div>
+   416→              </div>
+   417→            </div>
+   418→
+   419→            {/* Tape label area */}
+   420→            <div className="flex-1 max-w-[180px]">
+   421→              <div className="bg-[#f5edd6] rounded-md p-2 h-14 relative shadow-sm border border-[#d4c9a8]">
+   422→                <div className="absolute inset-0 sk-noise pointer-events-none opacity-20" />
+   423→                <p className="old-label text-[8px] text-[#8b7355] text-center tracking-wider">
+   424→                  ─── REWIND TAPE ───
+   425→                </p>
+   426→                <p className="old-typewriter text-[7px] text-[#6b5b3e] text-center mt-1">
+   427→                  {messages.length > 0
+   428→                    ? `SIDE A · ${messages.length} MSG${messages.length !== 1 ? 'S' : ''}`
+   429→                    : 'SIDE A · BLANK'}
+   430→                </p>
+   431→                {/* Tape window */}
+   432→                <div className="mx-auto mt-1 w-16 h-3 bg-[#3d2b1f] rounded-sm flex items-center justify-center gap-1">
+   433→                  <div className="w-5 h-1.5 rounded-full bg-[#1a1410] border border-[#5a4a3a]" />
+   434→                  <div className="w-5 h-1.5 rounded-full bg-[#1a1410] border border-[#5a4a3a]" />
+   435→                </div>
+   436→              </div>
+   437→            </div>
+   438→
+   439→            {/* Right Reel */}
+   440→            <div className="relative w-14 h-14">
+   441→              <div
+   442→                className={`absolute inset-0 rounded-full border-2 border-[#5a4a3a] ${
+   443→                  isRecording || isPlaying ? 'animate-spin' : ''
+   444→                }`}
+   445→                style={{ animationDuration: '2.5s', animationDirection: 'reverse' }}
+   446→              >
+   447→                <div className="absolute inset-1.5 rounded-full bg-[#2a2218] flex items-center justify-center">
+   448→                  <div className="w-2.5 h-2.5 rounded-full bg-[#1a1410] border border-[#5a4a3a]" />
+   449→                </div>
+   450→                <div className="absolute inset-2 rounded-full">
+   451→                  {isRecording || isPlaying ? (
+   452→                    <svg viewBox="0 0 40 40" className="w-full h-full animate-spin" style={{ animationDuration: '2s' }}>
+   453→                      {[0, 72, 144, 216, 288].map((deg) => (
+   454→                        <line
+   455→                          key={deg}
+   456→                          x1="20"
+   457→                          y1="4"
+   458→                          x2="20"
+   459→                          y2="12"
+   460→                          stroke="#5a4a3a"
+   461→                          strokeWidth="1.5"
+   462→                          transform={`rotate(${deg} 20 20)`}
+   463→                        />
+   464→                      ))}
+   465→                    </svg>
+   466→                  ) : (
+   467→                    <svg viewBox="0 0 40 40" className="w-full h-full">
+   468→                      {[0, 72, 144, 216, 288].map((deg) => (
+   469→                        <line
+   470→                          key={deg}
+   471→                          x1="20"
+   472→                          y1="4"
+   473→                          x2="20"
+   474→                          y2="12"
+   475→                          stroke="#5a4a3a"
+   476→                          strokeWidth="1.5"
+   477→                          transform={`rotate(${deg} 20 20)`}
+   478→                        />
+   479→                      ))}
+   480→                    </svg>
+   481→                  )}
+   482→                </div>
+   483→              </div>
+   484→            </div>
+   485→          </div>
+   486→
+   487→          {/* LED Counter & Status */}
+   488→          <div className="flex items-center justify-between">
+   489→            {/* LED Counter */}
+   490→            <div className="bg-[#0a0a05] rounded px-3 py-1.5 border border-[#2a2a15] shadow-[inset_0_1px_4px_rgba(0,0,0,0.8)]">
+   491→              <span className="old-typewriter text-lg tracking-[0.2em] text-amber-400 font-bold" style={{ textShadow: '0 0 8px rgba(251,191,36,0.5)' }}>
+   492→                {isRecording || isPlaying ? formatTime(isRecording ? recordingTime : (playProgress * (messages.find((m) => m.id === playingId)?.duration || 0))) : '00:00'}
+   493→              </span>
+   494→            </div>
+   495→
+   496→            {/* Status Indicator */}
+   497→            <div className="flex items-center gap-2">
+   498→              {isRecording && (
+   499→                <div className="flex items-center gap-1.5 bg-[#1a0a0a] rounded px-2 py-1 border border-[#3a1515]">
+   500→                  <span
+   501→                    className="w-2 h-2 rounded-full bg-red-500"
+   502→                    style={{
+   503→                      animation: 'blink 0.8s ease-in-out infinite',
+   504→                    }}
+   505→                  />
+   506→                  <span className="old-typewriter text-[10px] text-red-400 font-bold tracking-wider">
+   507→                    REC
+   508→                  </span>
+   509→                </div>
+   510→              )}
+   511→              <span
+   512→                className={`old-typewriter text-[10px] tracking-wider ${
+   513→                  isRecording
+   514→                    ? 'text-red-400'
+   515→                    : isPlaying
+   516→                    ? 'text-green-400'
+   517→                    : 'text-[#6b5b3e]'
+   518→                }`}
+   519→              >
+   520→                {isRecording ? 'RECORDING...' : isPlaying ? 'PLAYING...' : 'READY'}
+   521→              </span>
+   522→            </div>
+   523→          </div>
+   524→        </div>
+   525→
+   526→        {/* ── Controls ── */}
+   527→        <div className="flex items-center justify-center gap-6 mb-6 relative">
+   528→          {/* Record Button */}
+   529→          <button
+   530→            onClick={toggleRecording}
+   531→            disabled={status === 'error-unsupported' || status === 'error-denied'}
+   532→            className="group relative w-16 h-16 rounded-full bg-[#8b1a1a] border-4 border-[#5a1010] shadow-[0_4px_12px_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.15)] transition-all duration-200 hover:bg-[#a02020] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+   533→            aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+   534→          >
+   535→            {isRecording && (
+   536→              <div
+   537→                className="absolute inset-0 rounded-full bg-red-500/30"
+   538→                style={{
+   539→                  animation: 'pulse-ring 1.5s ease-in-out infinite',
+   540→                }}
+   541→              />
+   542→            )}
+   543→            <div className="flex items-center justify-center w-full h-full">
+   544→              {isRecording ? (
+   545→                <div className="w-5 h-5 rounded-sm bg-[#1a0a0a]" />
+   546→              ) : (
+   547→                <div className="w-6 h-6 rounded-full bg-[#1a0a0a] border border-[#5a1010]" />
+   548→              )}
+   549→            </div>
+   550→          </button>
+   551→
+   552→          <div className="text-center">
+   553→            <p className="old-label text-[9px] text-[#c9a96e] tracking-wider">RECORD</p>
+   554→            <p className="old-typewriter text-[7px] text-[#8b7355] mt-0.5">
+   555→              MAX {MAX_RECORDING_SECONDS}s
+   556→            </p>
+   557→          </div>
+   558→        </div>
+   559→
+   560→        {/* ── New Messages Indicator ── */}
+   561→        <AnimatePresence>
+   562→          {messages.length > 0 && (
+   563→            <motion.div
+   564→              initial={{ opacity: 0, y: -8 }}
+   565→              animate={{ opacity: 1, y: 0 }}
+   566→              exit={{ opacity: 0, y: -8 }}
+   567→              className="text-center mb-4"
+   568→            >
+   569→              <p className="old-typewriter text-xs text-amber-600" style={{ textShadow: '0 0 6px rgba(217,119,6,0.2)' }}>
+   570→                📼 You have <span className="font-bold">{messages.length}</span> saved message{messages.length !== 1 ? 's' : ''}
+   571→              </p>
+   572→            </motion.div>
+   573→          )}
+   574→        </AnimatePresence>
+   575→      </div>
+   576→
+   577→      {/* ── Message List ── */}
+   578→      <div className="max-w-lg mx-auto mt-6 space-y-3">
+   579→        <AnimatePresence>
+   580→          {messages.map((msg) => {
+   581→            const isThisPlaying = playingId === msg.id;
+   582→            const bars = generateWaveformBars(32);
+   583→            const progressIdx = isThisPlaying ? Math.floor(playProgress * bars.length) : 0;
+   584→
+   585→            return (
+   586→              <motion.div
+   587→                key={msg.id}
+   588→                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+   589→                animate={{ opacity: 1, y: 0, scale: 1 }}
+   590→                exit={{ opacity: 0, x: -40, scale: 0.9 }}
+   591→                transition={{ duration: 0.35 }}
+   592→                className="sk-paper rounded-xl p-4 relative group shadow-sm"
+   593→              >
+   594→                <div className="absolute inset-0 sk-noise pointer-events-none opacity-10" />
+   595→
+   596→                {/* Tape Label Header */}
+   597→                <div className="flex items-center justify-between mb-3">
+   598→                  <div>
+   599→                    <p className="old-label text-[9px] text-[#8b7355] tracking-wider">
+   600→                      ✉ VOICEMAIL #{messages.indexOf(msg) + 1}
+   601→                    </p>
+   602→                    <p className="old-typewriter text-[8px] text-[#a08060] mt-0.5">
+   603→                      {formatDate(msg.timestamp)}
+   604→                    </p>
+   605→                  </div>
+   606→                  <span className="old-typewriter text-[10px] text-[#6b5b3e] bg-[#f5edd6] px-2 py-0.5 rounded border border-[#d4c9a8]">
+   607→                    {formatTime(msg.duration)}
+   608→                  </span>
+   609→                </div>
+   610→
+   611→                {/* Waveform Visual */}
+   612→                <div className="flex items-end gap-[2px] h-10 mb-3 px-1 bg-[#f5edd6]/50 rounded border border-[#e0d5b8] overflow-hidden">
+   613→                  {bars.map((height, i) => {
+   614→                    const isPast = isThisPlaying && i < progressIdx;
+   615→                    const isCurrent = isThisPlaying && i === progressIdx;
+   616→                    return (
+   617→                      <div
+   618→                        key={i}
+   619→                        className="flex-1 rounded-sm transition-colors duration-150 min-w-[2px]"
+   620→                        style={{
+   621→                          height: `${height * 100}%`,
+   622→                          backgroundColor: isCurrent
+   623→                            ? '#b91c1c'
+   624→                            : isPast
+   625→                            ? '#8b5e3c'
+   626→                            : '#c9a96e',
+   627→                          opacity: isPast || isCurrent ? 1 : 0.5,
+   628→                        }}
+   629→                      />
+   630→                    );
+   631→                  })}
+   632→                </div>
+   633→
+   634→                {/* Controls */}
+   635→                <div className="flex items-center gap-3">
+   636→                  {/* Play / Pause */}
+   637→                  <button
+   638→                    onClick={() => togglePlay(msg)}
+   639→                    className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#3d2b1f] text-[#f5edd6] old-typewriter text-[10px] tracking-wider hover:bg-[#5a4030] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+   640→                    aria-label={isThisPlaying ? 'Pause' : 'Play'}
+   641→                  >
+   642→                    {isThisPlaying ? (
+   643→                      <>
+   644→                        <span className="inline-block w-2.5 h-3 bg-[#f5edd6] rounded-[1px]" />
+   645→                        PAUSE
+   646→                      </>
+   647→                    ) : (
+   648→                      <>
+   649→                        <span className="inline-block w-0 h-0 border-l-[6px] border-l-[#f5edd6] border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent" />
+   650→                        PLAY
+   651→                      </>
+   652→                    )}
+   653→                  </button>
+   654→
+   655→                  {/* Progress bar */}
+   656→                  <div className="flex-1 h-1.5 bg-[#e0d5b8] rounded-full overflow-hidden">
+   657→                    <div
+   658→                      className="h-full bg-[#8b5e3c] rounded-full transition-all duration-100"
+   659→                      style={{ width: isThisPlaying ? `${playProgress * 100}%` : '0%' }}
+   660→                    />
+   661→                  </div>
+   662→
+   663→                  {/* Delete */}
+   664→                  <button
+   665→                    onClick={() => deleteMessage(msg.id)}
+   666→                    className="text-[#8b7355] hover:text-red-700 transition-colors opacity-60 group-hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded p-1"
+   667→                    aria-label="Delete message"
+   668→                  >
+   669→                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+   670→                      <polyline points="3 6 5 6 21 6" />
+   671→                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+   672→                    </svg>
+   673→                  </button>
+   674→                </div>
+   675→              </motion.div>
+   676→            );
+   677→          })}
+   678→        </AnimatePresence>
+   679→
+   680→        {messages.length === 0 && status !== 'recording' && (
+   681→          <p className="text-center old-body text-sm text-muted-foreground py-6 opacity-60">
+   682→            No messages yet... press record to leave one! 🎙️
+   683→          </p>
+   684→        )}
+   685→      </div>
+   686→
+   687→      {/* ── Inline Keyframes ── */}
+   688→      <style jsx global>{`
+   689→        @keyframes blink {
+   690→          0%, 100% { opacity: 1; }
+   691→          50% { opacity: 0.15; }
+   692→        }
+   693→        @keyframes pulse-ring {
+   694→          0% { transform: scale(1); opacity: 0.4; }
+   695→          50% { transform: scale(1.15); opacity: 0.1; }
+   696→          100% { transform: scale(1); opacity: 0.4; }
+   697→        }
+   698→      `}</style>
+   699→    </section>
+   700→  );
+   701→}
