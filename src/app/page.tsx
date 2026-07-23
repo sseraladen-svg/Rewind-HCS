@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Gamepad2, BookOpen,
   ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
-  Clapperboard, Phone,
+  Clapperboard, Phone, Film,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -22,6 +22,7 @@ import GamesHub from '@/components/GamesHub';
 
 import SettingsTab from '@/components/SettingsTab';
 import ContactsTab from '@/components/ContactsTab';
+import MoviesTab from '@/components/MoviesTab';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
 import { SessionProvider } from 'next-auth/react';
@@ -412,6 +413,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
 
   const tabs = [
     { id: 'reel', label: 'Reel', icon: <Clapperboard className="h-4 w-4" /> },
+    { id: 'movies', label: 'Movies', icon: <Film className="h-4 w-4" /> },
     { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
     { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 'contacts', label: 'Contacts', icon: <Phone className="h-4 w-4" /> },
@@ -505,6 +507,15 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
               </button>
             ))}
           </div>
+
+          {/* ═══ MOVIES TAB ═══ */}
+          {activeTab === 'movies' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="movies" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <MoviesTab birthYear={birthYear} />
+              </motion.div>
+            </AnimatePresence>
+          )}
 
           {/* ═══ JOURNAL TAB ═══ */}
           {activeTab === 'journal' && (
