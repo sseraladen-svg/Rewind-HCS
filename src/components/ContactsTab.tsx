@@ -156,7 +156,7 @@ export default function ContactsTab() {
               <span className="old-heading text-lg">{FOLDERS.find(f => f.key === openFolder)?.label}</span>
             </motion.div>
 
-            {/* Content */
+            {/* Content */}
             {openFolder === 'phone' && <RotaryPhoneFolder />}
             {openFolder === 'voice' && <VoiceMessages />}
             {openFolder === 'chat' && <RetroChatFolder />}
