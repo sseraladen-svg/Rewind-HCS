@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Gamepad2, BookOpen,
   ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
-  Clapperboard, Phone, Film,
+  Clapperboard, Phone, Film, Camera,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -22,6 +22,7 @@ import GamesHub from '@/components/GamesHub';
 
 import ContactsTab from '@/components/ContactsTab';
 import MoviesTab from '@/components/MoviesTab';
+import VintageCamera from '@/components/VintageCamera';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
 import { SessionProvider } from 'next-auth/react';
@@ -401,6 +402,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const decadeTheme = getDecadeTheme(birthYear);
   const [activeTab, setActiveTab] = useState('journal');
   const [showReel, setShowReel] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const { data: session } = useSession();
   // Trigger old-style cassette loader when switching tabs
@@ -456,6 +458,13 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             <div className="sk-vhs-label old-typewriter text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
               {data.decade} &middot; Born {birthYear}
             </div>
+            <button
+                onClick={() => setShowCamera(true)}
+                className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
+                title="Camera"
+              >
+                <Camera className="h-3.5 w-3.5 text-[#5c4033]" />
+              </button>
             <button
                 onClick={() => handleTabChange('settings')}
                 className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
@@ -637,6 +646,11 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
       {/* ═══ MEMORY REEL OVERLAY ═══ */}
       <AnimatePresence>
         {showReel && <MemoryReelFeed birthYear={birthYear} onClose={() => setShowReel(false)} />}
+      </AnimatePresence>
+
+      {/* ═══ CAMERA OVERLAY ═══ */}
+      <AnimatePresence>
+        {showCamera && <VintageCamera onClose={() => setShowCamera(false)} />}
       </AnimatePresence>
 
       {/* ═══ AUTH MODAL OVERLAY ═══ */}
