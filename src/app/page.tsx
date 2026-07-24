@@ -20,7 +20,6 @@ import AuthModal from '@/components/AuthModal';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
 import GamesHub from '@/components/GamesHub';
 
-import SettingsTab from '@/components/SettingsTab';
 import ContactsTab from '@/components/ContactsTab';
 import MoviesTab from '@/components/MoviesTab';
 import { runMigration } from '@/lib/idb-store/migrate';
@@ -433,7 +432,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
     { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 'contacts', label: 'Contacts', icon: <Phone className="h-4 w-4" /> },
     { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
-    { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
   ];
 
   return (
@@ -617,14 +615,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             </AnimatePresence>
           )}
 
-          {/* ═══ SETTINGS TAB ═══ */}
-          {activeTab === 'settings' && (
-            <AnimatePresence mode="wait">
-              <motion.div key="settings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <SettingsTab onOpenAuth={() => setShowAuth(true)} />
-              </motion.div>
-            </AnimatePresence>
-          )}
+
         </div>
       </main>
 
