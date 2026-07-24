@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Liberation+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+@page {
+  size: 720px 1020px;
+  margin: 0;
+}
+:root {
+  --c-bg: #0a0a0a;
+  --c-surface: #141414;
+  --c-text: #e8e6e3;
+  --c-muted: #888888;
+  --c-accent: #00ff88;
+  --c-accent2: #ff00ff;
+  --c-warm: #c4956a;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  width: 720px;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'Inter', sans-serif;
+}
+@media screen {
+  html { height: auto; display: flex; justify-content: center; background: #111; }
+  body { transform-origin: top center; margin: 20px auto; }
+}
+
+/* ── COVER ── */
+.cover {
+  width: 720px; height: 1020px;
+  display: flex; flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  break-after: page;
+  background: radial-gradient(ellipse at 50% 40%, #1a1a2e 0%, #0a0a0a 70%);
+}
+.cover::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(transparent 60%, rgba(0,255,136,0.04) 60%, rgba(0,255,136,0.04) 61%, transparent 61%),
+    linear-gradient(90deg, transparent 60%, rgba(0,255,136,0.04) 60%, rgba(0,255,136,0.04) 61%, transparent 61%);
+  background-size: 60px 60px;
+  transform: perspective(400px) rotateX(45deg);
+  transform-origin: center top;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.cover-tag {
+  font-family: 'Liberation Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--c-accent);
+  border: 1px solid rgba(0,255,136,0.3);
+  padding: 6px 18px;
+  border-radius: 2px;
+  margin-bottom: 35px;
+}
+.cover-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 72px;
+  font-weight: 900;
+  color: var(--c-text);
+  text-align: center;
+  line-height: 1.0;
+  margin-bottom: 25px;
+}
+.cover-title span { color: var(--c-accent); }
+.cover-subtitle {
+  font-size: 16px;
+  color: var(--c-muted);
+  font-weight: 300;
+  letter-spacing: 1px;
+  margin-bottom: 50px;
+}
+.cover-meta {
+  font-family: 'Liberation Mono', monospace;
+  font-size: 10px;
+  color: var(--c-muted);
+  position: absolute;
+  bottom: 40px;
+  text-align: center;
+  line-height: 1.8;
+}
+.cover-meta span { color: var(--c-accent); }
+
+/* ── MAIN CONTENT ── */
+.main-content {
+  padding: 50px 55px 40px 55px;
+}
+
+.section-tag {
+  font-family: 'Liberation Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--c-accent);
+  margin-bottom: 8px;
+}
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--c-text);
+  margin-bottom: 6px;
+}
+.divider {
+  width: 50px;
+  height: 2px;
+  background: var(--c-accent);
+  margin-bottom: 20px;
+}
+.body-text {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--c-muted);
+  margin-bottom: 14px;
+}
+
+/* ── SCENE CARDS ── */
+.scene-card {
+  background: var(--c-surface);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  break-inside: avoid;
+  position: relative;
+}
+.scene-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.scene-number {
+  font-family: 'Liberation Mono', monospace;
+  font-size: 10px;
+  color: var(--c-accent);
+  background: rgba(0,255,136,0.08);
+  padding: 3px 10px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+.scene-time {
+  font-family: 'Liberation Mono', monospace;
+  font-size: 10px;
+  color: var(--c-accent2);
+}
+.scene-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--c-muted);
+  margin-bottom: 4px;
+}
+.scene-visual {
+  font-size: 12px;
+  color: var(--c-warm);
+  line-height: 1.6;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: rgba(196,149,106,0.06);
+  border-left: 2px solid var(--c-warm);
+  border-radius: 0 3px 3px 0;
+}
+.scene-vo {
+  font-size: 12px;
+  color: var(--c-text);
+  line-height: 1.7;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+.scene-vo strong { font-style: normal; color: var(--c-accent); }
+.scene-notes {
+  font-family: 'Liberation Mono', monospace;
+  font-size: 9px;
+  color: var(--c-muted);
+  line-height: 1.6;
+  opacity: 0.7;
+}
+
+/* ── TIMELINE BAR ── */
+.timeline-bar {
+  display: flex;
+  gap: 2px;
+  margin: 20px 0 6px 0;
+}
+.tl-segment {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  opacity: 0.5;
+}
+.tl-segment.s1 { background: #00ff88; }
+.tl-segment.s2 { background: #00cc6a; }
+.tl-segment.s3 { background: #ff00ff; }
+.tl-segment.s4 { background: #c4956a; }
+.tl-segment.s5 { background: #336699; }
+.tl-segment.s6 { background: #ff8c00; }
+.tl-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Liberation Mono', monospace;
+  font-size: 9px;
+  color: var(--c-muted);
+  opacity: 0.6;
+  margin-bottom: 20px;
+}
+
+/* ── CHAPTER HEADER ── */
+.chapter-header {
+  break-after: avoid;
+  break-inside: avoid;
+  margin-top: 28px;
+}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight-box {
+  background: rgba(0,255,136,0.04);
+  border: 1px solid rgba(0,255,136,0.15);
+  border-radius: 4px;
+  padding: 14px 18px;
+  margin: 16px 0;
+  break-inside: avoid;
+}
+.highlight-box .hl-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--c-accent);
+  margin-bottom: 6px;
+}
+.highlight-box .hl-text {
+  font-size: 12px;
+  color: var(--c-text);
+  line-height: 1.6;
+}
+
+/* ── ENDING ── */
+.ending {
+  width: 720px; height: 1020px;
+  display: flex; flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  break-before: page;
+  background: var(--c-bg);
+}
+.ending-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--c-text);
+  text-align: center;
+  max-width: 500px;
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+.ending-sub {
+  font-size: 13px;
+  color: var(--c-muted);
+  text-align: center;
+  max-width: 420px;
+  line-height: 1.7;
+}
+.ending-footer {
+  position: absolute;
+  bottom: 40px;
+  font-family: 'Liberation Mono', monospace;
+  font-size: 9px;
+  color: var(--c-muted);
+  opacity: 0.5;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ COVER ═══ -->
+<div class="cover">
+  <div class="cover-tag">Video Production Script</div>
+  <div class="cover-title">REWIND<br><span>THE APP</span></div>
+  <div class="cover-subtitle">A 2-Minute Promotional Video Script</div>
+  <div style="width: 50px; height: 1px; background: var(--c-accent); opacity: 0.4; margin-bottom: 50px;"></div>
+  <div style="font-family: 'Liberation Mono', monospace; font-size: 10px; color: var(--c-muted); letter-spacing: 1px;">
+    DURATION: 2:00 &nbsp;&middot;&nbsp; FORMAT: 1080p &nbsp;&middot;&nbsp; STYLE: Nostalgic Cinematic
+  </div>
+  <div class="cover-meta">
+    <span>Total Scenes: 10</span> &nbsp;&middot;&nbsp; Music: Lo-fi / Synthwave Blend &nbsp;&middot;&nbsp; Voice: Warm, Conversational<br>
+    <span>Target Audience:</span> Millennials &amp; Gen Z &nbsp;&middot;&nbsp; <span>Tone:</span> Emotional, Playful, Wistful
+  </div>
+</div>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<div class="main-content">
+
+  <!-- OVERVIEW -->
+  <div class="section-tag">Overview</div>
+  <div class="section-title">The Story We Are Telling</div>
+  <div class="divider"></div>
+  <div class="body-text">
+    This script follows a single emotional arc: <strong>the viewer enters their birth year and is transported back to the sights, sounds, and culture of their formative years.</strong> The video opens with a mysterious, dark interface that sparks to life. As the decade theme activates, the entire visual language shifts. We see curated movies, a vintage camera, retro games, an AIM-style chat, a personal timeline, and a memory gallery. The closing lands on an emotional note about the power of nostalgia and the importance of holding onto who you are.
+  </div>
+  <div class="body-text">
+    The pacing mirrors a VHS tape being inserted and played. Each scene transition uses CRT flickers, scanlines, or tape-tracking artifacts. The music starts sparse and ambient, builds through the decade reveal, peaks during the feature montage, and resolves to a soft, warm close. The voiceover is warm and conversational, like a friend showing you something they love, never corporate or salesy.
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="section-tag" style="margin-top: 28px;">Timeline</div>
+  <div class="section-title">Scene Breakdown (120 seconds)</div>
+  <div class="divider"></div>
+
+  <div class="timeline-bar">
+    <div class="tl-segment s1" style="flex: 1.5;"></div>
+    <div class="tl-segment s2" style="flex: 1.5;"></div>
+    <div class="tl-segment s3" style="flex: 1;"></div>
+    <div class="tl-segment s4" style="flex: 2;"></div>
+    <div class="tl-segment s5" style="flex: 1.5;"></div>
+    <div class="tl-segment s6" style="flex: 1.5;"></div>
+  </div>
+  <div class="tl-labels">
+    <span>0:00</span><span>0:18</span><span>0:30</span><span>0:50</span><span>1:15</span><span>1:30</span><span>1:50</span><span>2:00</span>
+  </div>
+
+  <!-- SCENE 1 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 01</span>
+      <span class="scene-time">0:00 - 0:10</span>
+    </div>
+    <div class="scene-label">Cold Open - The Dark Screen</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> Black screen. Slowly, green CRT text appears character by character, like a computer booting: "BIOS v2.4 -- Nostalgia Systems Inc." then "Detecting memories... 640K OK." A faint synthwave grid fades in from the bottom. The Rewind logo materializes pixel by pixel in the center. A soft glow pulses around it.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "What if you could go back? Not just remember, but <strong>feel</strong> it again. The sounds. The colors. The person you were.">
+    </div>
+    <div class="scene-notes">SFX: Low CRT hum, faint dial-up static. Music: Single sustained synth pad, barely audible. Camera: Static wide shot, slow zoom in.</div>
+  </div>
+
+  <!-- SCENE 2 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 02</span>
+      <span class="scene-time">0:10 - 0:18</span>
+    </div>
+    <div class="scene-label">The Question</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> The boot text fades out. A clean, elegant input field appears: "What year were you born?" A cursor blinks. A hand types "1990" (or whichever year). The screen pauses for a beat. Then a VHS tracking glitch tears across the screen. The loading screen kicks in: cassette reels spin, progress bar fills chunkily. Text reads: "Rewinding tape..." The decade title slams in: "THE 90s" with a Windows 95-style title bar.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "Enter your birth year. And just like that, the world shifts. Your world. The one you grew up in."
+    </div>
+    <div class="scene-notes">SFX: Keyboard clacks, VHS tracking glitch, cassette rewind. Music: Tempo picks up slightly, adds a lo-fi drum pattern. Camera: Tight on the input, then pull back for the theme reveal.</div>
+  </div>
+
+  <!-- SCENE 3 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 03</span>
+      <span class="scene-time">0:18 - 0:30</span>
+    </div>
+    <div class="scene-label">The Dashboard Reveal</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> The full dashboard appears with a smooth fade. We see the wood-grain header, the cork-board background, the decade badge. The camera slowly pans across the tab bar: Reel, Movies, Journal, Games, Contacts, Memory, Timeline. Each tab lights up briefly as the camera passes. The hero section shows the decade name and tagline. The whole interface has transformed -- if it was the 80s, everything is neon and dark. If 90s, gray beveled windows. If 2000s, glossy blue gradients.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "This is Rewind. A personal time machine that rebuilds your entire childhood in one screen. Every movie. Every game. Every memory. Curated just for you, from your first year to eighteen."
+    </div>
+    <div class="scene-notes">SFX: UI click sounds, subtle whoosh on tab highlights. Music: Full lo-fi beat drops here. Camera: Slow dolly across the interface, shallow depth of field on foreground elements.</div>
+  </div>
+
+  <!-- SCENE 4 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 04</span>
+      <span class="scene-time">0:30 - 0:50</span>
+    </div>
+    <div class="scene-label">Feature Montage - Movies, Journal, Games</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> Quick cuts between features. <strong>Movies tab:</strong> Poster grid scrolls with real movie posters from the era. A card expands showing the overview. <strong>Journal tab:</strong> A hand writes with an ink-pen font on aged paper. Lines appear as if being written in real time. <strong>Games tab:</strong> Tic-tac-toe being played, Minesweeper grid revealed, word search being solved. Each game shows the retro styling of the selected decade.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "Browse 111 curated movies from your era, with real posters and ratings. Write in your journal with a vintage fountain pen. Play the games you grew up with -- Minesweeper, Tic-Tac-Toe, Word Search. All styled to match your decade."
+    </div>
+    <div class="scene-notes">SFX: Page turn for journal, game sound effects. Music: Beat continues, add playful melody line. Camera: Quick cuts (1-2 sec each), smooth transitions. Each feature demo is 5-7 seconds.</div>
+  </div>
+
+  <!-- SCENE 5 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 05</span>
+      <span class="scene-time">0:50 - 1:05</span>
+    </div>
+    <div class="scene-label">Feature Montage - Contacts, Camera, Memory</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> <strong>Contacts tab:</strong> Three folder icons appear. Click one -- it expands to show the Rotary Phone. A finger drags the dial, it spins with a satisfying animation. Switch to Retro Chat -- a dial-up connection animation plays (progress bar, static, "Connected at 56.6 Kbps"), then an AIM-style chat window appears with a buddy typing. <strong>Camera:</strong> The camera icon in the header is tapped. The vintage camera opens with live preview and retro filter presets (Sepia 70s, Faded 80s, etc.). A photo is taken with a flash effect. <strong>Memory tab:</strong> The photo appears in a polaroid grid alongside gallery uploads. A filmstrip view scrolls horizontally.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "Dial a rotary phone and hear it ring. Chat on AIM with a dial-up connection. Take retro photos with real vintage filters. Every moment gets saved in your Memory gallery -- photos from the camera or from your own device."
+    </div>
+    <div class="scene-notes">SFX: Phone dial clicks, ring, dial-up modem sounds, camera shutter. Music: Peak energy here, most dynamic section. Camera: Mix of close-ups on interactions and wider contextual shots.</div>
+  </div>
+
+  <!-- SCENE 6 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 06</span>
+      <span class="scene-time">1:05 - 1:15</span>
+    </div>
+    <div class="scene-label">Timeline and AI Insights</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> The Timeline tab shows a vertical timeline of the user's life from birth to age 18, with cultural milestones, movie releases, and historical events marked alongside personal age markers. The camera scrolls down slowly. Then the AI Insights panel appears -- it shows a thoughtfully generated reflection about the user's generation. The NostalgiaFeatures page is teased: Guestbook, Mixtape Creator, Magic 8-Ball, Tamagotchi pet.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "See your whole life timeline -- every movie, every cultural moment that shaped you. AI-generated insights reflect on what your generation means. Plus: sign a guestbook, create a mixtape, shake a Magic 8-Ball, and keep a virtual Tamagotchi alive."
+    </div>
+    <div class="scene-notes">SFX: Soft whooshes on timeline scroll. Music: Energy starts to soften, transition to more emotional tone. Camera: Steady vertical scroll, then slow pull back.</div>
+  </div>
+
+  <!-- SCENE 7 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 07</span>
+      <span class="scene-time">1:15 - 1:30</span>
+    </div>
+    <div class="scene-label">The Three Decades</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> Quick split-screen or rapid cuts showing the same app in three different visual themes. <strong>Left:</strong> 80s theme -- black background, neon green text, VT323 pixel font, glowing buttons, synthwave grid, scanlines. <strong>Center:</strong> 90s theme -- Windows 95 gray, beveled 3D buttons, Courier Prime, navy title bars. <strong>Right:</strong> 2000s theme -- powder blue, glossy orange buttons, rounded corners, Nunito font, drop shadows. The same dashboard, three completely different feels. Each transition has a CRT power-off/on flicker.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "Born in the 80s? Neon green and synthwave. The 90s? Beveled windows and Courier Prime. The 2000s? Glossy gradients and rounded corners. The entire app transforms to match your era. Every texture, every font, every button. It is not a skin -- it is a time machine."
+    </div>
+    <div class="scene-notes">SFX: CRT power-on/off sounds for each transition, subtle decade-appropriate music shifts. Music: Brief genre shifts matching each decade (synthwave, grunge, pop-punk). Camera: Split screen composition or rapid 2-sec cuts with glitch transitions.</div>
+  </div>
+
+  <!-- SCENE 8 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 08</span>
+      <span class="scene-time">1:30 - 1:40</span>
+    </div>
+    <div class="scene-label">Memory Reel</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> The Reel tab is triggered. A full-screen overlay appears showing memories flowing in a cinematic film-reel format. Photos, journal entries, and movie posters cascade across the screen with smooth parallax scrolling. The experience feels like watching a home movie. The camera icon in the header flashes briefly, hinting at the vintage camera.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "Hit play on the Memory Reel and watch your entire childhood flow by like a home movie. Every journal entry. Every photo. Every movie poster from the years that made you."
+    </div>
+    <div class="scene-notes">SFX: Film projector sound, subtle reel clicking. Music: Most emotional peak of the soundtrack, warm strings or pads. Camera: Slow, cinematic dolly through the reel feed.</div>
+  </div>
+
+  <!-- SCENE 9 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 09</span>
+      <span class="scene-time">1:40 - 1:50</span>
+    </div>
+    <div class="scene-label">Emotional Close</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> The timeline tab is shown one more time, scrolled to the bottom. The closing message appears: "You made it through. Every memory on this page is a piece of who you are. The world moves fast, but your roots are deep." A warm, slow zoom into the text. The background subtly pulses with the decade's accent color. Everything else fades to black except this message.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "Every memory on this page is a piece of who you are. The world moves fast, but your roots are deep. You came from simpler times. And that strength lives in you still."
+    </div>
+    <div class="scene-notes">SFX: Music fades to solo piano or single synth. Camera: Very slow zoom, almost imperceptible. Lighting: Warm, golden hour feel even on screen. This is the emotional climax.</div>
+  </div>
+
+  <!-- SCENE 10 -->
+  <div class="scene-card">
+    <div class="scene-header">
+      <span class="scene-number">SCENE 10</span>
+      <span class="scene-time">1:50 - 2:00</span>
+    </div>
+    <div class="scene-label">Outro - Logo and CTA</div>
+    <div class="scene-visual">
+      <strong>VISUAL:</strong> Black screen. The Rewind logo fades in, styled in the synthwave neon aesthetic (green glow, pixel elements). Below it: "rewind.app" or the app URL. A single line fades in: "Because you are human, not a machine. Take it easy." The decade color accents briefly flash -- green, navy, blue -- in sequence. Then everything fades to black. One final CRT power-off effect.
+    </div>
+    <div class="scene-vo">
+      <strong>VO:</strong> "Rewind. Because you are human, not a machine. Take it easy."
+    </div>
+    <div class="scene-notes">SFX: CRT power-off. Music: Final chord resolves and rings out. Silence for last 2 seconds. Camera: Static, centered on logo. No movement.</div>
+  </div>
+
+  <!-- PRODUCTION NOTES -->
+  <div class="chapter-header">
+    <div class="section-tag">Production Notes</div>
+    <div class="section-title">Technical and Creative Guidelines</div>
+    <div class="divider"></div>
+  </div>
+
+  <div class="highlight-box">
+    <div class="hl-title">Music Direction</div>
+    <div class="hl-text">
+      Use a lo-fi / synthwave blend that shifts by decade. 80s sections lean into analog synths and arpeggiated basslines. 90s sections add grunge-influenced guitar textures and drum loops. 2000s sections brighten with clean electric piano and polished production. The emotional close should strip back to a single piano or ambient pad. License from Artlist, Epidemic Sound, or similar. Total music cost target: under $50.
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <div class="hl-title">Voice-Over Casting</div>
+    <div class="hl-text">
+      Cast a warm, conversational voice -- think documentary narrator, not commercial announcer. Age 28-40 preferred. The tone should feel like a friend showing you something personal, never salesy or corporate. Pace should be unhurried, with natural pauses. American English, neutral accent. Record at 44.1kHz, 16-bit WAV. Budget approximately $100-200 on platforms like Voices.com or Fiverr.
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <div class="hl-title">Recording and Editing</div>
+    <div class="hl-text">
+      Record the app screen at 1080p using a screen capture tool (OBS, ScreenFlow, or system built-in). For the three-decade split section, record the same dashboard three times with different birth years. Add CRT/glitch transitions in post using overlays (scanline PNG, tracking distortion, VHS color shift). Use subtle camera movements in post (digital zoom, slow pan, slight parallax on UI layers). Target a 1-2 second hold on each feature showcase for readability. Export at H.264, 30fps, 8-12 Mbps for web delivery.
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <div class="hl-title">Distribution</div>
+    <div class="hl-text">
+      Primary: Instagram Reels / TikTok (9:16 vertical crop, 60-second highlights). Secondary: YouTube (16:9 full version, 2:00). Tertiary: App Store / Play Store preview (30-second supercut of best moments). Create a 15-second teaser for Twitter/X and LinkedIn. All versions should feel native to their platform while maintaining the retro aesthetic.
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ ENDING ═══ -->
+<div class="ending">
+  <div style="font-family: 'Liberation Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--c-accent); opacity: 0.5; margin-bottom: 30px;">END OF SCRIPT</div>
+  <div class="ending-text">"Every memory is a piece of who you are."</div>
+  <div class="ending-sub">This script is designed to be recorded in a single session using screen capture and voice-over. No external assets required beyond the app itself and licensed music.</div>
+  <div class="ending-footer">REWIND &middot; VIDEO SCRIPT v1.0 &middot; 2:00 DURATION &middot; 10 SCENES</div>
+</div>
+
+</body>
+</html>
