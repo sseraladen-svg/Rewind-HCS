@@ -21,6 +21,7 @@ import AiInsightsPanel from '@/components/AiInsightsPanel';
 import GamesHub from '@/components/GamesHub';
 
 import ContactsTab from '@/components/ContactsTab';
+import Gallery from '@/components/Gallery';
 import MoviesTab from '@/components/MoviesTab';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
@@ -615,6 +616,8 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             </AnimatePresence>
           )}
 
+          {/* ═══ GALLERY — always visible below tabs ═══ */}
+          <Gallery birthYear={birthYear} />
 
         </div>
       </main>
