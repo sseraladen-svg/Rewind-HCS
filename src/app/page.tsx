@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Gamepad2, BookOpen,
   ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
-  Clapperboard, Phone, Film, Camera,
+  Clapperboard, Phone, Film, Camera, ImageIcon,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -22,6 +22,7 @@ import GamesHub from '@/components/GamesHub';
 
 import ContactsTab from '@/components/ContactsTab';
 import MoviesTab from '@/components/MoviesTab';
+import MemoryTab from '@/components/MemoryTab';
 import VintageCamera from '@/components/VintageCamera';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
@@ -433,6 +434,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
     { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
     { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 'contacts', label: 'Contacts', icon: <Phone className="h-4 w-4" /> },
+    { id: 'memory', label: 'Memory', icon: <ImageIcon className="h-4 w-4" /> },
     { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
   ];
 
@@ -569,6 +571,15 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             <AnimatePresence mode="wait">
               <motion.div key="contacts" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <ContactsTab />
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+          {/* ═══ MEMORY TAB ═══ */}
+          {activeTab === 'memory' && (
+            <AnimatePresence mode="wait">
+              <motion.div key="memory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <MemoryTab onOpenCamera={() => setShowCamera(true)} />
               </motion.div>
             </AnimatePresence>
           )}
