@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, BookOpen } from 'lucide-react';
+import { getAllJournalEntries } from '@/lib/idb-store';
+import type { JournalEntryRecord } from '@/lib/idb-store/types';
 
 interface HistoryItem {
   year: number;
@@ -61,16 +63,31 @@ const cardVariants = {
 
 export default function ThisDayInHistory({ birthYear }: { birthYear: number }) {
   const [data, setData] = useState<ApiResponse | null>(null);
+  const [personalMemories, setPersonalMemories] = useState<JournalEntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+
+    // Fetch historical events
     fetch(`/api/this-day?birthYear=${birthYear}`)
       .then(res => res.json())
       .then(json => { if (!cancelled) { setData(json); setLoading(false); } })
       .catch(() => { if (!cancelled) setLoading(false); });
+
+    // Fetch personal journal entries from this month/day in previous years
+    getAllJournalEntries().then((entries) => {
+      if (cancelled) return;
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayStr = `-${month}-${day}`;
+      const sameDayEntries = entries.filter(e => e.date.includes(todayStr));
+      setPersonalMemories(sameDayEntries);
+    }).catch(() => {});
+
     return () => { cancelled = true; };
   }, [birthYear]);
 
@@ -186,6 +203,38 @@ export default function ThisDayInHistory({ birthYear }: { birthYear: number }) {
             </motion.article>
           );
         })}
+
+        {/* Personal memories from this day */}
+        {personalMemories.map((entry, idx) => (
+          <motion.article
+            key={`personal-${entry.id}`}
+            className="sk-paper relative flex-shrink-0 w-64 sm:w-72 rounded-lg p-4 flex flex-col gap-2 cursor-default border-2 border-[#c4956a]/30"
+            style={{ scrollSnapAlign: 'start' }}
+            variants={cardVariants}
+            whileHover={{ y: -4, scale: 1.02 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="old-typewriter text-xs text-[#8b5e3c] font-bold">
+                {entry.date.slice(0, 4)}
+              </span>
+              <span className="text-[0.6rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-[#c4956a]/15 text-[#8b5e3c]">
+                Your Memory
+              </span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="text-2xl mt-0.5 flex-shrink-0 leading-none">{entry.mood || '📝'}</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="old-title text-sm sm:text-base text-[#3d2b1f] leading-tight truncate">
+                  {entry.title}
+                </h3>
+              </div>
+            </div>
+            <p className="old-body text-xs text-[#8b7355] leading-relaxed line-clamp-3">
+              {entry.body}
+            </p>
+          </motion.article>
+        ))}
       </motion.div>
     </section>
   );

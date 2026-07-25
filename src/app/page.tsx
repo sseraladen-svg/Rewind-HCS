@@ -27,6 +27,12 @@ import MemoryTab from '@/components/MemoryTab';
 import VintageCamera from '@/components/VintageCamera';
 import ShareRewind from '@/components/ShareRewind';
 import ThisDayInHistory from '@/components/ThisDayInHistory';
+import SettingsTab from '@/components/SettingsTab';
+import DailyPrompt from '@/components/DailyPrompt';
+import RecentMemoriesStrip from '@/components/RecentMemoriesStrip';
+import PhotoTimeline from '@/components/PhotoTimeline';
+import WeeklyRewind from '@/components/WeeklyRewind';
+import MemoryBoard from '@/components/MemoryBoard';
 import { runMigration } from '@/lib/idb-store/migrate';
 import OnboardingFlow from '@/components/OnboardingFlow';
 import { useSession, signOut } from 'next-auth/react';
@@ -413,6 +419,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const [showShareRewind, setShowShareRewind] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const { data: session } = useSession();
   const { syncStatus, syncNow } = useSync();
 
@@ -516,7 +523,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             )}
 
             <button
-                onClick={() => handleTabChange('settings')}
+                onClick={() => setShowSettings(true)}
                 className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
                 title="Settings"
               >
@@ -571,6 +578,9 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             <ThisDayInHistory birthYear={birthYear} />
           </section>
 
+          {/* Recent Memories Strip (only shows if photos exist) */}
+          <RecentMemoriesStrip onOpenMemory={() => handleTabChange('memory')} />
+
           {/* Tab bar - metal */}
           <div className="sk-metal rounded-xl p-1 mb-6 flex gap-1 shadow-[0_3px_8px_rgba(0,0,0,0.2)]">
             {tabs.map(tab => (
@@ -602,6 +612,8 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           {activeTab === 'journal' && (
             <AnimatePresence mode="wait">
               <motion.div key="journal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <WeeklyRewind />
+                <DailyPrompt birthYear={birthYear} />
                 <div className="text-center mb-5">
                   <p className="old-body text-sm text-[#5c4033] font-medium">Put pen to paper. Let your memories breathe in ink.</p>
                 </div>
@@ -647,6 +659,17 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                 <PersonalTimeline birthYear={birthYear} />
 
                 <div className="mt-10 mb-4">
+                  <h2 className="old-label text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Camera className="h-4 w-4" style={{ color: data.color }} /> Photo Timeline
+                  </h2>
+                  <PhotoTimeline />
+
+                  {/* Memory Board */}
+                  <div className="mt-10 mb-4">
+                    <MemoryBoard />
+                  </div>
+
+                  <div className="mt-10 mb-4">
                   <h2 className="old-label text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
                     <Brain className="h-4 w-4" style={{ color: data.color }} /> AI Insights
                   </h2>
@@ -698,7 +721,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           </p>
           <LocalDataBadge />
           <button
-            onClick={() => handleTabChange('settings')}
+            onClick={() => setShowSettings(true)}
             className="old-typewriter text-[9px] text-[#a89878] hover:text-[#d4a574]
               transition-colors cursor-pointer underline underline-offset-2 decoration-dotted"
           >
@@ -729,6 +752,16 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             isOpen={showAuth}
             onClose={() => setShowAuth(false)}
             onAuthSuccess={() => {}}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ═══ SETTINGS OVERLAY ═══ */}
+      <AnimatePresence>
+        {showSettings && (
+          <SettingsTab
+            onOpenAuth={() => { setShowSettings(false); setShowAuth(true); }}
+            onClose={() => setShowSettings(false)}
           />
         )}
       </AnimatePresence>

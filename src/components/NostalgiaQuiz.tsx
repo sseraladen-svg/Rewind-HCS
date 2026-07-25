@@ -17,13 +17,15 @@ interface NostalgiaQuizProps {
   compact?: boolean;
 }
 
-const RATING_LABELS = [
-  { min: 0, label: 'Time Traveler', emoji: '🕰️', desc: 'Better luck next era!' },
-  { min: 2, label: 'Nostalgia Novice', emoji: '📺', desc: 'You remember a few things...' },
-  { min: 3, label: 'Decade Dreamer', emoji: '💭', desc: 'Getting warmer!' },
-  { min: 4, label: 'Memory Master', emoji: '🧠', desc: 'Impressive nostalgia knowledge!' },
-  { min: 5, label: `True ${'90s'} Kid`, emoji: '🏆', desc: 'You ARE the nostalgia!' },
-];
+function getRatingLabels(decade: string) {
+  return [
+    { min: 0, label: 'Time Traveler', emoji: '🕰️', desc: 'Better luck next era!' },
+    { min: 2, label: 'Nostalgia Novice', emoji: '📺', desc: 'You remember a few things...' },
+    { min: 3, label: 'Decade Dreamer', emoji: '💭', desc: 'Getting warmer!' },
+    { min: 4, label: 'Memory Master', emoji: '🧠', desc: 'Impressive nostalgia knowledge!' },
+    { min: 5, label: `True ${decade} Kid`, emoji: '🏆', desc: 'You ARE the nostalgia!' },
+  ];
+}
 
 const CATEGORY_COLORS: Record<string, string> = {
   movies: 'bg-amber-100 text-amber-800',
@@ -82,6 +84,7 @@ export default function NostalgiaQuiz({ decade, compact }: NostalgiaQuizProps) {
       .then(data => setQuestions(data.questions));
   };
 
+  const RATING_LABELS = getRatingLabels(decade);
   const rating = RATING_LABELS.find(r => score >= r.min) || RATING_LABELS[0];
 
   if (loading) return (

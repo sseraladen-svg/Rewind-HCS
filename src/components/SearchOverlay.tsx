@@ -7,7 +7,7 @@ import {
   ImageIcon, Settings, Camera, Sparkles, Play, ChevronRight,
 } from 'lucide-react';
 import { nostalgiaData, type NostalgiaItem, type DecadeData } from '@/lib/nostalgia-data';
-import { getAllJournalEntries } from '@/lib/idb-store';
+import { getAllJournalEntries, getAllCameraPhotos } from '@/lib/idb-store';
 
 /* ═══════════════════════════════════════════════════
    Types
@@ -112,8 +112,9 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
     movies: SearchResult[];
     journals: SearchResult[];
     nostalgia: SearchResult[];
+    photos: SearchResult[];
     actions: SearchResult[];
-  }>({ movies: [], journals: [], nostalgia: [], actions: [] });
+  }>({ movies: [], journals: [], nostalgia: [], photos: [], actions: [] });
   const [hasSearched, setHasSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -159,7 +160,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
   // Search debounce
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
-      setResults({ movies: [], journals: [], nostalgia: [], actions: buildQuickActions(onNavigate, onClose) });
+      setResults({ movies: [], journals: [], nostalgia: [], photos: [], actions: buildQuickActions(onNavigate, onClose) });
       setLoading(false);
       setHasSearched(false);
       return;
@@ -177,9 +178,10 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
       (a) => a.title.toLowerCase().includes(q.toLowerCase()) || a.subtitle.toLowerCase().includes(q.toLowerCase())
     );
 
-    // Journal & Movies in parallel
+    // Journal, Movies & Photos in parallel
     let journalResults: SearchResult[] = [];
     let movieResults: SearchResult[] = [];
+    let photoResults: SearchResult[] = [];
 
     try {
       const journalPromise = getAllJournalEntries().then((entries) => {
@@ -206,7 +208,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
       const moviesPromise = fetch('/api/movies?_no_cache=' + Date.now())
         .then((r) => r.json())
         .then((data) => {
-          const movies = data?.movies || data || [];
+          const movies = data?.items || data?.movies || [];
           return movies
             .filter((m: { title?: string; overview?: string }) =>
               m.title?.toLowerCase().includes(q.toLowerCase()) ||
@@ -233,7 +235,28 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
         })
         .catch(() => []);
 
-      [journalResults, movieResults] = await Promise.all([journalPromise, moviesPromise]);
+      const photosPromise = getAllCameraPhotos().then((photos) => {
+        return photos
+          .filter((p) =>
+            (p.filter_used || '').toLowerCase().includes(q.toLowerCase())
+          )
+          .slice(-4)
+          .reverse()
+          .map((p) => ({
+            id: `photo-${p.id}`,
+            title: 'Memory photo',
+            subtitle: new Date(p.created_at).toLocaleDateString() + (p.filter_used ? ` · ${p.filter_used}` : ''),
+            emoji: '📷',
+            category: 'Photos',
+            tab: 'memory',
+            action: () => {
+              onNavigate?.('memory');
+              onClose();
+            },
+          }));
+      });
+
+      [journalResults, movieResults, photoResults] = await Promise.all([journalPromise, moviesPromise, photosPromise]);
     } catch {
       // silently fail
     }
@@ -242,6 +265,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
       movies: movieResults,
       journals: journalResults,
       nostalgia: nostalgiaResults,
+      photos: photoResults,
       actions: actionResults,
     });
     setLoading(false);
@@ -261,7 +285,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
   }, [query, open, doSearch]);
 
   // Total results count
-  const totalResults = results.movies.length + results.journals.length + results.nostalgia.length + results.actions.length;
+  const totalResults = results.movies.length + results.journals.length + results.nostalgia.length + results.photos.length + results.actions.length;
 
   // Click outside handler
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -274,6 +298,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
   const getCategoryIcon = (cat: string) => {
     if (cat.startsWith('Journal')) return <BookOpen className="h-3.5 w-3.5" />;
     if (cat.startsWith('Movies')) return <Film className="h-3.5 w-3.5" />;
+    if (cat.startsWith('Photos')) return <Camera className="h-3.5 w-3.5" />;
     if (cat.startsWith('Quick')) return <Sparkles className="h-3.5 w-3.5" />;
     return <Clock className="h-3.5 w-3.5" />;
   };
@@ -427,6 +452,9 @@ function ResultGroups({
   }
   if (results.nostalgia.length > 0) {
     groups.push({ title: 'Nostalgia', icon: <Clock className="h-3.5 w-3.5 text-orange-600" />, items: results.nostalgia });
+  }
+  if (results.photos.length > 0) {
+    groups.push({ title: 'Photos', icon: <Camera className="h-3.5 w-3.5 text-amber-700" />, items: results.photos });
   }
   if (results.journals.length > 0) {
     groups.push({ title: 'Journal', icon: <BookOpen className="h-3.5 w-3.5 text-green-700" />, items: results.journals });

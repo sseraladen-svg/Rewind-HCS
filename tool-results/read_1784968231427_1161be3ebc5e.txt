@@ -1,0 +1,202 @@
+    65→/* ── curated fallback data per decade ────── */
+    66→const FALLBACK: Record<string, { title: string; year: number; type: 'movie' | 'tv' | 'cartoon'; poster: string; rating: number; genres: string[]; overview: string }[]> = {
+    67→  '1970s': [
+    68→    { title: 'Star Wars: A New Hope', year: 1977, type: 'movie', poster: 'https://picsum.photos/seed/star-wars-a-new-hope-1977/342/513', rating: 8.6, genres: ['Sci-Fi', 'Adventure', 'Fantasy'], overview: 'Luke Skywalker joins forces with a Jedi Knight, a cocky pilot, a Wookiee, and two droids to save the galaxy from the Empire.' },
+    69→    { title: 'Jaws', year: 1975, type: 'movie', poster: 'https://picsum.photos/seed/jaws-1975/342/513', rating: 8.2, genres: ['Thriller', 'Adventure'], overview: 'A giant great white shark begins to menace the small island community of Amity.' },
+    70→    { title: 'Scooby-Doo, Where Are You!', year: 1969, type: 'cartoon', poster: 'https://picsum.photos/seed/scooby-doo-where-are-you-1969/342/513', rating: 7.8, genres: ['Animation', 'Comedy', 'Mystery'], overview: 'Scooby-Doo and the gang travel around in the Mystery Machine solving spooky mysteries.' },
+    71→    { title: 'The Muppet Show', year: 1976, type: 'tv', poster: 'https://picsum.photos/seed/the-muppet-show-1976/342/513', rating: 8.3, genres: ['Comedy', 'Family', 'Music'], overview: 'Kermit the Frog and his friends put on a weekly variety show with celebrity guests.' },
+    72→    { title: 'Looney Tunes', year: 1970, type: 'cartoon', poster: 'https://picsum.photos/seed/looney-tunes-1970/342/513', rating: 8.4, genres: ['Animation', 'Comedy', 'Family'], overview: 'Bugs Bunny, Daffy Duck, Porky Pig and the rest of the Looney Tunes gang in classic shorts.' },
+    73→    { title: 'Saturday Night Fever', year: 1977, type: 'movie', poster: 'https://picsum.photos/seed/saturday-night-fever-1977/342/513', rating: 6.8, genres: ['Drama', 'Music'], overview: 'A Brooklyn teen feels trapped by his dead-end job and dumps his frustrations into disco dancing.' },
+    74→    { title: 'Rocky', year: 1976, type: 'movie', poster: 'https://picsum.photos/seed/rocky-1976/342/513', rating: 8.1, genres: ['Drama', 'Action'], overview: 'A small-time boxer gets a shot at the world heavyweight championship.' },
+    75→    { title: 'Tom and Jerry', year: 1975, type: 'cartoon', poster: 'https://picsum.photos/seed/tom-and-jerry-1975/342/513', rating: 8.5, genres: ['Animation', 'Comedy', 'Family'], overview: 'The iconic cat-and-mouse duo in their classic chase sequences.' },
+    76→    { title: 'Grease', year: 1978, type: 'movie', poster: 'https://picsum.photos/seed/grease-1978/342/513', rating: 7.4, genres: ['Comedy', 'Musical', 'Romance'], overview: 'Good girl Sandy and greaser Danny fall in love over the summer.' },
+    77→    { title: 'Happy Days', year: 1974, type: 'tv', poster: 'https://picsum.photos/seed/happy-days-1974/342/513', rating: 7.6, genres: ['Comedy', 'Family'], overview: 'The Cunningham family and their life in 1950s Milwaukee.' },
+    78→    { title: 'The Pink Panther Show', year: 1969, type: 'cartoon', poster: 'https://picsum.photos/seed/the-pink-panther-show-1969/342/513', rating: 7.5, genres: ['Animation', 'Comedy'], overview: 'The bumbling Inspector Clouseau and the cool Pink Panther in animated adventures.' },
+    79→    { title: 'Close Encounters of the Third Kind', year: 1977, type: 'movie', poster: 'https://picsum.photos/seed/close-encounters-of-the-third-kind-1977/342/513', rating: 7.6, genres: ['Sci-Fi', 'Drama'], overview: 'Roy Neary encounters a UFO and becomes obsessed with discovering its meaning.' },
+    80→  ],
+    81→  '1980s': [
+    82→    { title: 'E.T. the Extra-Terrestrial', year: 1982, type: 'movie', poster: 'https://picsum.photos/seed/et-the-extra-terrestrial-1982/342/513', rating: 7.9, genres: ['Sci-Fi', 'Family', 'Adventure'], overview: 'A troubled child summons the courage to help a friendly alien escape Earth and return home.' },
+    83→    { title: 'The Lion King', year: 1994, type: 'cartoon', poster: 'https://picsum.photos/seed/the-lion-king-1994/342/513', rating: 8.5, genres: ['Animation', 'Drama', 'Family'], overview: 'A young lion prince must reclaim his kingdom from his treacherous uncle.' },
+    84→    { title: 'Back to the Future', year: 1985, type: 'movie', poster: 'https://picsum.photos/seed/back-to-the-future-1985/342/513', rating: 8.5, genres: ['Sci-Fi', 'Adventure', 'Comedy'], overview: 'Marty McFly is sent back to 1955 in a time-traveling DeLorean invented by the eccentric Doc Brown.' },
+    85→    { title: 'DuckTales', year: 1987, type: 'cartoon', poster: 'https://picsum.photos/seed/ducktales-1987/342/513', rating: 8.1, genres: ['Animation', 'Comedy', 'Adventure'], overview: 'Scrooge McDuck and his grandnephews Huey, Dewey, and Louie go on adventures around the world.' },
+    86→    { title: 'Ghostbusters', year: 1984, type: 'movie', poster: 'https://picsum.photos/seed/ghostbusters-1984/342/513', rating: 7.8, genres: ['Comedy', 'Fantasy', 'Action'], overview: 'Three parapsychologists start a ghost-catching business in New York City.' },
+    87→    { title: 'The Transformers', year: 1984, type: 'cartoon', poster: 'https://picsum.photos/seed/the-transformers-1984/342/513', rating: 7.9, genres: ['Animation', 'Action', 'Sci-Fi'], overview: 'Two warring factions of transforming robots from the planet Cybertron crash-land on Earth.' },
+    88→    { title: 'The Breakfast Club', year: 1985, type: 'movie', poster: 'https://picsum.photos/seed/the-breakfast-club-1985/342/513', rating: 7.8, genres: ['Drama', 'Comedy'], overview: 'Five high school students meet in Saturday detention and discover they have more in common than they thought.' },
+    89→    { title: 'Danger Mouse', year: 1981, type: 'cartoon', poster: 'https://picsum.photos/seed/danger-mouse-1981/342/513', rating: 7.7, genres: ['Animation', 'Comedy', 'Action'], overview: 'The daring secret agent Danger Mouse and his timid hamster sidekick Penfold fight evil.' },
+    90→    { title: 'Ferris Bueller\'s Day Off', year: 1986, type: 'movie', poster: 'https://picsum.photos/seed/ferris-buellers-day-off-1986/342/513', rating: 7.8, genres: ['Comedy'], overview: 'A high school wise guy is determined to have a day off from school.' },
+    91→    { title: 'He-Man and the Masters of the Universe', year: 1983, type: 'cartoon', poster: 'https://picsum.photos/seed/he-man-and-the-masters-of-the-universe-1983/342/513', rating: 7.2, genres: ['Animation', 'Action', 'Fantasy'], overview: 'Prince Adam transforms into He-Man to defend Eternia from the evil Skeletor.' },
+    92→    { title: 'The Goonies', year: 1985, type: 'movie', poster: 'https://picsum.photos/seed/the-goonies-1985/342/513', rating: 7.9, genres: ['Adventure', 'Comedy', 'Family'], overview: 'A group of kids embark on a wild adventure after finding a pirate treasure map.' },
+    93→    { title: 'Aladdin', year: 1992, type: 'cartoon', poster: 'https://picsum.photos/seed/aladdin-1992/342/513', rating: 8.0, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A street urchin finds a magic lamp with a genie who grants him three wishes.' },
+    94→    { title: 'The Little Mermaid', year: 1989, type: 'cartoon', poster: 'https://picsum.photos/seed/the-little-mermaid-1989/342/513', rating: 7.6, genres: ['Animation', 'Family', 'Fantasy'], overview: 'A mermaid princess makes a deal with a sea witch to become human.' },
+    95→    { title: 'Beat Street', year: 1984, type: 'movie', poster: 'https://picsum.photos/seed/beat-street-1984/342/513', rating: 6.6, genres: ['Drama', 'Music'], overview: 'An aspiring DJ from the Bronx and his friends pursue their dreams through hip-hop culture.' },
+    96→    { title: 'Inspector Gadget', year: 1983, type: 'cartoon', poster: 'https://picsum.photos/seed/inspector-gadget-1983/342/513', rating: 7.1, genres: ['Animation', 'Comedy', 'Action'], overview: 'A bionic detective with countless gadgets fights crime with his niece Penny and dog Brain.' },
+    97→    { title: 'The A-Team', year: 1983, type: 'tv', poster: 'https://picsum.photos/seed/the-a-team-1983/342/513', rating: 7.5, genres: ['Action', 'Adventure'], overview: 'Four Vietnam vets framed for a crime they didn\'t commit become mercenaries for hire.' },
+    98→  ],
+    99→  '1990s': [
+   100→    { title: 'Toy Story', year: 1995, type: 'cartoon', poster: 'https://picsum.photos/seed/toy-story-1995/342/513', rating: 8.3, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A cowboy doll is profoundly threatened when a spaceman action figure supplants him as top toy.' },
+   101→    { title: 'The Fresh Prince of Bel-Air', year: 1990, type: 'tv', poster: 'https://picsum.photos/seed/the-fresh-prince-of-bel-air-1990/342/513', rating: 8.2, genres: ['Comedy', 'Drama', 'Family'], overview: 'A street-smart teenager from Philadelphia is sent to live with wealthy relatives in Bel-Air.' },
+   102→    { title: 'Rugrats', year: 1991, type: 'cartoon', poster: 'https://picsum.photos/seed/rugrats-1991/342/513', rating: 7.8, genres: ['Animation', 'Comedy', 'Family'], overview: 'A group of toddlers embark on wild adventures from their perspective of the world.' },
+   103→    { title: 'The Matrix', year: 1999, type: 'movie', poster: 'https://picsum.photos/seed/the-matrix-1999/342/513', rating: 8.7, genres: ['Sci-Fi', 'Action'], overview: 'A computer hacker learns about the true nature of reality and his role in the war against its controllers.' },
+   104→    { title: 'Hey Arnold!', year: 1996, type: 'cartoon', poster: 'https://picsum.photos/seed/hey-arnold-1996/342/513', rating: 8.0, genres: ['Animation', 'Comedy', 'Family'], overview: 'A football-headed boy named Arnold lives in a boarding house with his grandparents in the big city.' },
+   105→    { title: 'Pokémon', year: 1997, type: 'cartoon', poster: 'https://picsum.photos/seed/pokmon-1997/342/513', rating: 7.7, genres: ['Animation', 'Action', 'Adventure'], overview: 'Ash Ketchum and his Pikachu travel the world, catching and training Pokémon.' },
+   106→    { title: 'Titanic', year: 1997, type: 'movie', poster: 'https://picsum.photos/seed/titanic-1997/342/513', rating: 7.9, genres: ['Drama', 'Romance'], overview: 'A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the luxurious, ill-fated R.M.S. Titanic.' },
+   107→    { title: 'Dragon Ball Z', year: 1989, type: 'cartoon', poster: 'https://picsum.photos/seed/dragon-ball-z-1989/342/513', rating: 8.1, genres: ['Animation', 'Action', 'Fantasy'], overview: 'Goku and his friends defend Earth against powerful enemies and seek the Dragon Balls.' },
+   108→    { title: 'Friends', year: 1994, type: 'tv', poster: 'https://picsum.photos/seed/friends-1994/342/513', rating: 8.2, genres: ['Comedy', 'Romance'], overview: 'Six friends navigate life, love, and everything in between in Manhattan.' },
+   109→    { title: 'Dexter\'s Laboratory', year: 1996, type: 'cartoon', poster: 'https://picsum.photos/seed/dexters-laboratory-1996/342/513', rating: 8.0, genres: ['Animation', 'Comedy', 'Sci-Fi'], overview: 'A boy genius with a secret laboratory constantly battles his annoying sister Dee Dee.' },
+   110→    { title: 'Home Alone', year: 1990, type: 'movie', poster: 'https://picsum.photos/seed/home-alone-1990/342/513', rating: 7.7, genres: ['Comedy', 'Family'], overview: 'An eight-year-old troublemaker must protect his house from burglars when his family leaves for vacation.' },
+   111→    { title: 'Courage the Cowardly Dog', year: 1999, type: 'cartoon', poster: 'https://picsum.photos/seed/courage-the-cowardly-dog-1999/342/513', rating: 8.3, genres: ['Animation', 'Comedy', 'Horror'], overview: 'A cowardly dog must protect his owners from supernatural threats in the middle of Nowhere.' },
+   112→    { title: 'The Simpsons', year: 1989, type: 'cartoon', poster: 'https://picsum.photos/seed/the-simpsons-1989/342/513', rating: 8.7, genres: ['Animation', 'Comedy'], overview: 'The satirical adventures of a working-class family in the misfit city of Springfield.' },
+   113→    { title: 'Jurassic Park', year: 1993, type: 'movie', poster: 'https://picsum.photos/seed/jurassic-park-1993/342/513', rating: 8.2, genres: ['Sci-Fi', 'Adventure', 'Thriller'], overview: 'A pragmatic paleontologist is touring an almost complete theme park on an island when the park\'s dinosaurs break free.' },
+   114→    { title: 'Johnny Bravo', year: 1997, type: 'cartoon', poster: 'https://picsum.photos/seed/johnny-bravo-1997/342/513', rating: 7.5, genres: ['Animation', 'Comedy'], overview: 'A muscular, Elvis-impersonating, flamboyant ladies\' man tries to get women to date him.' },
+   115→    { title: 'Fight Club', year: 1999, type: 'movie', poster: 'https://picsum.photos/seed/fight-club-1999/342/513', rating: 8.4, genres: ['Drama', 'Thriller'], overview: 'An insomniac office worker forms an underground fight club that evolves into much more.' },
+   116→    { title: 'Sailor Moon', year: 1992, type: 'cartoon', poster: 'https://picsum.photos/seed/sailor-moon-1992/342/513', rating: 7.6, genres: ['Animation', 'Action', 'Fantasy'], overview: 'A middle school girl transforms into a magical guardian named Sailor Moon to fight evil.' },
+   117→    { title: 'Kenan & Kel', year: 1996, type: 'tv', poster: 'https://picsum.photos/seed/kenan-kel-1996/342/513', rating: 7.4, genres: ['Comedy', 'Family'], overview: 'Two teenage friends get into hilarious situations working at a grocery store.' },
+   118→  ],
+   119→  '2000s': [
+   120→    { title: 'The Avatar: The Last Airbender', year: 2005, type: 'cartoon', poster: 'https://picsum.photos/seed/the-avatar-the-last-airbender-2005/342/513', rating: 9.3, genres: ['Animation', 'Action', 'Adventure'], overview: 'A young boy known as the Avatar must master all four elements to restore balance to a world at war.' },
+   121→    { title: 'Spider-Man', year: 2002, type: 'movie', poster: 'https://picsum.photos/seed/spider-man-2002/342/513', rating: 7.4, genres: ['Action', 'Adventure', 'Sci-Fi'], overview: 'When bitten by a genetically modified spider, a nerdy high school student gains spider-like abilities.' },
+   122→    { title: 'Ben 10', year: 2005, type: 'cartoon', poster: 'https://picsum.photos/seed/ben-10-2005/342/513', rating: 7.5, genres: ['Animation', 'Action', 'Sci-Fi'], overview: 'A boy discovers an alien watch that lets him transform into 10 different alien species.' },
+   123→    { title: 'The Dark Knight', year: 2008, type: 'movie', poster: 'https://picsum.photos/seed/the-dark-knight-2008/342/513', rating: 9.0, genres: ['Action', 'Crime', 'Drama'], overview: 'Batman faces the Joker, a criminal mastermind who seeks to plunge Gotham City into anarchy.' },
+   124→    { title: 'SpongeBob SquarePants', year: 1999, type: 'cartoon', poster: 'https://picsum.photos/seed/spongebob-squarepants-1999/342/513', rating: 8.2, genres: ['Animation', 'Comedy', 'Family'], overview: 'A sea sponge named SpongeBob lives in a pineapple under the sea in Bikini Bottom.' },
+   125→    { title: 'Finding Nemo', year: 2003, type: 'cartoon', poster: 'https://picsum.photos/seed/finding-nemo-2003/342/513', rating: 8.2, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A clown fish named Marlin searches the ocean for his missing son Nemo.' },
+   126→    { title: 'Shrek', year: 2001, type: 'cartoon', poster: 'https://picsum.photos/seed/shrek-2001/342/513', rating: 7.9, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'An ogre rescues a princess with the help of a donkey and other fairy tale creatures.' },
+   127→    { title: 'The Incredibles', year: 2004, type: 'cartoon', poster: 'https://picsum.photos/seed/the-incredibles-2004/342/513', rating: 8.0, genres: ['Animation', 'Action', 'Adventure'], overview: 'A family of superheroes living undercover must save the world while juggling everyday life.' },
+   128→    { title: 'Hannah Montana', year: 2006, type: 'tv', poster: 'https://picsum.photos/seed/hannah-montana-2006/342/513', rating: 5.8, genres: ['Comedy', 'Family', 'Music'], overview: 'A teenage girl lives a double life as a normal schoolgirl and a famous pop star.' },
+   129→    { title: 'The Fairly OddParents', year: 2001, type: 'cartoon', poster: 'https://picsum.photos/seed/the-fairly-oddparents-2001/342/513', rating: 7.8, genres: ['Animation', 'Comedy', 'Fantasy'], overview: 'A boy is granted two fairy godparents who can grant his every wish.' },
+   130→    { title: 'Danny Phantom', year: 2004, type: 'cartoon', poster: 'https://picsum.photos/seed/danny-phantom-2004/342/513', rating: 7.8, genres: ['Animation', 'Action', 'Comedy'], overview: 'A teenager gains ghost powers after an accident and uses them to protect his town.' },
+   131→    { title: 'Mean Girls', year: 2004, type: 'movie', poster: 'https://picsum.photos/seed/mean-girls-2004/342/513', rating: 7.1, genres: ['Comedy'], overview: 'Cady Heron is a hit with The Plastics, the A-list girl clique at her new school.' },
+   132→    { title: 'Drake & Josh', year: 2004, type: 'tv', poster: 'https://picsum.photos/seed/drake-josh-2004/342/513', rating: 7.6, genres: ['Comedy', 'Family'], overview: 'Two stepbrothers with very different personalities must learn to live together.' },
+   133→    { title: 'Jimmy Neutron', year: 2002, type: 'cartoon', poster: 'https://picsum.photos/seed/jimmy-neutron-2002/342/513', rating: 6.8, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A boy genius invents gadgets and goes on adventures with his robot dog Goddard.' },
+   134→    { title: 'Everybody Hates Chris', year: 2005, type: 'tv', poster: 'https://picsum.photos/seed/everybody-hates-chris-2005/342/513', rating: 8.2, genres: ['Comedy', 'Drama'], overview: 'A teenager growing up in Brooklyn in the 1980s navigates the challenges of adolescence.' },
+   135→    { title: 'Codename: Kids Next Door', year: 2002, type: 'cartoon', poster: 'https://picsum.photos/seed/codename-kids-next-door-2002/342/513', rating: 7.6, genres: ['Animation', 'Action', 'Comedy'], overview: 'Five kids operate a global organization from their treehouse to fight adult tyranny.' },
+   136→  ],
+   137→  '2010s': [
+   138→    { title: 'Adventure Time', year: 2010, type: 'cartoon', poster: 'https://picsum.photos/seed/adventure-time-2010/342/513', rating: 8.6, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A boy and his magical dog go on adventures in the post-apocalyptic Land of Ooo.' },
+   139→    { title: 'Regular Show', year: 2010, type: 'cartoon', poster: 'https://picsum.photos/seed/regular-show-2010/342/513', rating: 8.3, genres: ['Animation', 'Comedy'], overview: 'Two best friends work as groundskeepers at a park and get into surreal misadventures.' },
+   140→    { title: 'The Avengers', year: 2012, type: 'movie', poster: 'https://picsum.photos/seed/the-avengers-2012/342/513', rating: 8.0, genres: ['Action', 'Adventure', 'Sci-Fi'], overview: 'Earth\'s mightiest heroes must come together to stop an alien invasion.' },
+   141→    { title: 'Gravity Falls', year: 2012, type: 'cartoon', poster: 'https://picsum.photos/seed/gravity-falls-2012/342/513', rating: 8.9, genres: ['Animation', 'Comedy', 'Mystery'], overview: 'Twins spend the summer with their great-uncle and discover supernatural mysteries in a small town.' },
+   142→    { title: 'Steven Universe', year: 2013, type: 'cartoon', poster: 'https://picsum.photos/seed/steven-universe-2013/342/513', rating: 8.2, genres: ['Animation', 'Action', 'Comedy'], overview: 'A young boy discovers he has magical powers inherited from his alien mother.' },
+   143→    { title: 'Stranger Things', year: 2016, type: 'tv', poster: 'https://picsum.photos/seed/stranger-things-2016/342/513', rating: 8.7, genres: ['Drama', 'Fantasy', 'Horror'], overview: 'When a young boy vanishes, a small town uncovers a mystery involving secret experiments and supernatural forces.' },
+   144→    { title: 'Frozen', year: 2013, type: 'cartoon', poster: 'https://picsum.photos/seed/frozen-2013/342/513', rating: 7.4, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A fearless princess sets out on a journey to find her sister and end an eternal winter.' },
+   145→    { title: 'The Amazing World of Gumball', year: 2011, type: 'cartoon', poster: 'https://picsum.photos/seed/the-amazing-world-of-gumball-2011/342/513', rating: 7.9, genres: ['Animation', 'Comedy', 'Family'], overview: 'A blue cat and his goldfish brother get into bizarre adventures in the town of Elmore.' },
+   146→    { title: 'Inception', year: 2010, type: 'movie', poster: 'https://picsum.photos/seed/inception-2010/342/513', rating: 8.8, genres: ['Sci-Fi', 'Action', 'Thriller'], overview: 'A skilled thief who steals corporate secrets through dream-sharing technology is given the inverse task.' },
+   147→    { title: 'Phineas and Ferb', year: 2007, type: 'cartoon', poster: 'https://picsum.photos/seed/phineas-and-ferb-2007/342/513', rating: 8.4, genres: ['Animation', 'Comedy', 'Adventure'], overview: 'Two stepbrothers invent elaborate schemes during summer vacation while their sister tries to bust them.' },
+   148→    { title: 'We Bare Bears', year: 2015, type: 'cartoon', poster: 'https://picsum.photos/seed/we-bare-bears-2015/342/513', rating: 8.1, genres: ['Animation', 'Comedy'], overview: 'Three bear brothers try to navigate human society and make friends in San Francisco.' },
+   149→    { title: 'The Lego Movie', year: 2014, type: 'cartoon', poster: 'https://picsum.photos/seed/the-lego-movie-2014/342/513', rating: 7.7, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'An ordinary Lego figure is mistakenly thought to be the prophesied savior of the Lego world.' },
+   150→    { title: 'Inside Out', year: 2015, type: 'cartoon', poster: 'https://picsum.photos/seed/inside-out-2015/342/513', rating: 8.1, genres: ['Animation', 'Comedy', 'Drama'], overview: 'Young Riley is uprooted from her Midwest life when her father starts a new job in San Francisco.' },
+   151→    { title: 'Moana', year: 2016, type: 'cartoon', poster: 'https://picsum.photos/seed/moana-2016/342/513', rating: 7.6, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A spirited teenager sails out on a daring mission to save her people and discovers her own identity.' },
+   152→    { title: 'Black Panther', year: 2018, type: 'movie', poster: 'https://picsum.photos/seed/black-panther-2018/342/513', rating: 7.3, genres: ['Action', 'Adventure', 'Sci-Fi'], overview: 'T\'Challa, heir to the hidden but advanced kingdom of Wakanda, must step forward to lead his people.' },
+   153→    { title: 'Spider-Man: Into the Spider-Verse', year: 2018, type: 'cartoon', poster: 'https://picsum.photos/seed/spider-man-into-the-spider-verse-2018/342/513', rating: 8.4, genres: ['Animation', 'Action', 'Adventure'], overview: 'Teen Miles Morales becomes the Spider-Man of his reality and crosses paths with counterparts from other dimensions.' },
+   154→    { title: 'The Lion King (2019)', year: 2019, type: 'cartoon', poster: 'https://picsum.photos/seed/the-lion-king-2019-2019/342/513', rating: 6.9, genres: ['Animation', 'Adventure', 'Drama'], overview: 'After the murder of his father, a young lion prince flees his kingdom only to learn the true meaning of responsibility.' },
+   155→    { title: 'Toy Story 4', year: 2019, type: 'cartoon', poster: 'https://picsum.photos/seed/toy-story-4-2019/342/513', rating: 7.5, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'When a new toy called Forky joins Woody and the gang, a road trip alongside old and new friends reveals how big the world can be.' },
+   156→    { title: 'Avengers: Endgame', year: 2019, type: 'movie', poster: 'https://picsum.photos/seed/avengers-endgame-2019/342/513', rating: 8.4, genres: ['Action', 'Adventure', 'Drama'], overview: 'After the devastating events of Infinity War, the Avengers assemble once more to reverse Thanos\' actions.' },
+   157→    { title: 'The Mandalorian', year: 2019, type: 'tv', poster: 'https://picsum.photos/seed/the-mandalorian-2019/342/513', rating: 8.7, genres: ['Action', 'Adventure', 'Sci-Fi'], overview: 'A lone gunfighter makes his way through the galaxy in the era after the fall of the Empire.' },
+   158→    { title: 'Coco', year: 2017, type: 'cartoon', poster: 'https://picsum.photos/seed/coco-2017/342/513', rating: 8.4, genres: ['Animation', 'Adventure', 'Family'], overview: 'Aspiring musician Miguel enters the Land of the Dead to find his great-great-grandfather, a legendary singer.' },
+   159→    { title: 'Wonder Woman', year: 2017, type: 'movie', poster: 'https://picsum.photos/seed/wonder-woman-2017/342/513', rating: 7.4, genres: ['Action', 'Adventure', 'Fantasy'], overview: 'When a pilot crashes and tells of conflict in the outside world, Diana leaves her home to fight a war to end all wars.' },
+   160→    { title: 'Trolls', year: 2016, type: 'cartoon', poster: 'https://picsum.photos/seed/trolls-2016/342/513', rating: 6.5, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'After the Bergens invade Troll Village, Poppy, the happiest Troll ever born, and the curmudgeonly Branch set off on a journey.' },
+   161→    { title: 'The Boss Baby', year: 2017, type: 'cartoon', poster: 'https://picsum.photos/seed/the-boss-baby-2017/342/513', rating: 6.3, genres: ['Animation', 'Comedy', 'Family'], overview: 'A suit-wearing, briefcase-carrying baby pairs up with his 7-year old brother to stop the dastardly plot of the CEO of Puppy Co.' },
+   162→    { title: 'Despicable Me 3', year: 2017, type: 'cartoon', poster: 'https://picsum.photos/seed/despicable-me-3-2017/342/513', rating: 6.3, genres: ['Animation', 'Comedy', 'Family'], overview: 'Gru meets his long-lost charming, cheerful, and more successful twin brother Dru who wants to team up for one last criminal heist.' },
+   163→    { title: 'Incredibles 2', year: 2018, type: 'cartoon', poster: 'https://picsum.photos/seed/incredibles-2-2018/342/513', rating: 7.6, genres: ['Animation', 'Action', 'Adventure'], overview: 'The Incredibles family takes on a new mission while Elastigirl goes out to fight crime and Mr. Incredible stays home with the kids.' },
+   164→    { title: 'Ralph Breaks the Internet', year: 2018, type: 'cartoon', poster: 'https://picsum.photos/seed/ralph-breaks-the-internet-2018/342/513', rating: 7.0, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'Six years after the events of Wreck-It Ralph, Ralph and Vanellope embark on a new adventure through the internet.' },
+   165→    { title: 'Jurassic World', year: 2015, type: 'movie', poster: 'https://picsum.photos/seed/jurassic-world-2015/342/513', rating: 7.0, genres: ['Action', 'Adventure', 'Sci-Fi'], overview: 'A new theme park built on the original site of Jurassic Park creates a genetically modified hybrid dinosaur that escapes containment.' },
+   166→    { title: 'The Loud House', year: 2016, type: 'cartoon', poster: 'https://picsum.photos/seed/the-loud-house-2016/342/513', rating: 7.3, genres: ['Animation', 'Comedy', 'Family'], overview: 'Lincoln Loud is an 11-year-old boy living with ten sisters and his parents in a big family full of chaos and fun.' },
+   167→    { title: 'The Owl House', year: 2020, type: 'cartoon', poster: 'https://picsum.photos/seed/the-owl-house-2020/342/513', rating: 8.5, genres: ['Animation', 'Adventure', 'Fantasy'], overview: 'A self-assured teenage girl befriends a rebellious witch and discovers a magical realm where she feels she truly belongs.' },
+   168→    { title: 'The Mitchells vs. the Machines', year: 2021, type: 'cartoon', poster: 'https://picsum.photos/seed/the-mitchells-vs-the-machines-2021/342/513', rating: 7.7, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A quirky, dysfunctional family\'s road trip is upended when they find themselves in the middle of a robot apocalypse.' },
+   169→  ],
+   170→  '2020s': [
+   171→    { title: 'The Owl House', year: 2020, type: 'cartoon', poster: 'https://picsum.photos/seed/the-owl-house-2020-2/342/513', rating: 8.5, genres: ['Animation', 'Adventure', 'Fantasy'], overview: 'A self-assured teenage girl befriends a rebellious witch and discovers a magical realm where she feels she truly belongs.' },
+   172→    { title: 'The Mitchells vs. the Machines', year: 2021, type: 'cartoon', poster: 'https://picsum.photos/seed/the-mitchells-vs-the-machines-2021-2/342/513', rating: 7.7, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A quirky, dysfunctional family\'s road trip is upended when they find themselves in the middle of a robot apocalypse.' },
+   173→    { title: 'Spider-Man: No Way Home', year: 2021, type: 'movie', poster: 'https://picsum.photos/seed/spider-man-no-way-home-2021/342/513', rating: 8.2, genres: ['Action', 'Adventure', 'Fantasy'], overview: 'Peter Parker\'s life is turned upside down when his identity is revealed and he asks Doctor Strange for help.' },
+   174→    { title: 'Encanto', year: 2021, type: 'cartoon', poster: 'https://picsum.photos/seed/encanto-2021/342/513', rating: 7.2, genres: ['Animation', 'Comedy', 'Family'], overview: 'A magical Colombian family faces challenges when the magic that blesses them begins to fade.' },
+   175→    { title: 'Luca', year: 2021, type: 'cartoon', poster: 'https://picsum.photos/seed/luca-2021/342/513', rating: 7.5, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'On the Italian Riviera, a boy with a secret shares adventures with a newfound friend.' },
+   176→    { title: 'Turning Red', year: 2022, type: 'cartoon', poster: 'https://picsum.photos/seed/turning-red-2022/342/513', rating: 7.0, genres: ['Animation', 'Comedy', 'Family'], overview: 'A 13-year-old girl turns into a giant red panda whenever she gets too excited.' },
+   177→    { title: 'Sonic the Hedgehog 2', year: 2022, type: 'movie', poster: 'https://picsum.photos/seed/sonic-the-hedgehog-2-2022/342/513', rating: 6.8, genres: ['Action', 'Adventure', 'Comedy'], overview: 'When the manic Dr. Robotnik returns to Earth with a new ally, Knuckles the Echidna, Sonic and his new friend Tails team up.' },
+   178→    { title: 'Puss in Boots: The Last Wish', year: 2022, type: 'cartoon', poster: 'https://picsum.photos/seed/puss-in-boots-the-last-wish-2022/342/513', rating: 7.8, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'Puss in Boots discovers that his passion for adventure has taken its toll and he has burned through eight of his nine lives.' },
+   179→    { title: 'Top Gun: Maverick', year: 2022, type: 'movie', poster: 'https://picsum.photos/seed/top-gun-maverick-2022/342/513', rating: 8.3, genres: ['Action', 'Drama'], overview: 'After thirty years, Maverick is still pushing the envelope as a top naval aviator, confronting ghosts of his past.' },
+   180→    { title: 'Spider-Man: Across the Spider-Verse', year: 2023, type: 'cartoon', poster: 'https://picsum.photos/seed/spider-man-across-the-spider-verse-2023/342/513', rating: 8.6, genres: ['Animation', 'Action', 'Adventure'], overview: 'Miles Morales catapults across the multiverse where he encounters a team of Spider-People charged with protecting its existence.' },
+   181→    { title: 'The Super Mario Bros. Movie', year: 2023, type: 'cartoon', poster: 'https://picsum.photos/seed/the-super-mario-bros-movie-2023/342/513', rating: 7.1, genres: ['Animation', 'Adventure', 'Comedy'], overview: 'A plumber named Mario travels through the Mushroom Kingdom with a princess to save his brother from a fire-breathing king.' },
+   182→    { title: 'Barbie', year: 2023, type: 'movie', poster: 'https://picsum.photos/seed/barbie-2023/342/513', rating: 6.9, genres: ['Comedy', 'Adventure', 'Fantasy'], overview: 'Barbie and Ken experience the real world after leaving Barbieland.' },
+   183→    { title: 'Oppenheimer', year: 2023, type: 'movie', poster: 'https://picsum.photos/seed/oppenheimer-2023/342/513', rating: 8.3, genres: ['Drama', 'History'], overview: 'The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb.' },
+   184→    { title: 'Inside Out 2', year: 2024, type: 'cartoon', poster: 'https://picsum.photos/seed/inside-out-2-2024/342/513', rating: 7.6, genres: ['Animation', 'Comedy', 'Drama'], overview: 'Riley enters puberty and experiences new, more complex emotions led by Anxiety.' },
+   185→    { title: 'Kung Fu Panda 4', year: 2024, type: 'cartoon', poster: 'https://picsum.photos/seed/kung-fu-panda-4-2024/342/513', rating: 6.5, genres: ['Animation', 'Action', 'Comedy'], overview: 'Po must train a new warrior when he\'s chosen to become the Spiritual Leader of the Valley of Peace.' },
+   186→    { title: 'Deadpool & Wolverine', year: 2024, type: 'movie', poster: 'https://picsum.photos/seed/deadpool-wolverine-2024/342/513', rating: 7.7, genres: ['Action', 'Adventure', 'Comedy'], overview: 'Deadpool teams up with Wolverine for a multiversal adventure that changes the Marvel Cinematic Universe forever.' },
+   187→    { title: 'Bluey', year: 2018, type: 'cartoon', poster: 'https://picsum.photos/seed/bluey-2018/342/513', rating: 9.2, genres: ['Animation', 'Comedy', 'Family'], overview: 'An inexhaustible six-year-old Blue Heeler dog and her family play games that explore imagination and everyday life.' },
+   188→    { title: 'Heartstopper', year: 2022, type: 'tv', poster: 'https://picsum.photos/seed/heartstopper-2022/342/513', rating: 8.4, genres: ['Drama', 'Romance'], overview: 'Teens Nick and Charlie discover their feelings for each other and navigate love and friendship at high school.' },
+   189→    { title: 'Wednesday', year: 2022, type: 'tv', poster: 'https://picsum.photos/seed/wednesday-2022/342/513', rating: 8.1, genres: ['Comedy', 'Fantasy', 'Mystery'], overview: 'Wednesday Addams investigates a murder spree while making new friends at Nevermore Academy.' },
+   190→  ],
+   191→};
+   192→
+   193→/* ── decade key helper ─────────────────────── */
+   194→function getDecadeKey(year: number): string {
+   195→  const decade = Math.floor(year / 10) * 10;
+   196→  return `${decade}s`;
+   197→}
+   198→
+   199→/* ── fetch from TMDB ──────────────────────── */
+   200→async function fetchFromTmdb(
+   201→  birthYear: number,
+   202→  maxYear: number,
+   203→  category: string,
+   204→  page: number
+   205→): Promise<{ items: MovieItem[]; totalPages: number } | null> {
+   206→  const apiKey = process.env.TMDB_API_KEY;
+   207→  if (!apiKey) return null;
+   208→
+   209→  const items: MovieItem[] = [];
+   210→  let totalPages = 1;
+   211→
+   212→  try {
+   213→    if (category === 'cartoon') {
+   214→      // Fetch both movies and TV with animation genre
+   215→      const [movieRes, tvRes] = await Promise.all([
+   216→        fetch(`${TMDB_BASE}/discover/movie?api_key=${apiKey}&with_genres=16&primary_release_date.gte=${birthYear}-01-01&primary_release_date.lte=${maxYear}-12-31&sort_by=popularity.desc&page=${page}`),
+   217→        fetch(`${TMDB_BASE}/discover/tv?api_key=${apiKey}&with_genres=16&first_air_date.gte=${birthYear}-01-01&first_air_date.lte=${maxYear}-12-31&sort_by=popularity.desc&page=${page}`),
+   218→      ]);
+   219→
+   220→      const [movieData, tvData] = await Promise.all([movieRes.json(), tvRes.json()]);
+   221→      totalPages = Math.max(movieData.total_pages || 1, tvData.total_pages || 1);
+   222→
+   223→      for (const m of (movieData.results || []).slice(0, 10)) {
+   224→        items.push(formatTmdbItem(m, 'movie'));
+   225→      }
+   226→      for (const t of (tvData.results || []).slice(0, 10)) {
+   227→        items.push(formatTmdbItem(t, 'tv'));
+   228→      }
+   229→    } else {
+   230→      const isMovie = category === 'movie';
+   231→      const dateField = isMovie ? 'primary_release_date' : 'first_air_date';
+   232→      const endpoint = isMovie ? 'movie' : 'tv';
+   233→      const res = await fetch(
+   234→        `${TMDB_BASE}/discover/${endpoint}?api_key=${apiKey}&${dateField}.gte=${birthYear}-01-01&${dateField}.lte=${maxYear}-12-31&sort_by=popularity.desc&page=${page}&vote_count.gte=50`
+   235→      );
+   236→      const data = await res.json();
+   237→      totalPages = data.total_pages || 1;
+   238→
+   239→      for (const item of (data.results || []).slice(0, 20)) {
+   240→        items.push(formatTmdbItem(item, endpoint));
+   241→      }
+   242→    }
+   243→  } catch (err) {
+   244→    console.error('[api/movies] TMDB fetch error:', err);
+   245→    return null;
+   246→  }
+   247→
+   248→  return { items, totalPages: Math.min(totalPages, 10) };
+   249→}
+   250→
+   251→function formatTmdbItem(item: TmdbMovie, mediaType: string): MovieItem {
+   252→  const dateStr = item.release_date || item.first_air_date || '';
+   253→  const year = dateStr ? parseInt(dateStr.substring(0, 4)) : 0;
+   254→  const genres = (item.genre_ids || []).map((g) => GENRE_MAP[g] || '').filter(Boolean);
+   255→  const isCartoon = genres.includes('Animation') || genres.includes('Kids');
+   256→
+   257→  return {
+   258→    id: String(item.id),
+   259→    title: item.title || item.name || 'Unknown',
+   260→    year,
+   261→    type: isCartoon ? 'cartoon' : (mediaType === 'tv' ? 'tv' : 'movie'),
+   262→    poster: item.poster_path ? `${TMDB_IMG}${item.poster_path}` : '',
+   263→    backdrop: item.backdrop_path ? `${TMDB_ORIG}${item.backdrop_path}` : '',
+   264→    rating: Math.round(item.vote_average * 10) / 10,
+
+[showing lines 65-264 of 346; use offset=265 with limit to continue reading]

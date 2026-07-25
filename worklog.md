@@ -183,3 +183,17 @@ Stage Summary:
 - Video at: /home/z/my-project/download/rewind-app-demo.mp4
 - ~2 minutes, 780x1688, H.264, fade in/out
 - Covers all 7 tabs, 3 Contacts subfolders, Camera overlay, CRT boot screen
+---
+Task ID: p4-1
+Agent: fullstack-dev
+Task: Fix broken movie poster URLs
+
+Work Log:
+- Read route.ts and identified 112 picsum.photos URLs
+- Created fix_posters.py script
+- Ran the script to replace all URLs with empty strings
+- Verified no picsum URLs remain
+
+Stage Summary:
+- All 112 fallback movie poster URLs replaced with empty strings
+- MoviesTab will now show emoji-based posters with gradient backgrounds

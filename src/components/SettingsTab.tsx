@@ -391,8 +391,22 @@ function AppInfoSection() {
 // Main export
 // ═══════════════════════════════════════════════════════════════
 
-export default function SettingsTab({ onOpenAuth }: { onOpenAuth: () => void }) {
+export default function SettingsTab({ onOpenAuth, onClose }: { onOpenAuth: () => void; onClose?: () => void }) {
   return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.98 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: 'rgba(30, 20, 10, 0.85)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}
+    >
+      <div className="mx-auto w-full max-w-lg flex-1 overflow-y-auto py-6 px-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="old-title text-xl font-black text-[#faf6eb]">Settings</h2>
+          <button onClick={onClose} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold text-[#faf6eb] cursor-pointer">Close</button>
+        </div>
     <div className="space-y-4">
       <div className="text-center mb-2">
         <p className="old-body text-sm text-[#5c4033] font-medium">
@@ -437,5 +451,5 @@ export default function SettingsTab({ onOpenAuth }: { onOpenAuth: () => void }) 
         <AppInfoSection />
       </SettingsSection>
     </div>
-  );
-}
+      </div>
+    </motion.div>
