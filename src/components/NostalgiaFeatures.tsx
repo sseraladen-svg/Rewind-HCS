@@ -640,7 +640,7 @@ function MixtapeSection() {
             onClick={() => setShowSaved(!showSaved)}
             className="sk-btn old-btn text-xs px-4 py-2 rounded-lg mx-auto flex items-center gap-2 w-full justify-center mb-4"
           >
-            <span className="text-sm">📼</span>
+            <Music className="h-3.5 w-3.5" />
             {showSaved ? 'Hide' : 'Show'} Saved Mixtapes
             <ChevronRight
               className={`w-3.5 h-3.5 transition-transform ${showSaved ? 'rotate-90' : ''}`}
@@ -875,12 +875,12 @@ function Magic8BallSection() {
               <motion.span
                 animate={{ rotate: [0, 15, -15, 10, -10, 5, -5, 0] }}
                 transition={{ duration: 1.4, repeat: Infinity }}
-                className="inline-block"
+                className="inline-flex items-center gap-1.5"
               >
-                🔮 Shaking...
+                <Sparkles className="h-4 w-4" /> Shaking...
               </motion.span>
             ) : (
-              <>🔮 Shake the 8-Ball</>
+              <span className="inline-flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> Shake the 8-Ball</span>
             )}
           </Button>
 
@@ -1229,12 +1229,12 @@ export function RotaryPhoneSection() {
             </span>
           </div>
           {/* Ring animation */}
-          {ringing && <div className="text-3xl mb-2 phone-ring inline-block">📞</div>}
+          {ringing && <div className="text-3xl mb-2 phone-ring inline-block"><Phone className="h-7 w-7" /></div>}
           {/* Call message */}
           {callMsg && <p className="old-body text-sm text-[#8b5e3c] mb-3">{callMsg}</p>}
           {/* Buttons */}
           <div className="flex gap-3 justify-center">
-            <button onClick={handleCall} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs">📞 Call</button>
+            <button onClick={handleCall} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Call</button>
             <button onClick={handleClear} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs">✕ Clear</button>
           </div>
         </motion.div>
@@ -1480,10 +1480,10 @@ export function RetroChatSection() {
               </span>
             </div>
             <div className="flex items-center gap-1">
-              <button className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+              <button onClick={() => {}} className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
                 <Minimize2 className="w-3 h-3" />
               </button>
-              <button className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+              <button onClick={() => {}} className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
                 <X className="w-3 h-3" />
               </button>
             </div>

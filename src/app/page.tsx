@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Clock, Gamepad2, BookOpen,
+  Clock, Gamepad2, BookOpen, Pin,
   ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings, CheckCircle2,
   Clapperboard, Phone, Film, Camera, ImageIcon, SearchIcon,
 } from 'lucide-react';
@@ -663,13 +663,17 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
                     <Camera className="h-4 w-4" style={{ color: data.color }} /> Photo Timeline
                   </h2>
                   <PhotoTimeline />
-
-                  {/* Memory Board */}
-                  <div className="mt-10 mb-4">
-                    <MemoryBoard />
                   </div>
 
-                  <div className="mt-10 mb-4">
+                {/* Memory Board */}
+                <div className="mt-10 mb-4">
+                  <h2 className="old-label text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Pin className="h-4 w-4" style={{ color: data.color }} /> Shared Memory Board
+                  </h2>
+                  <MemoryBoard />
+                </div>
+
+                <div className="mt-10 mb-4">
                   <h2 className="old-label text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
                     <Brain className="h-4 w-4" style={{ color: data.color }} /> AI Insights
                   </h2>

@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { nostalgiaData, type NostalgiaItem } from '@/lib/nostalgia-data';
 import { getLibraryFavorites, setLibraryFavorites } from '@/lib/idb-store';
 import { Input } from '@/components/ui/input';
-import { Heart, Search, Shuffle, ArrowDownAZ, ArrowUpZA, ArrowDown01, ArrowUp01, Library, Star } from 'lucide-react';
+import { Heart, Search, Shuffle, ArrowDownAZ, ArrowUpZA, ArrowDown01, ArrowUp01, Library, Star, Film } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════
 // Types & Constants
@@ -410,7 +410,7 @@ export default function ThrowbackLibrary() {
         <div className="sk-paper rounded-lg p-12 text-center">
           <div className="sk-noise" />
           <div className="relative z-10">
-            <p className="text-5xl mb-4">📼</p>
+            <Film className="h-12 w-12 mx-auto mb-4 text-[#c4956a]" />
             <h3 className="old-title text-xl text-[#5c4033] mb-2">No matches found...</h3>
             <p className="old-body text-sm text-[#8b7355]">
               Try a different search, dude. Or maybe clear some filters and explore again!

@@ -1,0 +1,1726 @@
+     1	'use client';
+     2	
+     3	import { useState, useCallback, useSyncExternalStore, useEffect, useRef } from 'react';
+     4	import { motion, AnimatePresence } from 'framer-motion';
+     5	import {
+     6	  BookOpen,
+     7	  MessageSquare,
+     8	  User,
+     9	  Send,
+    10	  Music,
+    11	  Save,
+    12	  Trash2,
+    13	  HelpCircle,
+    14	  Eye,
+    15	  Sparkles,
+    16	  ChevronRight,
+    17	  Gamepad2,
+    18	  Phone,
+    19	  Sticker,
+    20	  Minimize2,
+    21	  X,
+    22	  SmilePlus,
+    23	} from 'lucide-react';
+    24	import { Input } from '@/components/ui/input';
+    25	import { Textarea } from '@/components/ui/textarea';
+    26	import { Button } from '@/components/ui/button';
+    27	import { Separator } from '@/components/ui/separator';
+    28	import {
+    29	  getAllGuestbookEntries, putAllGuestbookEntries,
+    30	  getAllMixtapes, clearMixtapes, addMixtape,
+    31	  getTamagotchiState, saveTamagotchiState,
+    32	  getFloppySavesCount, addFloppySave,
+    33	  getAllStickers, putAllStickers,
+    34	  getAllChatMessages, putAllChatMessages,
+    35	  incrementVisitCount, getVisitCount,
+    36	} from '@/lib/idb-store/index';
+    37	import type { TamagotchiStateRecord } from '@/lib/idb-store/types';
+    38	
+    39	// ═══════════════════════════════════════════════════════════════
+    40	// Types
+    41	// ═══════════════════════════════════════════════════════════════
+    42	
+    43	interface GuestbookEntry {
+    44	  id: string;
+    45	  name: string;
+    46	  message: string;
+    47	  date: string;
+    48	  emoji: string;
+    49	}
+    50	
+    51	interface Mixtape {
+    52	  id: string;
+    53	  to: string;
+    54	  from: string;
+    55	  side: 'A' | 'B';
+    56	  tracks: string[];
+    57	  createdAt: string;
+    58	}
+    59	
+    60	// ═══════════════════════════════════════════════════════════════
+    61	// Constants
+    62	// ═══════════════════════════════════════════════════════════════
+    63	
+    64	const AVATAR_EMOJIS = [
+    65	  '🎭', '🤠', '🦊', '🐱', '🌸', '🎸', '🕶️', '🎮',
+    66	  '👾', '🌈', '🦄', '🐶', '🎨', '🎪', '🚀', '🍕',
+    67	  '🎵', '🐻', '🌟', '🎃', '🦋', '🐙', '🪐', '🎯',
+    68	];
+    69	
+    70	const EIGHT_BALL_ANSWERS = [
+    71	  'It is certain',
+    72	  'It is decidedly so',
+    73	  'Without a doubt',
+    74	  'Yes, definitely',
+    75	  'You may rely on it',
+    76	  'As I see it, yes',
+    77	  'Most likely',
+    78	  'Outlook good',
+    79	  'Yes',
+    80	  'Signs point to yes',
+    81	  'Reply hazy, try again',
+    82	  'Ask again later',
+    83	  'Better not tell you now',
+    84	  'Cannot predict now',
+    85	  'Concentrate and ask again',
+    86	  "Don't count on it",
+    87	  'My reply is no',
+    88	  'My sources say no',
+    89	  'Outlook not so good',
+    90	  'Very doubtful',
+    91	];
+    92	
+    93	const MAX_GUESTBOOK_ENTRIES = 8;
+    94	const MIXTAPE_TRACK_SLOTS = 8;
+    95	
+    96	// Stable initial values (module-level to avoid ref/render-path lint issues)
+    97	const INITIAL_GUESTBOOK: GuestbookEntry[] = [];
+    98	const INITIAL_MIXTAPES: Mixtape[] = [];
+    99	
+   100	function getRandomEmoji(): string {
+   101	  return AVATAR_EMOJIS[Math.floor(Math.random() * AVATAR_EMOJIS.length)];
+   102	}
+   103	
+   104	function getRandomAnswer(): string {
+   105	  return EIGHT_BALL_ANSWERS[Math.floor(Math.random() * EIGHT_BALL_ANSWERS.length)];
+   106	}
+   107	
+   108	function generateId(): string {
+   109	  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+   110	}
+   111	
+   112	function formatDate(dateStr: string): string {
+   113	  const d = new Date(dateStr);
+   114	  return d.toLocaleDateString('en-US', {
+   115	    month: 'short',
+   116	    day: 'numeric',
+   117	    year: 'numeric',
+   118	    hour: '2-digit',
+   119	    minute: '2-digit',
+   120	  });
+   121	}
+   122	
+   123	// ═══════════════════════════════════════════════════════════════
+   124	// useIsClient — detects client-side rendering via useSyncExternalStore
+   125	// ═══════════════════════════════════════════════════════════════
+   126	
+   127	const emptySubscribe = () => () => {};
+   128	function useIsClient(): boolean {
+   129	  return useSyncExternalStore(
+   130	    emptySubscribe,
+   131	    () => true,
+   132	    () => false,
+   133	  );
+   134	}
+   135	
+   136	// ═══════════════════════════════════════════════════════════════
+   137	// useDBState — IndexedDB-backed state
+   138	// ═══════════════════════════════════════════════════════════════
+   139	
+   140	function useDBState<T>(
+   141	  loader: () => Promise<T>,
+   142	  saver: (val: T) => Promise<void>,
+   143	  initial: T,
+   144	): [T, (updater: T | ((prev: T) => T)) => void] {
+   145	  const [value, setValue] = useState<T>(initial);
+   146	
+   147	  useEffect(() => {
+   148	    loader().then((loaded) => setValue(loaded)).catch(() => {});
+   149	  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+   150	
+   151	  const set = useCallback(
+   152	    (updater: T | ((prev: T) => T)) => {
+   153	      setValue((prev) => {
+   154	        const next = typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater;
+   155	        saver(next).catch(() => {});
+   156	        return next;
+   157	      });
+   158	    },
+   159	    [saver], // eslint-disable-line react-hooks/exhaustive-deps
+   160	  );
+   161	
+   162	  return [value, set];
+   163	}
+   164	
+   165	// ═══════════════════════════════════════════════════════════════
+   166	// useVisitCounter — auto-incrementing visit counter
+   167	// ═══════════════════════════════════════════════════════════════
+   168	
+   169	function useVisitCounter(): number {
+   170	  const [count, setCount] = useState(1); // default to 1 during load
+   171	  useEffect(() => {
+   172	    getVisitCount().then(c => setCount(Math.max(c, 1)));
+   173	    incrementVisitCount();
+   174	  }, []);
+   175	  return count;
+   176	}
+   177	
+   178	// ═══════════════════════════════════════════════════════════════
+   179	// Section Header Component
+   180	// ═══════════════════════════════════════════════════════════════
+   181	
+   182	function SectionHeader({
+   183	  icon: Icon,
+   184	  title,
+   185	  subtitle,
+   186	}: {
+   187	  icon: React.ComponentType<{ className?: string }>;
+   188	  title: string;
+   189	  subtitle: string;
+   190	}) {
+   191	  return (
+   192	    <motion.div
+   193	      initial={{ opacity: 0, y: 20 }}
+   194	      whileInView={{ opacity: 1, y: 0 }}
+   195	      viewport={{ once: true, margin: '-50px' }}
+   196	      transition={{ duration: 0.6, ease: 'easeOut' }}
+   197	      className="mb-8 text-center"
+   198	    >
+   199	      <div className="inline-flex items-center justify-center w-14 h-14 rounded-full sk-leather mb-4">
+   200	        <Icon className="w-7 h-7 text-[#d4a574]" />
+   201	      </div>
+   202	      <h2 className="old-title text-3xl md:text-4xl text-foreground mb-2">{title}</h2>
+   203	      <p className="old-body text-muted-foreground text-sm md:text-base max-w-md mx-auto">
+   204	        {subtitle}
+   205	      </p>
+   206	    </motion.div>
+   207	  );
+   208	}
+   209	
+   210	// ═══════════════════════════════════════════════════════════════
+   211	// 1. Guestbook Section
+   212	// ═══════════════════════════════════════════════════════════════
+   213	
+   214	function GuestbookSection({ visitorCount }: { visitorCount: number }) {
+   215	  const [entries, setEntries] = useDBState<GuestbookEntry[]>(
+   216	    () => getAllGuestbookEntries() as Promise<GuestbookEntry[]>,
+   217	    (val) => putAllGuestbookEntries(val as any).catch(() => {}),
+   218	    INITIAL_GUESTBOOK,
+   219	  );
+   220	  const [name, setName] = useState('');
+   221	  const essage, setMessage] = useState('');
+   222	
+   223	  const handleSubmit = useCallback(() => {
+   224	    const trimmedName = name.trim();
+   225	    const trimmedMessage = message.trim();
+   226	    if (!trimmedName || !trimmedMessage) return;
+   227	
+   228	    const newEntry: GuestbookEntry = {
+   229	      id: generateId(),
+   230	      name: trimmedName,
+   231	      message: trimmedMessage,
+   232	      date: new Date().toISOString(),
+   233	      emoji: getRandomEmoji(),
+   234	    };
+   235	
+   236	    setEntries((prev) => [newEntry, ...prev].slice(0, MAX_GUESTBOOK_ENTRIES));
+   237	    setName('');
+   238	    setMessage('');
+   239	  }, [name, message, setEntries]);
+   240	
+   241	  const rotations = [-2, 1.5, -1, 2, -0.5, 1, -1.5, 0.5];
+   242	
+   243	  return (
+   244	    <section id="guestbook" className="scroll-mt-8">
+   245	      <SectionHeader
+   246	        icon={BookOpen}
+   247	        title="Guestbook"
+   248	        subtitle="Sign my guestbook! Just like the good old GeoCities days."
+   249	      />
+   250	
+   251	      {/* Visitor Counter Badge */}
+   252	      <motion.div
+   253	        initial={{ scale: 0.8, opacity: 0 }}
+   254	        animate={{ scale: 1, opacity: 1 }}
+   255	        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+   256	        className="flex justify-center mb-8"
+   257	      >
+   258	        <div className="sk-metal rounded-lg px-5 py-2.5 flex items-center gap-3">
+   259	          <Eye className="w-4 h-4 text-[#5c4033]" />
+   260	          <span className="old-label text-[#3d2b1f]">You are visitor #</span>
+   261	          <span className="old-typewriter text-lg font-bold text-[#8b5e3c] tracking-widest">
+   262	            {String(visitorCount).padStart(6, '0')}
+   263	          </span>
+   264	        </div>
+   265	      </motion.div>
+   266	
+   267	      {/* Sign Guestbook Form */}
+   268	      <motion.div
+   269	        initial={{ opacity: 0, y: 20 }}
+   270	        animate={{ opacity: 1, y: 0 }}
+   271	        transition={{ delay: 0.4, duration: 0.5 }}
+   272	        className="max-w-lg mx-auto mb-10"
+   273	      >
+   274	        <div className="sk-paper rounded-xl p-6 relative sk-tape">
+   275	          <h3 className="old-heading text-xl text-foreground mb-4 text-center">
+   276	            ✍️ Leave a Note
+   277	          </h3>
+   278	          <div className="space-y-3">
+   279	            <div className="flex items-center gap-2">
+   280	              <User className="w-4 h-4 text-muted-foreground shrink-0" />
+   281	              <Input
+   282	                value={name}
+   283	                onChange={(e) => setName(e.target.value)}
+   284	                placeholder="Your name..."
+   285	                maxLength={40}
+   286	                className="sk-inset old-typewriter text-sm border-0"
+   287	              />
+   288	            </div>
+   289	            <div className="flex items-start gap-2">
+   290	              <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0 mt-2" />
+   291	              <Textarea
+   292	                value={message}
+   293	                onChange={(e) => setMessage(e.target.value)}
+   294	                placeholder="Write something nice..."
+   295	                maxLength={200}
+   296	                rows={3}
+   297	                className="sk-inset old-typewriter text-sm border-0 resize-none"
+   298	              />
+   299	            </div>
+   300	            <div className="flex justify-end">
+   301	              <Button
+   302	                onClick={handleSubmit}
+   303	                disabled={!name.trim() || !message.trim()}
+   304	                className="sk-btn old-btn text-xs px-5 py-2 rounded-lg hover:opacity-90 disabled:opacity-40"
+   305	              >
+   306	                <Send className="w-3.5 h-3.5 mr-1.5" />
+   307	                Sign!
+   308	              </Button>
+   309	            </div>
+   310	          </div>
+   311	        </div>
+   312	      </motion.div>
+   313	
+   314	      {/* Guestbook Entries */}
+   315	      <div className="max-w-2xl mx-auto">
+   316	        <AnimatePresence mode="popLayout">
+   317	          {entries.length === 0 && (
+   318	            <motion.p
+   319	              initial={{ opacity: 0 }}
+   320	              animate={{ opacity: 1 }}
+   321	              className="old-handwritten text-center text-muted-foreground text-lg py-8"
+   322	            >
+   323	              Be the first to sign the guestbook! 📝
+   324	            </motion.p>
+   325	          )}
+   326	          {entries.map((entry, index) => (
+   327	            <motion.div
+   328	              key={entry.id}
+   329	              layout
+   330	              initial={{ opacity: 0, scale: 0.8, rotate: rotations[index % rotations.length] - 5 }}
+   331	              animate={{ opacity: 1, scale: 1, rotate: rotations[index % rotations.length] }}
+   332	              exit={{ opacity: 0, scale: 0.7, y: -20 }}
+   333	              transition={{ duration: 0.4, type: 'spring', stiffness: 150 }}
+   334	              className="sk-paper-aged rounded-lg p-4 mb-4 relative sk-pin cursor-default"
+   335	              style={
+   336	                { '--rotate': `${rotations[index % rotations.length]}deg` } as React.CSSProperties
+   337	              }
+   338	            >
+   339	              <div className="flex items-start gap-3">
+   340	                <span className="text-2xl shrink-0 mt-0.5">{entry.emoji}</span>
+   341	                <div className="flex-1 min-w-0">
+   342	                  <div className="flex items-center justify-between mb-1">
+   343	                    <span className="old-heading text-sm font-semibold text-foreground truncate">
+   344	                      {entry.name}
+   345	                    </span>
+   346	                    <span className="old-label text-[10px] shrink-0 ml-2">
+   347	                      {formatDate(entry.date)}
+   348	                    </span>
+   349	                  </div>
+   350	                  <p className="old-body text-sm text-foreground/80 leading-relaxed">
+   351	                    {entry.message}
+   352	                  </p>
+   353	                </div>
+   354	              </div>
+   355	            </motion.div>
+   356	          ))}
+   357	        </AnimatePresence>
+   358	      </div>
+   359	    </section>
+   360	  );
+   361	}
+   362	
+   363	// ═══════════════════════════════════════════════════════════════
+   364	// 2. Mixtape Creator Section
+   365	// ═══════════════════════════════════════════════════════════════
+   366	
+   367	function MixtapeSection() {
+   368	  const [savedMixtapes, setSavedMixtapes] = useDBState<Mixtape[]>(
+   369	    () => getAllMixtapes() as Promise<Mixtape[]>,
+   370	    (val) => clearMixtapes().then(() => Promise.all(val.map(m => addMixtape(m as any)))).then(() => {}).catch(() => {}),
+   371	    INITIAL_MIXTAPES,
+   372	  );
+   373	  const [to, setTo] = useState('');
+   374	  const [from, setFrom] = useState('');
+   375	  const [side, setSide] = useState<'A' | 'B'>('A');
+   376	  const [tracks, setTracks] = useState<string[]>(Array(MIXTAPE_TRACK_SLOTS).fill(''));
+   377	  const [showSaved, setShowSaved] = useState(false);
+   378	
+   379	  const handleTrackChange = useCallback((index: number, value: string) => {
+   380	    setTracks((prev) => {
+   381	      const updated = [...prev];
+   382	      updated[index] = value;
+   383	      return updated;
+   384	    });
+   385	  }, []);
+   386	
+   387	  const handleSave = useCallback(() => {
+   388	    const filledTracks = tracks.filter((t) => t.trim() !== '');
+   389	    if (!to.trim() || filledTracks.length === 0) return;
+   390	
+   391	    const mixtape: Mixtape = {
+   392	      id: generateId(),
+   393	      to: to.trim(),
+   394	      from: from.trim() || 'Anonymous',
+   395	      side,
+   396	      tracks: filledTracks.map((t) => t.trim()),
+   397	      createdAt: new Date().toISOString(),
+   398	    };
+   399	
+   400	    setSavedMixtapes((prev) => ixtape, ...prev]);
+   401	    setTo('');
+   402	    setFrom('');
+   403	    setTracks(Array(MIXTAPE_TRACK_SLOTS).fill(''));
+   404	  }, [to, from, side, tracks, setSavedMixtapes]);
+   405	
+   406	  const handleDelete = useCallback(
+   407	    (id: string) => {
+   408	      setSavedMixtapes((prev) => prev.filter((m) => m.id !== id));
+   409	    },
+   410	    [setSavedMixtapes],
+   411	  );
+   412	
+   413	  return (
+   414	    <section id="mixtape" className="scroll-mt-8">
+   415	      <SectionHeader
+   416	        icon={Music}
+   417	        title="Mixtape Creator"
+   418	        subtitle="Make a mixtape for that special someone, just like the old days."
+   419	      />
+   420	
+   421	      <div className="max-w-lg mx-auto">
+   422	        {/* Cassette Tape Visual */}
+   423	        <motion.div
+   424	          initial={{ opacity: 0, y: 30 }}
+   425	          animate={{ opacity: 1, y: 0 }}
+   426	          transition={{ duration: 0.6, type: 'spring' }}
+   427	          className="relative"
+   428	        >
+   429	          <div className="sk-metal rounded-2xl p-1">
+   430	            {/* Cassette body */}
+   431	            <div className="bg-gradient-to-b from-[#2a2a2a] to-[#1a1a1a] rounded-xl p-5 relative overflow-hidden">
+   432	              {/* Noise overlay */}
+   433	              <div className="absolute inset-0 sk-noise pointer-events-none" />
+   434	
+   435	              {/* Top section: reels */}
+   436	              <div className="flex items-center justify-center gap-10 mb-4 relative z-10">
+   437	                {/* Left reel */}
+   438	                <div className="relative">
+   439	                  <div className="w-20 h-20 rounded-full border-4 border-[#444] bg-[#222] flex items-center justify-center">
+   440	                    <div className="w-14 h-14 rounded-full border-2 border-[#555] bg-gradient-to-br from-[#333] to-[#1a1a1a] flex items-center justify-center">
+   441	                      <div className="w-4 h-4 rounded-full bg-[#555] border border-[#666]" />
+   442	                    </div>
+   443	                  </div>
+   444	                  {/* Spinning spokes */}
+   445	                  <motion.div
+   446	                    className="absolute inset-0 flex items-center justify-center"
+   447	                    animate={side === 'A' ? { rotate: 360 } : { rotate: 0 }}
+   448	                    transition={
+   449	                      side === 'A'
+   450	                        ? { duration: 3, repeat: Infinity, ease: 'linear' }
+   451	                        : { duration: 0 }
+   452	                    }
+   453	                  >
+   454	                    <div className="w-16 h-16">
+   455	                      {[0, 60, 120, 180, 240, 300].map((deg) => (
+   456	                        <div
+   457	                          key={deg}
+   458	                          className="absolute top-1/2 left-1/2 w-px h-7 bg-[#444]"
+   459	                          style={{
+   460	                            transform: `translate(-50%, -100%) rotate(${deg}deg)`,
+   461	                            transformOrigin: 'bottom center',
+   462	                          }}
+   463	                        />
+   464	                      ))}
+   465	                    </div>
+   466	                  </motion.div>
+   467	                </div>
+   468	
+   469	                {/* Center window / label area */}
+   470	                <div className="sk-vhs-label rounded-md px-4 py-3 text-center min-w-[140px] relative">
+   471	                  <p className="old-label text-[10px] text-[#8b7355] mb-1">★ HIGH BIAS ★</p>
+   472	                  <p className="old-title text-lg text-foreground leading-tight">My Mixtape</p>
+   473	                  <p className="old-typewriter text-[10px] text-muted-foreground mt-1">CHROME 90</p>
+   474	
+   475	                  {/* Side A/B indicator */}
+   476	                  <div className="flex items-center justify-center gap-1 mt-2">
+   477	                    <motion.div
+   478	                      className={`w-2 h-2 rounded-full ${side === 'A' ? 'bg-[#e85d5d]' : 'bg-[#555]'}`}
+   479	                      animate={side === 'A' ? { scale: [1, 1.3, 1] } : {}}
+   480	                      transition={{ duration: 1.5, repeat: Infinity }}
+   481	                    />
+   482	                    <span className="old-label text-[8px]">
+   483	                      {side === 'A' ? '▶ PLAYING' : '■ STOPPED'}
+   484	                    </span>
+   485	                  </div>
+   486	                </div>
+   487	
+   488	                {/* Right reel */}
+   489	                <div className="relative">
+   490	                  <div className="w-20 h-20 rounded-full border-4 border-[#444] bg-[#222] flex items-center justify-center">
+   491	                    <div className="w-14 h-14 rounded-full border-2 border-[#555] bg-gradient-to-br from-[#333] to-[#1a1a1a] flex items-center justify-center">
+   492	                      <div className="w-4 h-4 rounded-full bg-[#555] border border-[#666]" />
+   493	                    </div>
+   494	                  </div>
+   495	                  <motion.div
+   496	                    className="absolute inset-0 flex items-center justify-center"
+   497	                    animate={side === 'A' ? { rotate: 360 } : { rotate: 0 }}
+   498	                    transition={
+   499	                      side === 'A'
+   500	                        ? { duration: 4, repeat: Infinity, ease: 'linear' }
+   501	                        : { duration: 0 }
+   502	                    }
+   503	                  >
+   504	                    <div className="w-16 h-16">
+   505	                      {[0, 60, 120, 180, 240, 300].map((deg) => (
+   506	                        <div
+   507	                          key={deg}
+   508	                          className="absolute top-1/2 left-1/2 w-px h-7 bg-[#444]"
+   509	                          style={{
+   510	                            transform: `translate(-50%, -100%) rotate(${deg}deg)`,
+   511	                            transformOrigin: 'bottom center',
+   512	                          }}
+   513	                        />
+   514	                      ))}
+   515	                    </div>
+   516	                  </motion.div>
+   517	                </div>
+   518	              </div>
+   519	
+   520	              {/* Tape window strip */}
+   521	              <div className="bg-[#111] rounded h-6 mx-8 mb-4 flex items-center justify-center overflow-hidden relative z-10">
+   522	                <div className="flex gap-0.5">
+   523	                  {Array.from({ length: 30 }).map((_, i) => (
+   524	                    <motion.div
+   525	                      key={i}
+   526	                      className="w-0.5 h-3 bg-[#3a2a1a] rounded-full"
+   527	                      animate={
+   528	                        side === 'A'
+   529	                          ? { x: [0, 8, 0] }
+   530	                          : {}
+   531	                      }
+   532	                      transition={
+   533	                        side === 'A'
+   534	                          ? {
+   535	                              duration: 2,
+   536	                              repeat: Infinity,
+   537	                              ease: 'easeInOut',
+   538	                              delay: i * 0.05,
+   539	                            }
+   540	                          : { duration: 0 }
+   541	                      }
+   542	                    />
+   543	                  ))}
+   544	                </div>
+   545	              </div>
+   546	
+   547	              {/* Form area */}
+   548	              <div className="relative z-10 space-y-3">
+   549	                <div className="flex gap-3">
+   550	                  <div className="flex-1">
+   551	                    <label className="old-label text-[10px] block mb-1">To:</label>
+   552	                    <Input
+   553	                      value={to}
+   554	                      onChange={(e) => setTo(e.target.value)}
+   555	                      placeholder="A special someone..."
+   556	                      maxLength={30}
+   557	                      className="sk-inset old-typewriter text-xs border-0 h-9"
+   558	                    />
+   559	                  </div>
+   560	                  <div className="flex-1">
+   561	                    <label className="old-label text-[10px] block mb-1">From:</label>
+   562	                    <Input
+   563	                      value={from}
+   564	                      onChange={(e) => setFrom(e.target.value)}
+   565	                      placeholder="Your name..."
+   566	                      maxLength={30}
+   567	                      className="sk-inset old-typewriter text-xs border-0 h-9"
+   568	                    />
+   569	                  </div>
+   570	                </div>
+   571	
+   572	                {/* Side toggle */}
+   573	                <div className="flex items-center justify-center gap-2">
+   574	                  <span className="old-label text-[10px]">SIDE</span>
+   575	                  <button
+   576	                    onClick={() => setSide(side === 'A' ? 'B' : 'A')}
+   577	                    className="sk-btn old-btn text-xs px-4 py-1.5 rounded-md flex items-center gap-2"
+   578	                  >
+   579	                    <span
+   580	                      className={`font-bold transition-colors ${
+   581	                        side === 'A' ? 'text-[#8b5e3c]' : 'text-[#8b7355]'
+   582	                      }`}
+   583	                    >
+   584	                      A
+   585	                    </span>
+   586	                    <span className="text-[#8b7355]">/</span>
+   587	                    <span
+   588	                      className={`font-bold transition-colors ${
+   589	                        side === 'B' ? 'text-[#8b5e3c]' : 'text-[#8b7355]'
+   590	                      }`}
+   591	                    >
+   592	                      B
+   593	                    </span>
+   594	                  </button>
+   595	                </div>
+   596	
+   597	                {/* Track slots */}
+   598	                <div className="space-y-1.5 mt-3">
+   599	                  {tracks.map((track, i) => (
+   600	                    <motion.div
+   601	                      key={i}
+   602	                      initial={{ opacity: 0, x: -10 }}
+   603	                      animate={{ opacity: 1, x: 0 }}
+   604	                      transition={{ delay: 0.05 * i }}
+   605	                      className="flex items-center gap-2"
+   606	                    >
+   607	                      <span className="old-typewriter text-[10px] text-[#888] w-5 text-right shrink-0">
+   608	                        {i + 1}.
+   609	                      </span>
+   610	                      <Input
+   611	                        value={track}
+   612	                        onChange={(e) => handleTrackChange(i, e.target.value)}
+   613	                        placeholder={`Track ${i + 1}...`}
+   614	                        maxLength={60}
+   615	                        className="sk-inset old-typewriter text-[11px] border-0 h-7"
+   616	                      />
+   617	                    </motion.div>
+   618	                  ))}
+   619	                </div>
+   620	
+   621	                {/* Save button */}
+   622	                <div className="flex justify-center pt-2">
+   623	                  <Button
+   624	                    onClick={handleSave}
+   625	                    disabled={!to.trim() || tracks.filter((t) => t.trim()).length === 0}
+   626	                    className="sk-btn old-btn text-xs px-6 py-2 rounded-lg hover:opacity-90 disabled:opacity-40"
+   627	                  >
+   628	                    <Save className="w-3.5 h-3.5 mr-1.5" />
+   629	                    Save Mixtape
+   630	                  </Button>
+   631	                </div>
+   632	              </div>
+   633	            </div>
+   634	          </div>
+   635	        </motion.div>
+   636	
+   637	        {/* Saved Mixtapes */}
+   638	        <div className="mt-8">
+   639	          <button
+   640	            onClick={() => setShowSaved(!showSaved)}
+   641	            className="sk-btn old-btn text-xs px-4 py-2 rounded-lg mx-auto flex items-center gap-2 w-full justify-center mb-4"
+   642	          >
+   643	            <span className="text-sm">📼</span>
+   644	            {showSaved ? 'Hide' : 'Show'} Saved Mixtapes
+   645	            <ChevronRight
+   646	              className={`w-3.5 h-3.5 transition-transform ${showSaved ? 'rotate-90' : ''}`}
+   647	            />
+   648	            {savedMixtapes.length > 0 && (
+   649	              <span className="bg-[#8b5e3c] text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
+   650	                {savedMixtapes.length}
+   651	              </span>
+   652	            )}
+   653	          </button>
+   654	
+   655	          <AnimatePresence>
+   656	            {showSaved && (
+   657	              <motion.div
+   658	                initial={{ height: 0, opacity: 0 }}
+   659	                animate={{ height: 'auto', opacity: 1 }}
+   660	                exit={{ height: 0, opacity: 0 }}
+   661	                transition={{ duration: 0.3 }}
+   662	                className="overflow-hidden"
+   663	              >
+   664	                <div className="space-y-3 max-h-96 overflow-y-auto sk-scrollbar pr-1">
+   665	                  {savedMixtapes.length === 0 && (
+   666	                    <p className="old-handwritten text-center text-muted-foreground py-4">
+   667	                      No mixtapes saved yet. Make one above! 🎶
+   668	                    </p>
+   669	                  )}
+   670	                  {savedMixtapes.map((mixtape) => (
+   671	                    <motion.div
+   672	                      key={mixtape.id}
+   673	                      layout
+   674	                      initial={{ opacity: 0, y: 10 }}
+   675	                      animate={{ opacity: 1, y: 0 }}
+   676	                      exit={{ opacity: 0, scale: 0.9 }}
+   677	                      className="sk-paper-aged rounded-lg p-4 relative sk-tape"
+   678	                    >
+   679	                      <div className="flex items-start justify-between mb-2">
+   680	                        <div>
+   681	                          <p className="old-heading text-sm">
+   682	                            To: <span className="text-[#8b5e3c]">{mixtape.to}</span>
+   683	                          </p>
+   684	                          <p className="old-typewriter text-[11px] text-muted-foreground">
+   685	                            From: {mixtape.from} · Side {mixtape.side} ·{' '}
+   686	                            {formatDate(mixtape.createdAt)}
+   687	                          </p>
+   688	                        </div>
+   689	                        <button
+   690	                          onClick={() => handleDelete(mixtape.id)}
+   691	                          className="text-[#8b7355] hover:text-[#e85d5d] transition-colors p-1"
+   692	                          aria-label="Delete mixtape"
+   693	                        >
+   694	                          <Trash2 className="w-3.5 h-3.5" />
+   695	                        </button>
+   696	                      </div>
+   697	                      <ol className="space-y-0.5">
+   698	                        {mixtape.tracks.map((track, i) => (
+   699	                          <li
+   700	                            key={i}
+   701	                            className="old-typewriter text-xs text-foreground/80 flex items-baseline gap-1.5"
+   702	                          >
+   703	                            <span className="text-[#8b7355] shrink-0">{i + 1}.</span>
+   704	                            <span>{track}</span>
+   705	                          </li>
+   706	                        ))}
+   707	                      </ol>
+   708	                    </motion.div>
+   709	                  ))}
+   710	                </div>
+   711	              </motion.div>
+   712	            )}
+   713	          </AnimatePresence>
+   714	        </div>
+   715	      </div>
+   716	    </section>
+   717	  );
+   718	}
+   719	
+   720	// ═══════════════════════════════════════════════════════════════
+   721	// 3. Magic 8-Ball Section
+   722	// ═══════════════════════════════════════════════════════════════
+   723	
+   724	function Magic8BallSection() {
+   725	  const [question, setQuestion] = useState('');
+   726	  const [answer, setAnswer] = useState('');
+   727	  const [isShaking, setIsShaking] = useState(false);
+   728	  const [isRevealed, setIsRevealed] = useState(false);
+   729	
+   730	  const handleShake = useCallback(() => {
+   731	    if (!question.trim() || isShaking) return;
+   732	
+   733	    setIsShaking(true);
+   734	    setIsRevealed(false);
+   735	    setAnswer('');
+   736	
+   737	    setTimeout(() => {
+   738	      setAnswer(getRandomAnswer());
+   739	      setIsShaking(false);
+   740	      setIsRevealed(true);
+   741	    }, 1500);
+   742	  }, [question, isShaking]);
+   743	
+   744	  const handleKeyDown = useCallback(
+   745	    (e: React.KeyboardEvent) => {
+   746	      if (e.key === 'Enter' && !e.shiftKey) {
+   747	        e.preventDefault();
+   748	        handleShake();
+   749	      }
+   750	    },
+   751	    andleShake],
+   752	  );
+   753	
+   754	  return (
+   755	    <section id="eightball" className="scroll-mt-8">
+   756	      <SectionHeader
+   757	        icon={Sparkles}
+   758	        title="Magic 8-Ball"
+   759	        subtitle="Ask the mystic 8-Ball a yes-or-no question and shake for your fate."
+   760	      />
+   761	
+   762	      <div className="max-w-sm mx-auto text-center">
+   763	        {/* The 8-Ball */}
+   764	        <motion.div
+   765	          className="relative mx-auto mb-8"
+   766	          style={{ width: 220, height: 220 }}
+   767	        >
+   768	          {/* Shadow */}
+   769	          <div className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-40 h-6 bg-black/20 rounded-full blur-md" />
+   770	
+   771	          {/* Ball */}
+   772	          <motion.div
+   773	            animate={
+   774	              isShaking
+   775	                ? {
+   776	                    x: [-8, 8, -6, 6, -4, 4, -2, 2, 0],
+   777	                    y: [-4, -8, -2, -6, 0, -4, 2, -1, 0],
+   778	                    rotate: [-3, 3, -2, 2, -1, 1, -0.5, 0.5, 0],
+   779	                  }
+   780	                : {}
+   781	            }
+   782	            transition={
+   783	              isShaking
+   784	                ? { duration: 1.4, ease: 'easeInOut' }
+   785	                : { duration: 0.3, ease: 'easeOut' }
+   786	            }
+   787	            className="relative w-full h-full rounded-full bg-gradient-to-br from-[#2a2a2a] via-[#111] to-[#000] shadow-[0_8px_30px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1)]"
+   788	          >
+   789	            {/* Shine highlight */}
+   790	            <div className="absolute top-5 left-7 w-16 h-8 rounded-full bg-gradient-to-br from-white/20 to-transparent rotate-[-30deg]" />
+   791	
+   792	            {/* Triangle window */}
+   793	            <div className="absolute inset-0 flex items-center justify-center">
+   794	              <div className="relative" style={{ width: 100, height: 100 }}>
+   795	                {/* Triangle */}
+   796	                <div className="absolute inset-0 flex items-center justify-center">
+   797	                  <div
+   798	                    className="w-0 h-0"
+   799	                    style={{
+   800	                      borderLeft: '50px solid transparent',
+   801	                      borderRight: '50px solid transparent',
+   802	                      borderBottom: '87px solid #1a3a5c',
+   803	                      filter: 'drop-shadow(0 0 8px rgba(26, 58, 92, 0.5))',
+   804	                    }}
+   805	                  />
+   806	                </div>
+   807	
+   808	                {/* Answer text overlay on triangle */}
+   809	                <div className="absolute inset-0 flex items-center justify-center pt-4">
+   810	                  <AnimatePresence mode="wait">
+   811	                    {isRevealed && answer && (
+   812	                      <motion.p
+   813	                        key={answer}
+   814	                        initial={{ opacity: 0, scale: 0.5, y: 5 }}
+   815	                        animate={{ opacity: 1, scale: 1, y: 0 }}
+   816	                        exit={{ opacity: 0, scale: 0.8 }}
+   817	                        transition={{ duration: 0.5, type: 'spring', stiffness: 200 }}
+   818	                        className="old-typewriter text-white text-[10px] leading-tight text-center max-w-[70px] drop-shadow-[0_0_4px_rgba(255,255,255,0.3)]"
+   819	                      >
+   820	                        {answer}
+   821	                      </motion.p>
+   822	                    )}
+   823	                    {!isRevealed && !isShaking && (
+   824	                      <motion.p
+   825	                        initial={{ opacity: 0 }}
+   826	                        animate={{ opacity: 0.4 }}
+   827	                        className="old-typewriter text-white text-[10px] text-center"
+   828	                      >
+   829	                        8
+   830	                      </motion.p>
+   831	                    )}
+   832	                    {isShaking && (
+   833	                      <motion.div
+   834	                        animate={{ opacity: [0.2, 0.6, 0.2] }}
+   835	                        transition={{ duration: 0.5, repeat: Infinity }}
+   836	                        className="w-3 h-3 rounded-full bg-white/40"
+   837	                      />
+   838	                    )}
+   839	                  </AnimatePresence>
+   840	                </div>
+   841	              </div>
+   842	            </div>
+   843	
+   844	            {/* Bottom shadow curve */}
+   845	            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full bg-black/30 blur-sm" />
+   846	          </motion.div>
+   847	        </motion.div>
+   848	
+   849	        {/* Question Input */}
+   850	        <motion.div
+   851	          initial={{ opacity: 0, y: 10 }}
+   852	          animate={{ opacity: 1, y: 0 }}
+   853	          transition={{ delay: 0.2 }}
+   854	          className="space-y-4"
+   855	        >
+   856	          <div className="relative">
+   857	            <HelpCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   858	            <Input
+   859	              value={question}
+   860	              onChange={(e) => setQuestion(e.target.value)}
+   861	              onKeyDown={handleKeyDown}
+   862	              placeholder="Ask a yes-or-no question..."
+   863	              maxLength={100}
+   864	              disabled={isShaking}
+   865	              className="sk-inset old-typewriter text-sm border-0 pl-9"
+   866	            />
+   867	          </div>
+   868	
+   869	          <Button
+   870	            onClick={handleShake}
+   871	            disabled={!question.trim() || isShaking}
+   872	            className="sk-btn old-btn text-sm px-8 py-2.5 rounded-xl hover:opacity-90 disabled:opacity-40 w-full"
+   873	          >
+   874	            {isShaking ? (
+   875	              <motion.span
+   876	                animate={{ rotate: [0, 15, -15, 10, -10, 5, -5, 0] }}
+   877	                transition={{ duration: 1.4, repeat: Infinity }}
+   878	                className="inline-block"
+   879	              >
+   880	                🔮 Shaking...
+   881	              </motion.span>
+   882	            ) : (
+   883	              <>🔮 Shake the 8-Ball</>
+   884	            )}
+   885	          </Button>
+   886	
+   887	          {isRevealed && (
+   888	            <motion.p
+   889	              initial={{ opacity: 0, y: 5 }}
+   890	              animate={{ opacity: 1, y: 0 }}
+   891	              className="old-quote text-muted-foreground text-sm mt-2"
+   892	            >
+   893	              The 8-Ball has spoken...
+   894	            </motion.p>
+   895	          )}
+   896	        </motion.div>
+   897	      </div>
+   898	    </section>
+   899	  );
+   900	}
+   901	
+   902	// ═══════════════════════════════════════════════════════════════
+   903	// 4. Visit Counter Section
+   904	// ═══════════════════════════════════════════════════════════════
+   905	
+   906	function VisitCounterSection({ count }: { count: number }) {
+   907	  const digits = String(count).padStart(6, '0').split('');
+   908	
+   909	  return (
+   910	    <section id="counter" className="scroll-mt-8">
+   911	      <SectionHeader
+   912	        icon={Eye}
+   913	        title="Visit Counter"
+   914	        subtitle="Remember those hit counters on every homepage? Here's yours."
+   915	      />
+   916	
+   917	      <div className="max-w-md mx-auto text-center">
+   918	        {/* Odometer Counter */}
+   919	        <motion.div
+   920	          initial={{ opacity: 0, scale: 0.9 }}
+   921	          whileInView={{ opacity: 1, scale: 1 }}
+   922	          viewport={{ once: true }}
+   923	          transition={{ duration: 0.5, type: 'spring' }}
+   924	          className="inline-flex gap-1 p-3 sk-cork rounded-xl"
+   925	        >
+   926	          {digits.map((digit, i) => (
+   927	            <motion.div
+   928	              key={`${digit}-${i}`}
+   929	              initial={{ y: -20, opacity: 0 }}
+   930	              animate={{ y: 0, opacity: 1 }}
+   931	              transition={{
+   932	                delay: 0.1 * i,
+   933	                type: 'spring',
+   934	                stiffness: 200,
+   935	                damping: 15,
+   936	              }}
+   937	              className="relative w-11 h-14 md:w-13 md:h-16 sk-metal rounded-md flex items-center justify-center overflow-hidden"
+   938	              style={{
+   939	                boxShadow:
+   940	                  'inset 0 2px 4px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.3)',
+   941	              }}
+   942	            >
+   943	              {/* Digit background slot */}
+   944	              <div className="absolute inset-1 bg-gradient-to-b from-[#1a1a1a] to-[#0a0a0a] rounded-sm" />
+   945	              {/* The digit */}
+   946	              <span
+   947	                className="relative z-10 font-bold text-2xl md:text-3xl text-[#e85d5d] tracking-wider"
+   948	                style={{
+   949	                  fontFamily: "'Courier New', 'Special Elite', monospace",
+   950	                  textShadow: '0 0 6px rgba(232, 93, 93, 0.4)',
+   951	                }}
+   952	              >
+   953	                {digit}
+   954	              </span>
+   955	              {/* Top shine */}
+   956	              <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/10 to-transparent rounded-t-sm pointer-events-none" />
+   957	              {/* Divider line */}
+   958	              <div className="absolute top-1/2 left-1 right-1 h-px bg-black/40" />
+   959	            </motion.div>
+   960	          ))}
+   961	        </motion.div>
+   962	
+   963	        {/* Label */}
+   964	        <motion.p
+   965	          initial={{ opacity: 0 }}
+   966	          whileInView={{ opacity: 1 }}
+   967	          viewport={{ once: true }}
+   968	          transition={{ delay: 0.6, duration: 0.5 }}
+   969	          className="old-typewriter text-sm md:text-base text-muted-foreground mt-6"
+   970	        >
+   971	          This page has been visited{' '}
+   972	          <span className="text-[#8b5e3c] font-bold">{count.toLocaleString()}</span>{' '}
+   973	          time{count !== 1 ? 's' : ''}
+   974	        </motion.p>
+   975	
+   976	        <motion.p
+   977	          initial={{ opacity: 0 }}
+   978	          whileInView={{ opacity: 1 }}
+   979	          viewport={{ once: true }}
+   980	          transition={{ delay: 0.8, duration: 0.5 }}
+   981	          className="old-body text-xs text-[#8b7355] mt-2"
+   982	        >
+   983	          ✨ Every visit counts. Just like the old days. ✨
+   984	        </motion.p>
+   985	      </div>
+   986	    </section>
+   987	  );
+   988	}
+   989	
+   990	// ═══════════════════════════════════════════════════════════════
+   991	// 5. Tamagotchi Virtual Pet Section
+   992	// ═══════════════════════════════════════════════════════════════
+   993	
+   994	interface PetState { hunger: number; happiness: number; energy: number; }
+   995	
+   996	function TamagotchiSection() {
+   997	  const [pet, setPet] = useDBState<PetState>(
+   998	    async () => {
+   999	      const r = await getTamagotchiState();
+  1000	      if (!r) return { hunger: 80, happiness: 80, energy: 80 };
+  1001	      return { hunger: r.hunger, happiness: r.happiness, energy: r.energy };
+  1002	    },
+  1003	    (val: PetState) => saveTamagotchiState({
+  1004	      id: 'pet-1', hunger: val.hunger, happiness: val.happiness, energy: val.energy,
+  1005	      last_updated: Date.now(), is_alive: !(val.hunger === 0 && val.happiness === 0 && val.energy === 0),
+  1006	    }),
+  1007	    { hunger: 80, happiness: 80, energy: 80 },
+  1008	  );
+  1009	  const [ejecting, setEjecting] = useState(false);
+  1010	
+  1011	  const avg = (pet.hunger + pet.happiness + pet.energy) / 3;
+  1012	  const isDead = pet.hunger === 0 && pet.happiness === 0 && pet.energy === 0;
+  1013	  const face = isDead ? '🪦' : avg > 70 ? '😊' : avg > 40 ? '🐣' : '😢';
+  1014	
+  1015	  useEffect(() => {
+  1016	    if (isDead) return;
+  1017	    const interval = setInterval(() => {
+  1018	      setPet((prev: PetState) => {
+  1019	        const keys: (keyof PetState)[] = ['hunger', 'happiness', 'energy'];
+  1020	        const k = keys[Math.floor(Math.random() * keys.length)];
+  1021	        return { ...prev, [k]: Math.max(0, prev[k] - 5) };
+  1022	      });
+  1023	    }, 5000);
+  1024	    return () => clearInterval(interval);
+  1025	  }, [isDead, setPet]);
+  1026	
+  1027	  const doAction = (stat: keyof PetState, amt: number) => {
+  1028	    if (isDead) return;
+  1029	    setPet((prev: PetState) => ({ ...prev, [stat]: Math.min(100, prev[stat] + amt) }));
+  1030	    setEjecting(true);
+  1031	    setTimeout(() => setEjecting(false), 400);
+  1032	  };
+  1033	
+  1034	  const restart = () => setPet({ hunger: 80, happiness: 80, energy: 80 });
+  1035	
+  1036	  const StatBar = ({ label, value }: { label: string; value: number }) => (
+  1037	    <div className="flex items-center gap-2">
+  1038	      <span className="tamagotchi-pixel-text text-xs w-20">{label}</span>
+  1039	      <div className="flex-1 h-3 bg-[#306230]/30 rounded-sm overflow-hidden">
+  1040	        <div className="h-full bg-[#306230] rounded-sm transition-all duration-300" style={{ width: `${value}%` }} />
+  1041	      </div>
+  1042	      <span className="tamagotchi-pixel-text text-xs w-8 text-right">{value}</span>
+  1043	    </div>
+  1044	  );
+  1045	
+  1046	  return (
+  1047	    <section id="tamagotchi" className="scroll-mt-8">
+  1048	      <SectionHeader icon={Gamepad2} title="Tamagotchi" subtitle="Keep your virtual pet alive! Stats drop every 5 seconds." />
+  1049	      <div className="max-w-xs mx-auto">
+  1050	        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1051	          className="bg-[#8b5e3c] rounded-3xl p-3 shadow-lg" style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+  1052	          {/* Egg shape top */}
+  1053	          <div className="bg-[#c4956a] rounded-t-2xl h-3 mx-4" />
+  1054	          {/* Screen */}
+  1055	          <div className="tamagotchi-screen rounded-xl p-4 mx-2 mb-3">
+  1056	            <div className={`text-center text-5xl mb-3 ${ejecting ? 'scale-110 transition-transform' : ''}`}>{face}</div>
+  1057	            {isDead ? (
+  1058	              <div className="text-center">
+  1059	                <p className="tamagotchi-pixel-text text-sm mb-2">GAME OVER</p>
+  1060	                <button onClick={restart} className="sk-btn rounded px-3 py-1 text-xs old-btn">Restart</button>
+  1061	              </div>
+  1062	            ) : (
+  1063	              <div className="space-y-2">
+  1064	                <StatBar label="Hunger" value={pet.hunger} />
+  1065	                <StatBar label="Happy" value={pet.happiness} />
+  1066	                <StatBar label="Energy" value={pet.energy} />
+  1067	              </div>
+  1068	            )}
+  1069	          </div>
+  1070	          {/* Buttons */}
+  1071	          {!isDead && (
+  1072	            <div className="grid grid-cols-4 gap-2 px-2 pb-3">
+  1073	              {([['🍔', 'hunger', 15], ['🎮', 'happiness', 15], ['💤', 'energy', 20], ['🧹', 'happiness', 10]] as const).map(([emoji, stat, amt]) => (
+  1074	                <button key={String(emoji)} onClick={() => doAction(stat as keyof PetState, amt)}
+  1075	                  className="sk-btn rounded-lg py-2 text-xl flex flex-col items-center gap-0.5">
+  1076	                  <span>{emoji}</span>
+  1077	                  <span className="text-[8px] old-label">{String(emoji) === '🍔' ? 'Feed' : String(emoji) === '🎮' ? 'Play' : String(emoji) === '💤' ? 'Sleep' : 'Clean'}</span>
+  1078	                </button>
+  1079	              ))}
+  1080	            </div>
+  1081	          )}
+  1082	        </motion.div>
+  1083	      </div>
+  1084	    </section>
+  1085	  );
+  1086	}
+  1087	
+  1088	// ═══════════════════════════════════════════════════════════════
+  1089	// 6. Floppy Disk Save Counter Section
+  1090	// ═══════════════════════════════════════════════════════════════
+  1091	
+  1092	const FLOPPY_MESSAGES = [
+  1093	  "Don't forget to label your disk!",
+  1094	  'Saving to A:\\...',
+  1095	  'Please wait... writing to disk',
+  1096	  'Disk full! Just kidding.',
+  1097	  'Make sure the write-protect tab is off!',
+  1098	];
+  1099	
+  1100	function FloppyDiskSection() {
+  1101	  const [count, setCount] = useDBState<number>(
+  1102	    getFloppySavesCount,
+  1103	    () => addFloppySave('Save').catch(() => {}),
+  1104	    0,
+  1105	  );
+  1106	  const [ejecting, setEjecting] = useState(false);
+  1107	  const [statusText, setStatusText] = useState('');
+  1108	
+  1109	  const handleSave = () => {
+  1110	    setEjecting(true);
+  1111	    setStatusText('Saving...');
+  1112	    setTimeout(() => {
+  1113	      setCount((prev: number) => prev + 1);
+  1114	      setStatusText('Saved!');
+  1115	      setTimeout(() => {
+  1116	        setStatusText(FLOPPY_MESSAGES[Math.floor(Math.random() * FLOPPY_MESSAGES.length)]);
+  1117	        setEjecting(false);
+  1118	      }, 800);
+  1119	    }, 600);
+  1120	  };
+  1121	
+  1122	  return (
+  1123	    <section id="floppy" className="scroll-mt-8">
+  1124	      <SectionHeader icon={Save} title="Floppy Disk Saver" subtitle="Save your progress like it's 1995." />
+  1125	      <div className="max-w-xs mx-auto text-center">
+  1126	        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1127	          className={`sk-paper rounded-xl p-6 relative ${ejecting ? 'floppy-eject' : ''}`}>
+  1128	          {/* CSS Floppy Disk */}
+  1129	          <div className="mx-auto w-36 h-44 bg-[#1a1a2e] rounded-lg relative mb-4"
+  1130	            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+  1131	            {/* Metal slider */}
+  1132	            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-14 h-8 bg-[#b0b0b0] rounded-b-md"
+  1133	              style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+  1134	              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-3 bg-[#1a1a2e] rounded-t-sm" />
+  1135	            </div>
+  1136	            {/* Label area */}
+  1137	            <div className="absolute top-12 left-3 right-3 bottom-3 sk-vhs-label rounded p-2 flex flex-col items-center justify-center">
+  1138	              <span className="old-label text-[8px] mb-1">REWIND.DAT</span>
+  1139	              <span className="old-typewriter text-xs text-[#8b5e3c]">Saves: {count}</span>
+  1140	            </div>
+  1141	          </div>
+  1142	          {/* Save button */}
+  1143	          <button onClick={handleSave} disabled={ejecting}
+  1144	            className="sk-btn rounded-xl px-8 py-3 old-btn text-sm mb-3 disabled:opacity-60">
+  1145	            💾 Save
+  1146	          </button>
+  1147	          <p className="old-typewriter text-xs text-muted-foreground h-4">{statusText}</p>
+  1148	        </motion.div>
+  1149	      </div>
+  1150	    </section>
+  1151	  );
+  1152	}
+  1153	
+  1154	// ═══════════════════════════════════════════════════════════════
+  1155	// 7. Rotary Phone Dial Section
+  1156	// ═══════════════════════════════════════════════════════════════
+  1157	
+  1158	const PHONE_MESSAGES = [
+  1159	  "Nobody's home! Leave a message after the beep.",
+  1160	  'The number you have dialed... is your childhood. Please try again.',
+  1161	  'Connection established. Rewinding memories...',
+  1162	];
+  1163	
+  1164	export function RotaryPhoneSection() {
+  1165	  const [dialed, setDialed] = useState<number[]>([]);
+  1166	  const [spinning, setSpinning] = useState(false);
+  1167	  const [ringing, setRinging] = useState(false);
+  1168	  const [callMsg, setCallMsg] = useState('');
+  1169	  const dialRef = useRef<HTMLDivElement>(null);
+  1170	
+  1171	  const dialNumber = (n: number) => {
+  1172	    if (spinning) return;
+  1173	    setSpinning(true);
+  1174	    setDialed((prev) => [...prev, n]);
+  1175	    if (dialRef.current) {
+  1176	      dialRef.current.classList.remove('dial-spin');
+  1177	      void dialRef.current.offsetWidth;
+  1178	      dialRef.current.classList.add('dial-spin');
+  1179	    }
+  1180	    setTimeout(() => setSpinning(false), 500);
+  1181	  };
+  1182	
+  1183	  const handleCall = () => {
+  1184	    if (dialed.length === 0 || ringing) return;
+  1185	    setRinging(true);
+  1186	    setTimeout(() => {
+  1187	      setCallMsg(PHONE_MESSAGES[Math.floor(Math.random() * PHONE_MESSAGES.length)]);
+  1188	      setRinging(false);
+  1189	    }, 1000);
+  1190	  };
+  1191	
+  1192	  const handleClear = () => { setDialed([]); setCallMsg(''); };
+  1193	
+  1194	  const holes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+  1195	  const getAngle = (i: number) => (i * 30 + 150) * (Math.PI / 180);
+  1196	
+  1197	  return (
+  1198	    <section id="phone" className="scroll-mt-8">
+  1199	      <SectionHeader icon={Phone} title="Rotary Phone" subtitle="Dial a number the old-fashioned way." />
+  1200	      <div className="max-w-xs mx-auto text-center">
+  1201	        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1202	          className="sk-paper rounded-xl p-6 relative">
+  1203	          {/* Dial */}
+  1204	          <div className="mx-auto w-48 h-48 rounded-full bg-[#2a1f14] relative mb-4 p-4"
+  1205	            style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.05)' }}>
+  1206	            <div ref={dialRef} className="w-full h-full rounded-full relative" style={{ transition: 'transform 0.5s cubic-bezier(0.2,0,0.2,1)' }}>
+  1207	              {holes.map((n, i) => {
+  1208	                const a = getAngle(i);
+  1209	                const r = 60;
+  1210	                const x = 96 + r * Math.cos(a) - 14;
+  1211	                const y = 96 + r * Math.sin(a) - 14;
+  1212	                return (
+  1213	                  <button key={n} onClick={() => dialNumber(n)} disabled={spinning}
+  1214	                    className="absolute w-7 h-7 rounded-full bg-[#f0e6d3] border border-[#a89878] flex items-center justify-center old-typewriter text-xs font-bold text-[#3d2b1f] hover:bg-[#faf6eb] disabled:opacity-50 cursor-pointer"
+  1215	                    style={{ left: x, top: y, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.2)' }}>
+  1216	                    {n}
+  1217	                  </button>
+  1218	                );
+  1219	              })}
+  1220	              {/* Center cap */}
+  1221	              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#5c4033]"
+  1222	                style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
+  1223	            </div>
+  1224	          </div>
+  1225	          {/* Dialed number display */}
+  1226	          <div className="sk-inset rounded-lg px-4 py-2 mb-3">
+  1227	            <span className="old-typewriter text-lg tracking-[0.3em] text-[#5c4033]">
+  1228	              {dialed.length > 0 ? dialed.join('') : '—'}
+  1229	            </span>
+  1230	          </div>
+  1231	          {/* Ring animation */}
+  1232	          {ringing && <div className="text-3xl mb-2 phone-ring inline-block">📞</div>}
+  1233	          {/* Call message */}
+  1234	          {callMsg && <p className="old-body text-sm text-[#8b5e3c] mb-3">{callMsg}</p>}
+  1235	          {/* Buttons */}
+  1236	          <div className="flex gap-3 justify-center">
+  1237	            <button onClick={handleCall} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs">📞 Call</button>
+  1238	            <button onClick={handleClear} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs">✕ Clear</button>
+  1239	          </div>
+  1240	        </motion.div>
+  1241	      </div>
+  1242	    </section>
+  1243	  );
+  1244	}
+  1245	
+  1246	// ═══════════════════════════════════════════════════════════════
+  1247	// 8. Retro Sticker Wall Section
+  1248	// ═══════════════════════════════════════════════════════════════
+  1249	
+  1250	const STICKER_EMOJIS = [
+  1251	  '⭐', '🎸', '🎮', '🎭', '🎬', '🎵', '📺', '📻', '📱', '📸',
+  1252	  '🍔', '🧸', '🎪', '🚀', '🌈', '💯', '👀', '🔥', '💎', '🍇',
+  1253	  '🌙', '🍀', '🏀', '🎨', '🎧',
+  1254	];
+  1255	
+  1256	interface PlacedSticker { id: string; emoji: string; x: number; y: number; rotation: number; }
+  1257	
+  1258	function StickerWallSection() {
+  1259	  const [stickers, setStickers] = useDBState<PlacedSticker[]>(
+  1260	    () => getAllStickers() as Promise<PlacedSticker[]>,
+  1261	    (val) => putAllStickers(val as any).catch(() => {}),
+  1262	    [],
+  1263	  );
+  1264	  const [pickedEmoji, setPickedEmoji] = useState<string | null>(null);
+  1265	  const wallRef = useRef<HTMLDivElement>(null);
+  1266	
+  1267	  const placeSticker = (e: React.MouseEvent<HTMLDivElement>) => {
+  1268	    if (!pickedEmoji || !wallRef.current) return;
+  1269	    const rect = wallRef.current.getBoundingClientRect();
+  1270	    const x = e.clientX - rect.left;
+  1271	    const y = e.clientY - rect.top;
+  1272	    const rotation = (Math.random() - 0.5) * 30;
+  1273	    setStickers((prev: PlacedSticker[]) => [...prev, { id: generateId(), emoji: pickedEmoji, x, y, rotation }]);
+  1274	  };
+  1275	
+  1276	  const clearWall = () => { setStickers([]); setPickedEmoji(null); };
+  1277	
+  1278	  return (
+  1279	    <section id="stickers" className="scroll-mt-8">
+  1280	      <SectionHeader icon={Sticker} title="Sticker Wall" subtitle="Pick a sticker, then click the board to place it." />
+  1281	      <div className="max-w-lg mx-auto">
+  1282	        {/* Emoji picker */}
+  1283	        <div className="sk-paper rounded-xl p-3 mb-4">
+  1284	          <div className="flex flex-wrap gap-2 justify-center">
+  1285	            {STICKER_EMOJIS.map((emoji) => (
+  1286	              <button key={emoji} onClick={() => setPickedEmoji(pickedEmoji === emoji ? null : emoji)}
+  1287	                className={`w-9 h-9 rounded-lg flex items-center justify-center text-xl cursor-pointer transition-all ${
+  1288	                  pickedEmoji === emoji ? 'sk-sticker scale-110 bg-[#faf6eb]' : 'hover:bg-[#faf6eb]/60'
+  1289	                }`}>
+  1290	                {emoji}
+  1291	              </button>
+  1292	            ))}
+  1293	          </div>
+  1294	        </div>
+  1295	        {/* Cork board */}
+  1296	        <div ref={wallRef} onClick={placeSticker}
+  1297	          className="sk-cork rounded-xl relative overflow-hidden cursor-crosshair"
+  1298	          style={{ height: pickedEmoji ? '300px' : '200px', transition: 'height 0.3s' }}>
+  1299	          {stickers.length === 0 && (
+  1300	            <div className="absolute inset-0 flex items-center justify-center old-handwritten text-[#8b7355] text-sm opacity-50 pointer-events-none">
+  1301	              {pickedEmoji ? 'Click here to place your sticker!' : 'Pick a sticker above to get started'}
+  1302	            </div>
+  1303	          )}
+  1304	          {stickers.map((s) => (
+  1305	            <div key={s.id} className="absolute text-2xl sticker-pop cursor-grab active:cursor-grabbing select-none"
+  1306	              style={{ left: s.x - 16, top: s.y - 16, '--sticker-rotate': `${s.rotation}deg` } as React.CSSProperties}>
+  1307	              {s.emoji}
+  1308	            </div>
+  1309	          ))}
+  1310	        </div>
+  1311	        {stickers.length > 0 && (
+  1312	          <div className="flex justify-center mt-3">
+  1313	            <button onClick={clearWall} className="sk-btn rounded-lg px-4 py-2 old-btn text-xs flex items-center gap-1.5">
+  1314	              <Trash2 className="w-3 h-3" /> Clear Wall
+  1315	            </button>
+  1316	          </div>
+  1317	        )}
+  1318	      </div>
+  1319	    </section>
+  1320	  );
+  1321	}
+  1322	
+  1323	// ═══════════════════════════════════════════════════════════════
+  1324	// 9. Retro Chat (AIM / MSN Messenger style)
+  1325	// ═══════════════════════════════════════════════════════════════
+  1326	
+  1327	interface ChatMessage {
+  1328	  id: string;
+  1329	  from: 'me' | 'buddy';
+  1330	  text: string;
+  1331	  time: string;
+  1332	  color: string;
+  1333	}
+  1334	
+  1335	const BUDDY_REPLIES = [
+  1336	  "hey!! whats up?? :D",
+  1337	  "omg remember when we used to stay up late chatting??",
+  1338	  "haha yeah that was so fun",
+  1339	  "did u watch that cartoon yesterday?? it was so good!!",
+  1340	  "brb my mom is calling me for dinner",
+  1341	  "back! sorry about that lol",
+  1342	  "i cant believe its already 11pm... time flies when ur having fun",
+  1343	  "u still have that mixtape i made u??",
+  1344	  "LOL thats hilarious",
+  1345	  "wanna come over tomorrow? we can play n64",
+  1346	  "my dad said we can rent a movie from blockbuster!!",
+  1347	  "a/s/l? lol jk",
+  1348	  "brb phone is ringing... its probably jessica",
+  1349	  "ok back. it was jessica. she said shes coming over too!",
+  1350	  "remember that time we snuck out at night?? so scary but fun",
+  1351	  "my mom made cookies!! chocolate chip :D",
+  1352	  "u online?? hello??",
+  1353	  "gtg its getting late. ttyl!!",
+  1354	  "omg i just heard the best song on the radio",
+  1355	  "check this out -> I just found the coolest website",
+  1356	  "haha ur so funny",
+  1357	  "wait wait wait... did u see that episode??",
+  1358	  "i love these smileys :) ;) :P :D >:( 8-)",
+  1359	  "summer vacation is gonna be so awesome this year!!",
+  1360	  "school is almost over!!! YESSS",
+  1361	  "do u have aol or msn?? add me!!",
+  1362	  "my screen name is NostalgiaKid2000 add me",
+  1363	  "gtg bye!! *waves*",
+  1364	];
+  1365	
+  1366	const BUDDY_NAMES = [
+  1367	  { name: 'CoolDude99', color: '#ff0000' },
+  1368	  { name: 'SunshineGal', color: '#ff69b4' },
+  1369	  { name: 'Sk8rBoi2000', color: '#0000ff' },
+  1370	  { name: 'xXDarkAngelXx', color: '#800080' },
+  1371	  { name: 'PizzaLover42', color: '#008080' },
+  1372	];
+  1373	
+  1374	export function RetroChatSection() {
+  1375	  const essages, setMessages] = useDBState<ChatMessage[]>(
+  1376	    () => getAllChatMessages() as Promise<ChatMessage[]>,
+  1377	    (val) => putAllChatMessages(val as any).catch(() => {}),
+  1378	    [],
+  1379	  );
+  1380	  const [inputText, setInputText] = useState('');
+  1381	  const [buddyName] = useState(() => BUDDY_NAMES[Math.floor(Math.random() * BUDDY_NAMES.length)]);
+  1382	  const [statusText, setStatusText] = useState('Online');
+  1383	  const [showEmojis, setShowEmojis] = useState(false);
+  1384	  const chatEndRef = useRef<HTMLDivElement>(null);
+  1385	
+  1386	  const myColor = '#000080';
+  1387	
+  1388	  const emojis = [':)', ';)', ':P', ':D', ':(', '>:(', '8-)', 'O:)', ':O', '<3', 'XD', 'LOL'];
+  1389	
+  1390	  useEffect(() => {
+  1391	    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  1392	  }, essages]);
+  1393	
+  1394	  // Buddy auto-replies
+  1395	  useEffect(() => {
+  1396	    if (messages.length === 0) return;
+  1397	    const lastMsg = messagesessages.length - 1];
+  1398	    if (lastMsg.from !== 'me') return;
+  1399	
+  1400	    // Show typing indicator
+  1401	    const typingDelay = 800 + Math.random() * 1200;
+  1402	    const replyDelay = typingDelay + 1000 + Math.random() * 1500;
+  1403	
+  1404	    const t1 = setTimeout(() => setStatusText('typing...'), typingDelay);
+  1405	    const t2 = setTimeout(() => {
+  1406	      const reply = BUDDY_REPLIES[Math.floor(Math.random() * BUDDY_REPLIES.length)];
+  1407	      const now = new Date();
+  1408	      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  1409	      const newMsg: ChatMessage = {
+  1410	        id: generateId(),
+  1411	        from: 'buddy',
+  1412	        text: reply,
+  1413	        time: timeStr,
+  1414	        color: buddyName.color,
+  1415	      };
+  1416	      setMessages((prev: ChatMessage[]) => [...prev, newMsg]);
+  1417	      setStatusText('Online');
+  1418	    }, replyDelay);
+  1419	
+  1420	    return () => {
+  1421	      clearTimeout(t1);
+  1422	      clearTimeout(t2);
+  1423	    };
+  1424	  }, essages.length, buddyName.color, setMessages]);
+  1425	
+  1426	  const sendMessage = () => {
+  1427	    const text = inputText.trim();
+  1428	    if (!text) return;
+  1429	    const now = new Date();
+  1430	    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  1431	    const newMsg: ChatMessage = {
+  1432	      id: generateId(),
+  1433	      from: 'me',
+  1434	      text,
+  1435	      time: timeStr,
+  1436	      color: myColor,
+  1437	    };
+  1438	    setMessages((prev: ChatMessage[]) => [...prev, newMsg]);
+  1439	    setInputText('');
+  1440	    setShowEmojis(false);
+  1441	  };
+  1442	
+  1443	  const insertEmoji = (emoji: string) => {
+  1444	    setInputText(prev => prev + ' ' + emoji);
+  1445	    setShowEmojis(false);
+  1446	  };
+  1447	
+  1448	  const clearChat = () => {
+  1449	    setMessages([]);
+  1450	    setStatusText('Online');
+  1451	  };
+  1452	
+  1453	  return (
+  1454	    <section id="chat" className="scroll-mt-8">
+  1455	      <SectionHeader icon={MessageSquare} title="Retro Chat" subtitle="Chat like it's 2001. AIM style." />
+  1456	
+  1457	      <div className="max-w-lg mx-auto">
+  1458	        <motion.div
+  1459	          initial={{ opacity: 0, scale: 0.95 }}
+  1460	          animate={{ opacity: 1, scale: 1 }}
+  1461	          className="rounded-sm overflow-hidden"
+  1462	          style={{
+  1463	            border: '2px solid',
+  1464	            borderColor: '#808080 #ffffff #ffffff #808080',
+  1465	            boxShadow: '2px 2px 0 #000',
+  1466	          }}
+  1467	        >
+  1468	          {/* Window title bar - AIM style */}
+  1469	          <div
+  1470	            className="flex items-center justify-between px-3 py-1.5"
+  1471	            style={{
+  1472	              background: 'linear-gradient(180deg, #3168d5 0%, #2456b5 40%, #1a3f8a 100%)',
+  1473	              borderBottom: '1px solid #000',
+  1474	            }}
+  1475	          >
+  1476	            <div className="flex items-center gap-2">
+  1477	              <MessageSquare className="w-3.5 h-3.5 text-white/80" />
+  1478	              <span style={{ fontFamily: 'Tahoma, Verdana, sans-serif', fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>
+  1479	                AIM - Instant Message
+  1480	              </span>
+  1481	            </div>
+  1482	            <div className="flex items-center gap-1">
+  1483	              <button className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+  1484	                <Minimize2 className="w-3 h-3" />
+  1485	              </button>
+  1486	              <button className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+  1487	                <X className="w-3 h-3" />
+  1488	              </button>
+  1489	            </div>
+  1490	          </div>
+  1491	
+  1492	          {/* Toolbar */}
+  1493	          <div
+  1494	            className="flex items-center gap-1 px-2 py-1"
+  1495	            style={{ background: '#c0c0c0', borderBottom: '1px solid #808080' }}
+  1496	          >
+  1497	            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px', color: '#000' }}>
+  1498	              To:
+  1499	            </span>
+  1500	            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px', fontWeight: 'bold', color: buddyName.color }}>
+  1501	              {buddyName.name}
+  1502	            </span>
+  1503	            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080', marginLeft: '8px' }}>
+  1504	              ({statusText})
+  1505	            </span>
+  1506	          </div>
+  1507	
+  1508	          {/* Chat area */}
+  1509	          <div
+  1510	            className="relative"
+  1511	            style={{
+  1512	              height: '320px',
+  1513	              background: '#ffffff',
+  1514	              fontFamily: 'Tahoma, Verdana, Arial, sans-serif',
+  1515	              fontSize: '12px',
+  1516	              overflowY: 'auto',
+  1517	            }}
+  1518	          >
+  1519	            {messages.length === 0 && (
+  1520	              <div className="absolute inset-0 flex flex-col items-center justify-center text-[#808080]">
+  1521	                <span className="text-3xl mb-2">💬</span>
+  1522	                <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px' }}>
+  1523	                  Start a conversation with <b style={{ color: buddyName.color }}>{buddyName.name}</b>
+  1524	                </p>
+  1525	                <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#a0a0a0', marginTop: '4px' }}>
+  1526	                  Type something below and hit Send
+  1527	                </p>
+  1528	              </div>
+  1529	            )}
+  1530	            {messages.map((msg) => (
+  1531	              <div key={msg.id} className="px-3 py-1 hover:bg-[#f0f0ff]/50" style={{ lineHeight: '1.5' }}>
+  1532	                <span style={{ fontWeight: 'bold', color: msg.color, fontSize: '12px' }}>
+  1533	                  {msg.from === 'me' ? 'Me' : buddyName.name}:
+  1534	                </span>{' '}
+  1535	                <span style={{ color: '#000', fontSize: '12px' }}>{msg.text}</span>
+  1536	                <span className="ml-2" style={{ color: '#808080', fontSize: '10px' }}>{msg.time}</span>
+  1537	              </div>
+  1538	            ))}
+  1539	            <div ref={chatEndRef} />
+  1540	          </div>
+  1541	
+  1542	          {/* Input area */}
+  1543	          <div
+  1544	            className="px-2 py-2"
+  1545	            style={{ background: '#c0c0c0', borderTop: '1px solid #808080' }}
+  1546	          >
+  1547	            {/* Emoji picker */}
+  1548	            <AnimatePresence>
+  1549	              {showEmojis && (
+  1550	                <motion.div
+  1551	                  initial={{ opacity: 0, height: 0 }}
+  1552	                  animate={{ opacity: 1, height: 'auto' }}
+  1553	                  exit={{ opacity: 0, height: 0 }}
+  1554	                  className="mb-2 flex flex-wrap gap-1 p-2 overflow-hidden"
+  1555	                  style={{ background: '#ffffff', border: '1px solid #808080' }}
+  1556	                >
+  1557	                  {emojis.map(e => (
+  1558	                    <button key={e} onClick={() => insertEmoji(e)}
+  1559	                      className="px-1.5 py-0.5 text-sm hover:bg-[#e0e0ff] cursor-pointer"
+  1560	                      style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '13px' }}>
+  1561	                      {e}
+  1562	                    </button>
+  1563	                  ))}
+  1564	                </motion.div>
+  1565	              )}
+  1566	            </AnimatePresence>
+  1567	
+  1568	            <div className="flex items-center gap-2">
+  1569	              <div
+  1570	                className="flex-1"
+  1571	                style={{
+  1572	                  border: '2px solid',
+  1573	                  borderColor: '#808080 #ffffff #ffffff #808080',
+  1574	                }}
+  1575	              >
+  1576	                <input
+  1577	                  type="text"
+  1578	                  value={inputText}
+  1579	                  onChange={e => setInputText(e.target.value)}
+  1580	                  onKeyDown={e => { if (e.key === 'Enter') sendMessage(); }}
+  1581	                  placeholder="Type a message..."
+  1582	                  className="w-full px-2 py-1.5 text-[12px] outline-none"
+  1583	                  style={{
+  1584	                    fontFamily: 'Tahoma, Verdana, sans-serif',
+  1585	                    background: '#ffffff',
+  1586	                    color: '#000',
+  1587	                  }}
+  1588	                />
+  1589	              </div>
+  1590	              <button
+  1591	                onClick={() => setShowEmojis(!showEmojis)}
+  1592	                className="px-2 py-1.5 cursor-pointer"
+  1593	                style={{
+  1594	                  background: '#c0c0c0',
+  1595	                  border: '2px solid',
+  1596	                  borderColor: '#ffffff #808080 #808080 #ffffff',
+  1597	                  fontSize: '14px',
+  1598	                }}
+  1599	                title="Emoticons"
+  1600	              >
+  1601	                <SmilePlus className="w-4 h-4 text-[#000]" />
+  1602	              </button>
+  1603	              <button
+  1604	                onClick={sendMessage}
+  1605	                className="px-3 py-1.5 cursor-pointer font-bold"
+  1606	                style={{
+  1607	                  fontFamily: 'Tahoma, sans-serif',
+  1608	                  fontSize: '11px',
+  1609	                  background: 'linear-gradient(180deg, #e8e8e8, #c0c0c0)',
+  1610	                  border: '2px solid',
+  1611	                  borderColor: '#ffffff #808080 #808080 #ffffff',
+  1612	                  color: '#000',
+  1613	                }}
+  1614	              >
+  1615	                Send
+  1616	              </button>
+  1617	            </div>
+  1618	          </div>
+  1619	
+  1620	          {/* Bottom bar with clear */}
+  1621	          <div
+  1622	            className="flex items-center justify-between px-3 py-1"
+  1623	            style={{ background: '#c0c0c0', borderTop: '1px solid #ffffff' }}
+  1624	          >
+  1625	            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080' }}>
+  1626	              {messages.length > 0 ? `${messages.length} message${messages.length > 1 ? 's' : ''}` : 'No messages yet'}
+  1627	            </span>
+  1628	            {messages.length > 0 && (
+  1629	              <button onClick={clearChat}
+  1630	                style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080', textDecoration: 'underline' }}
+  1631	                className="hover:text-[#000] cursor-pointer">
+  1632	                Clear Chat
+  1633	              </button>
+  1634	            )}
+  1635	          </div>
+  1636	        </motion.div>
+  1637	
+  1638	        {/* Fun AIM-era info */}
+  1639	        <div className="mt-4 text-center space-y-1">
+  1640	          <p className="old-handwritten text-xs text-[#8b7355]">
+  1641	            Chatting with <b style={{ color: buddyName.color }}>{buddyName.name}</b> on AIM
+  1642	          </p>
+  1643	          <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#a0a0a0' }}>
+  1644	            &quot;You&apos;ve Got Mail!&quot; 📬
+  1645	          </p>
+  1646	        </div>
+  1647	      </div>
+  1648	    </section>
+  1649	  );
+  1650	}
+  1651	
+  1652	// ═══════════════════════════════════════════════════════════════
+  1653	// Main Component — NostalgiaFeatures
+  1654	// ═══════════════════════════════════════════════════════════════
+  1655	
+  1656	export default function NostalgiaFeatures() {
+  1657	  const isClient = useIsClient();
+  1658	  const visitCount = useVisitCounter();
+  1659	
+  1660	  if (!isClient) {
+  1661	    return (
+  1662	      <div className="min-h-screen flex items-center justify-center bg-background">
+  1663	        <motion.div
+  1664	          animate={{ opacity: [0.3, 1, 0.3] }}
+  1665	          transition={{ duration: 1.5, repeat: Infinity }}
+  1666	          className="old-typewriter text-muted-foreground text-sm"
+  1667	        >
+  1668	          Loading... please wait...
+  1669	        </motion.div>
+  1670	      </div>
+  1671	    );
+  1672	  }
+  1673	
+  1674	  return (
+  1675	    <main className="min-h-screen bg-background">
+  1676	      {/* Decorative noise overlay */}
+  1677	      <div className="fixed inset-0 sk-noise pointer-events-none z-50" />
+  1678	
+  1679	      <div className="relative z-10 max-w-3xl mx-auto px-4 py-12 md:py-16 space-y-16 md:space-y-20">
+  1680	        {/* ── Guestbook ── */}
+  1681	        <GuestbookSection visitorCount={visitCount} />
+  1682	
+  1683	        <Separator className="opacity-30" />
+  1684	
+  1685	        {/* ── Mixtape Creator ── */}
+  1686	        <MixtapeSection />
+  1687	
+  1688	        <Separator className="opacity-30" />
+  1689	
+  1690	        {/* ── Magic 8-Ball ── */}
+  1691	        <Magic8BallSection />
+  1692	
+  1693	        <Separator className="opacity-30" />
+  1694	
+  1695	        {/* ── Visit Counter ── */}
+  1696	        <VisitCounterSection count={visitCount} />
+  1697	
+  1698	        <Separator className="opacity-30" />
+  1699	
+  1700	        {/* ── Tamagotchi ── */}
+  1701	        <TamagotchiSection />
+  1702	
+  1703	        <Separator className="opacity-30" />
+  1704	
+  1705	        {/* ── Floppy Disk Saver ── */}
+  1706	        <FloppyDiskSection />
+  1707	
+  1708	        <Separator className="opacity-30" />
+  1709	
+  1710	        {/* ── Sticker Wall ── */}
+  1711	        <StickerWallSection />
+  1712	
+  1713	        {/* Footer */}
+  1714	        <footer className="pt-8 pb-4 text-center">
+  1715	          <Separator className="opacity-20 mb-6" />
+  1716	          <p className="old-handwritten text-muted-foreground text-sm">
+  1717	            ~ made with 💾 and nostalgia ~
+  1718	          </p>
+  1719	          <p className="old-label text-[10px] text-[#8b7355] mt-2">
+  1720	            REWIND © {new Date().getFullYear()} · BEST VIEWED IN NETSCAPE NAVIGATOR 4.0
+  1721	          </p>
+  1722	        </footer>
+  1723	      </div>
+  1724	    </main>
+  1725	  );
+  1726	}

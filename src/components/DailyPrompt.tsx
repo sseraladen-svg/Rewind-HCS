@@ -180,7 +180,7 @@ export default function DailyPrompt({ birthYear }: { birthYear: number }) {
 
   return (
     <div className="sk-paper rounded-xl p-5 sk-noise relative overflow-hidden mb-6">
-      {/* Decorative tape */
+      {/* Decorative tape */}
       <div
         className="absolute -top-1 left-1/2 -translate-x-1/2 w-16 h-4 bg-[#c4956a]/30 rounded-sm sk-noise"
         style={{ transform: 'translateX(-50%) rotate(-2deg)' }}

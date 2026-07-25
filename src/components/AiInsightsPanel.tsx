@@ -92,7 +92,7 @@ export default function AiInsightsPanel({ birthYear }: { birthYear: number }) {
               transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
               className="inline-block text-3xl mb-3"
             >
-              🔮
+              <Sparkles className="h-7 w-7 text-[#c4956a]" />
             </motion.div>
             <p className="old-typewriter text-sm text-[#8b7355]">
               Reading your memories...

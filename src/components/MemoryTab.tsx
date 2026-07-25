@@ -94,14 +94,14 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
         id,
         image_blob: file,
         filter_used: 'gallery-upload',
-        created_at: Date.now(),
+        created_at: file.lastModified || Date.now(),
       });
 
       setItems((prev) => [{
         id, url, blob: file,
         source: 'gallery',
         filter: 'gallery-upload',
-        timestamp: Date.now(),
+        timestamp: file.lastModified || Date.now(),
       }, ...prev]);
     }
 

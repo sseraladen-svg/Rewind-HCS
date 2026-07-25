@@ -453,3 +453,5 @@ export default function SettingsTab({ onOpenAuth, onClose }: { onOpenAuth: () =>
     </div>
       </div>
     </motion.div>
+  );
+}

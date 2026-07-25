@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Gamepad2, Lightbulb, RefreshCw } from 'lucide-react';
 
 interface Question {
   question: string;
@@ -90,7 +91,7 @@ export default function NostalgiaQuiz({ decade, compact }: NostalgiaQuizProps) {
   if (loading) return (
     <div className="sk-paper rounded-xl p-4 sk-noise">
       <div className="flex items-center gap-2">
-        <span className="text-2xl animate-bounce">🎮</span>
+        <Gamepad2 className="h-5 w-5 animate-bounce text-[#c4956a]" />
         <p className="old-typewriter text-xs text-[#8b7355]">Loading quiz...</p>
       </div>
     </div>
@@ -104,7 +105,7 @@ export default function NostalgiaQuiz({ decade, compact }: NostalgiaQuizProps) {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🎮</span>
+            <Gamepad2 className="h-5 w-5 text-[#c4956a]" />
             <div>
               <p className="old-title text-sm font-bold">Nostalgia Quiz</p>
               <p className="old-body text-[10px] text-[#8b7355]">Test your {decade} knowledge</p>
@@ -121,7 +122,7 @@ export default function NostalgiaQuiz({ decade, compact }: NostalgiaQuizProps) {
       {/* Header */}
       <div className="sk-leather px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🎮</span>
+          <Gamepad2 className="h-4 w-4 text-[#faf6eb]" />
           <h3 className="old-title text-sm font-bold text-[#faf6eb]">Nostalgia Quiz</h3>
           <span className="text-[10px] old-typewriter px-2 py-0.5 rounded bg-white/20 text-[#faf6eb]">{decade}</span>
         </div>
@@ -181,7 +182,7 @@ export default function NostalgiaQuiz({ decade, compact }: NostalgiaQuizProps) {
                       className={`sk-paper ${bgClass} rounded-lg p-3 text-left border-2 ${borderClass} transition-all cursor-pointer disabled:cursor-default`}
                     >
                       <span className="old-body text-xs text-[#3d2b1f]">
-                        {showCorrect && '✅ '}{isWrong && '❌ '}{opt}
+                        {showCorrect && '[✓] '}{isWrong && '[✗] '}{opt}
                       </span>
                     </motion.button>
                   );
@@ -199,7 +200,7 @@ export default function NostalgiaQuiz({ decade, compact }: NostalgiaQuizProps) {
                   >
                     <div className="sk-inset rounded-lg p-3 bg-amber-50/80">
                       <p className="old-body text-[11px] text-[#5c4033]">
-                        <span className="font-bold">💡 Fun Fact:</span> {questions[currentQ]?.funFact}
+                        <span className="font-bold inline-flex items-center gap-1"><Lightbulb className="h-3 w-3 text-amber-500" /> Fun Fact:</span> {questions[currentQ]?.funFact}
                       </p>
                     </div>
                   </motion.div>
@@ -220,7 +221,7 @@ export default function NostalgiaQuiz({ decade, compact }: NostalgiaQuizProps) {
                 <p className="old-typewriter text-2xl font-bold text-[#c4956a]">{score}/{questions.length}</p>
               </div>
               <button onClick={handleReplay} className="sk-btn old-btn px-5 py-2 rounded-lg font-bold text-sm cursor-pointer">
-                Play Again 🔄
+                <RefreshCw className="h-3.5 w-3.5 inline mr-1" /> Play Again
               </button>
             </motion.div>
           )}
