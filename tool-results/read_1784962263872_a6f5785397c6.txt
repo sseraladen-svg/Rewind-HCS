@@ -1,0 +1,1492 @@
+   290→  border: 3px solid #2a2a3a;
+   291→  border-radius: 8px;
+   292→}
+   293→
+   294→/* Scratchy noise overlay */
+   295→.sk-noise::after {
+   296→  content: '';
+   297→  position: absolute;
+   298→  inset: 0;
+   299→  opacity: 0.03;
+   300→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+   301→  pointer-events: none;
+   302→  border-radius: inherit;
+   303→}
+   304→
+   305→/* Game card flip */
+   306→.sk-game-card {
+   307→  perspective: 600px;
+   308→}
+   309→.sk-game-card-inner {
+   310→  transition: transform 0.5s;
+   311→  transform-style: preserve-3d;
+   312→}
+   313→.sk-game-card-inner.flipped {
+   314→  transform: rotateY(180deg);
+   315→}
+   316→.sk-game-card-front,
+   317→.sk-game-card-back {
+   318→  backface-visibility: hidden;
+   319→  -webkit-backface-visibility: hidden;
+   320→}
+   321→.sk-game-card-back {
+   322→  transform: rotateY(180deg);
+   323→}
+   324→
+   325→/* Scrollbar styling */
+   326→.sk-scrollbar::-webkit-scrollbar {
+   327→  width: 8px;
+   328→  height: 8px;
+   329→}
+   330→.sk-scrollbar::-webkit-scrollbar-track {
+   331→  background: linear-gradient(180deg, #e8dcc8, #d4c5a9);
+   332→  border-radius: 4px;
+   333→  box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+   334→}
+   335→.sk-scrollbar::-webkit-scrollbar-thumb {
+   336→  background: linear-gradient(180deg, #c4b594, #a89878);
+   337→  border-radius: 4px;
+   338→  box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2);
+   339→}
+   340→.sk-scrollbar::-webkit-scrollbar-thumb:hover {
+   341→  background: linear-gradient(180deg, #b8a888, #9c8460);
+   342→}
+   343→
+   344→/* Animations */
+   345→@keyframes float {
+   346→  0% { transform: translateY(0) rotate(0deg); opacity: 0.15; }
+   347→  25% { transform: translateY(-30px) rotate(90deg); opacity: 0.25; }
+   348→  50% { transform: translateY(-15px) rotate(180deg); opacity: 0.15; }
+   349→  75% { transform: translateY(-40px) rotate(270deg); opacity: 0.2; }
+   350→  100% { transform: translateY(0) rotate(360deg); opacity: 0.15; }
+   351→}
+   352→
+   353→@keyframes pulse-glow {
+   354→  0%, 100% { box-shadow: 0 0 5px rgba(196,149,106,0.3); }
+   355→  50% { box-shadow: 0 0 20px rgba(196,149,106,0.5), 0 0 40px rgba(196,149,106,0.2); }
+   356→}
+   357→
+   358→@keyframes scanline {
+   359→  0% { transform: translateY(-100%); }
+   360→  100% { transform: translateY(100vh); }
+   361→}
+   362→
+   363→@keyframes blink-cursor {
+   364→  0%, 100% { opacity: 1; }
+   365→  50% { opacity: 0; }
+   366→}
+   367→
+   368→@keyframes pop-in {
+   369→  0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+   370→  70% { transform: scale(1.05) rotate(2deg); }
+   371→  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+   372→}
+   373→
+   374→/* ═══════ CRT / VHS LOADING SCREEN ═══════ */
+   375→
+   376→.crt-screen {
+   377→  position: fixed;
+   378→  inset: 0;
+   379→  z-index: 9999;
+   380→  background: #0a0a0a;
+   381→  display: flex;
+   382→  flex-direction: column;
+   383→  align-items: center;
+   384→  justify-content: center;
+   385→  overflow: hidden;
+   386→}
+   387→
+   388→.crt-scanlines {
+   389→  position: absolute;
+   390→  inset: 0;
+   391→  background: repeating-linear-gradient(
+   392→    0deg,
+   393→    transparent,
+   394→    transparent 2px,
+   395→    rgba(0, 0, 0, 0.15) 2px,
+   396→    rgba(0, 0, 0, 0.15) 4px
+   397→  );
+   398→  pointer-events: none;
+   399→  z-index: 2;
+   400→}
+   401→
+   402→.crt-flicker {
+   403→  animation: crt-flicker 0.15s infinite;
+   404→}
+   405→
+   406→@keyframes crt-flicker {
+   407→  0% { opacity: 0.97; }
+   408→  50% { opacity: 1; }
+   409→  100% { opacity: 0.98; }
+   410→}
+   411→
+   412→.crt-glow {
+   413→  text-shadow:
+   414→    0 0 7px rgba(196, 149, 106, 0.8),
+   415→    0 0 20px rgba(196, 149, 106, 0.5),
+   416→    0 0 42px rgba(196, 149, 106, 0.3),
+   417→    0 0 80px rgba(196, 149, 106, 0.15);
+   418→}
+   419→
+   420→.vhs-tracking {
+   421→  position: absolute;
+   422→  left: 0;
+   423→  right: 0;
+   424→  height: 3px;
+   425→  background: rgba(196, 149, 106, 0.3);
+   426→  animation: vhs-track 2.5s ease-in-out infinite;
+   427→  z-index: 3;
+   428→}
+   429→
+   430→@keyframes vhs-track {
+   431→  0% { top: -3px; opacity: 0; }
+   432→  10% { opacity: 1; }
+   433→  90% { opacity: 1; }
+   434→  100% { top: 100vh; opacity: 0; }
+   435→}
+   436→
+   437→.vhs-noise {
+   438→  position: absolute;
+   439→  inset: 0;
+   440→  opacity: 0.04;
+   441→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+   442→  pointer-events: none;
+   443→  z-index: 1;
+   444→  animation: noise-shift 0.1s steps(3) infinite;
+   445→}
+   446→
+   447→@keyframes noise-shift {
+   448→  0% { transform: translate(0, 0); }
+   449→  33% { transform: translate(-1px, 1px); }
+   450→  66% { transform: translate(1px, -1px); }
+   451→  100% { transform: translate(0, 0); }
+   452→}
+   453→
+   454→.crt-text-reveal {
+   455→  animation: crt-reveal 0.8s steps(12) forwards;
+   456→  overflow: hidden;
+   457→  white-space: nowrap;
+   458→  border-right: 2px solid rgba(196, 149, 106, 0.7);
+   459→}
+   460→
+   461→@keyframes crt-reveal {
+   462→  from { max-width: 0; }
+   463→  to { max-width: 600px; }
+   464→}
+   465→
+   466→.boot-line {
+   467→  font-family: 'Special Elite', 'Courier 10 Pitch', monospace;
+   468→  color: rgba(196, 149, 106, 0.7);
+   469→  font-size: 0.75rem;
+   470→  letter-spacing: 0.05em;
+   471→  opacity: 0;
+   472→  animation: boot-fade-in 0.5s forwards;
+   473→}
+   474→
+   475→@keyframes boot-fade-in {
+   476→  from { opacity: 0; transform: translateY(4px); }
+   477→  to { opacity: 1; transform: translateY(0); }
+   478→}
+   479→
+   480→.loading-bar-track {
+   481→  width: 200px;
+   482→  height: 6px;
+   483→  background: rgba(196, 149, 106, 0.15);
+   484→  border-radius: 1px;
+   485→  overflow: hidden;
+   486→  border: 1px solid rgba(196, 149, 106, 0.2);
+   487→}
+   488→
+   489→.loading-bar-fill {
+   490→  height: 100%;
+   491→  background: linear-gradient(90deg, rgba(196, 149, 106, 0.6), rgba(196, 149, 106, 0.9));
+   492→  animation: loading-fill 3s ease-in-out forwards;
+   493→  border-radius: 1px;
+   494→}
+   495→
+   496→@keyframes loading-fill {
+   497→  0% { width: 0%; }
+   498→  15% { width: 8%; }
+   499→  30% { width: 22%; }
+   500→  50% { width: 45%; }
+   501→  65% { width: 58%; }
+   502→  80% { width: 78%; }
+   503→  90% { width: 90%; }
+   504→  100% { width: 100%; }
+   505→}
+   506→
+   507→.crt-fadeout {
+   508→  animation: crt-off 1.0s ease-in forwards;
+   509→}
+   510→
+   511→@keyframes crt-off {
+   512→  0% { opacity: 1; transform: scale(1); filter: brightness(1); }
+   513→  20% { opacity: 1; transform: scale(1.01, 0.99); filter: brightness(1.2); }
+   514→  50% { opacity: 0.7; transform: scale(0.98, 1.01); filter: brightness(1.8); }
+   515→  75% { opacity: 0.3; transform: scale(0.96, 1.03); filter: brightness(2.5); }
+   516→  100% { opacity: 0; transform: scale(0.93, 1.06); filter: brightness(4); }
+   517→}
+   518→
+   519→/* ═══════ CRT RESPONSIVE — ALL SCREEN SIZES ═══════ */
+   520→
+   521→/* Small phones (< 400px) */
+   522→@media (max-width: 400px) {
+   523→  .crt-glow {
+   524→    text-shadow:
+   525→      0 0 4px rgba(196, 149, 106, 0.7),
+   526→      0 0 10px rgba(196, 149, 106, 0.35);
+   527→  }
+   528→  .boot-line {
+   529→    font-size: 9px;
+   530→    letter-spacing: 0.02em;
+   531→  }
+   532→  .loading-bar-track {
+   533→    width: 140px;
+   534→    height: 5px;
+   535→  }
+   536→}
+   537→
+   538→/* Standard phones (400–640px) */
+   539→@media (min-width: 401px) and (max-width: 640px) {
+   540→  .crt-glow {
+   541→    text-shadow:
+   542→      0 0 5px rgba(196, 149, 106, 0.75),
+   543→      0 0 15px rgba(196, 149, 106, 0.45),
+   544→      0 0 30px rgba(196, 149, 106, 0.2);
+   545→  }
+   546→  .loading-bar-track {
+   547→    width: 160px;
+   548→  }
+   549→}
+   550→
+   551→/* Tablets in portrait (641–768px) */
+   552→@media (min-width: 641px) and (max-width: 768px) {
+   553→  .loading-bar-track {
+   554→    width: 180px;
+   555→  }
+   556→}
+   557→
+   558→/* Large tablets / small laptops (769–1024px) */
+   559→@media (min-width: 769px) and (max-width: 1024px) {
+   560→  .crt-glow {
+   561→    text-shadow:
+   562→      0 0 6px rgba(196, 149, 106, 0.8),
+   563→      0 0 18px rgba(196, 149, 106, 0.5),
+   564→      0 0 35px rgba(196, 149, 106, 0.25);
+   565→  }
+   566→}
+   567→
+   568→/* Landscape phones — compact layout */
+   569→@media (max-height: 500px) and (orientation: landscape) {
+   570→  .crt-screen {
+   571→    flex-direction: row;
+   572→    gap: 1.5rem;
+   573→  }
+   574→  .boot-line {
+   575→    font-size: 9px;
+   576→  }
+   577→  .loading-bar-track {
+   578→    width: 120px;
+   579→    height: 4px;
+   580→  }
+   581→}
+   582→
+   583→/* Ultra-wide screens (1440px+) — wider scanline spacing */
+   584→@media (min-width: 1440px) {
+   585→  .crt-scanlines {
+   586→    background: repeating-linear-gradient(
+   587→      0deg,
+   588→      transparent,
+   589→      transparent 3px,
+   590→      rgba(0, 0, 0, 0.12) 3px,
+   591→      rgba(0, 0, 0, 0.12) 6px
+   592→    );
+   593→  }
+   594→  .crt-glow {
+   595→    text-shadow:
+   596→      0 0 10px rgba(196, 149, 106, 0.8),
+   597→      0 0 25px rgba(196, 149, 106, 0.5),
+   598→      0 0 50px rgba(196, 149, 106, 0.3),
+   599→      0 0 100px rgba(196, 149, 106, 0.15);
+   600→  }
+   601→  .loading-bar-track {
+   602→    width: 240px;
+   603→  }
+   604→}
+   605→
+   606→/* ═══════ OLD-STYLE / VINTAGE TYPOGRAPHY ═══════ */
+   607→
+   608→.old-title {
+   609→  font-family: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
+   610→  text-shadow:
+   611→    0 1px 0 rgba(255,255,255,0.35),
+   612→    0 -1px 0 rgba(0,0,0,0.08),
+   613→    0 2px 4px rgba(0,0,0,0.08);
+   614→  letter-spacing: 0.02em;
+   615→}
+   616→
+   617→.old-typewriter {
+   618→  font-family: 'Special Elite', 'Courier 10 Pitch', 'Courier New', monospace;
+   619→  letter-spacing: 0.04em;
+   620→  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+   621→}
+   622→
+   623→.old-handwritten {
+   624→  font-family: 'LXGW WenKai', 'Caveat', cursive;
+   625→  text-shadow: 0 1px 0 rgba(255,255,255,0.15);
+   626→}
+   627→
+   628→.old-label {
+   629→  font-family: 'Special Elite', 'Courier 10 Pitch', monospace;
+   630→  font-size: 0.65rem;
+   631→  font-weight: 700;
+   632→  text-transform: uppercase;
+   633→  letter-spacing: 0.15em;
+   634→  color: #8b7355;
+   635→  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+   636→}
+   637→
+   638→.old-body {
+   639→  font-family: 'Playfair Display', 'Nunito', Georgia, serif;
+   640→  text-shadow: 0 0.5px 0 rgba(255,255,255,0.15);
+   641→  line-height: 1.7;
+   642→}
+   643→
+   644→.old-btn {
+   645→  font-family: 'Special Elite', 'Courier 10 Pitch', monospace;
+   646→  letter-spacing: 0.06em;
+   647→  text-transform: uppercase;
+   648→}
+   649→
+   650→.old-heading {
+   651→  font-family: 'Playfair Display', 'Georgia', serif;
+   652→  text-shadow:
+   653→    0 1px 0 rgba(255,255,255,0.3),
+   654→    0 2px 3px rgba(0,0,0,0.06);
+   655→  letter-spacing: 0.01em;
+   656→}
+   657→
+   658→.old-quote {
+   659→  font-family: 'Playfair Display', 'Georgia', serif;
+   660→  font-style: italic;
+   661→  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+   662→}
+   663→
+   664→/* ═══════ VINTAGE CAMERA STYLES ═══════ */
+   665→
+   666→/* Shutter click animation */
+   667→@keyframes shutter-click {
+   668→  0% { transform: scaleY(0); }
+   669→  50% { transform: scaleY(1); }
+   670→  100% { transform: scaleY(1); opacity: 0; }
+   671→}
+   672→
+   673→.shutter-anim {
+   674→  animation: shutter-click 0.2s ease-out forwards;
+   675→}
+   676→
+   677→/* Camera flash */
+   678→@keyframes camera-flash {
+   679→  0% { opacity: 0.95; }
+   680→  100% { opacity: 0; }
+   681→}
+   682→
+   683→.camera-flash {
+   684→  animation: camera-flash 0.25s ease-out forwards;
+   685→}
+   686→
+   687→/* Recording pulse */
+   688→@keyframes rec-pulse {
+   689→  0%, 100% { opacity: 1; }
+   690→  50% { opacity: 0.3; }
+   691→}
+   692→
+   693→.rec-pulse {
+   694→  animation: rec-pulse 1s ease-in-out infinite;
+   695→}
+   696→
+   697→/* Film strip sprocket holes effect */
+   698→.film-strip {
+   699→  background-image:
+   700→    repeating-linear-gradient(
+   701→      to right,
+   702→      transparent 0px,
+   703→      transparent 8px,
+   704→      rgba(0,0,0,0.15) 8px,
+   705→      rgba(0,0,0,0.15) 10px,
+   706→      transparent 10px,
+   707→      transparent 20px
+   708→    );
+   709→  background-position: center;
+   710→}
+   711→
+   712→/* Vintage photo developing effect */
+   713→@keyframes develop {
+   714→  0% { filter: brightness(0) sepia(1) contrast(2); }
+   715→  30% { filter: brightness(0.3) sepia(0.8) contrast(1.5); }
+   716→  60% { filter: brightness(0.7) sepia(0.4) contrast(1.2); }
+   717→  100% { filter: brightness(1) sepia(0.2) contrast(1.05); }
+   718→}
+   719→
+   720→.photo-developing {
+   721→  animation: develop 1.5s ease-out forwards;
+   722→}
+   723→
+   724→/* Lens flare on camera button hover */
+   725→@keyframes lens-flare {
+   726→  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+   727→  50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
+   728→  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+   729→}
+   730→
+   731→/* Film grain overlay (CSS-only) */
+   732→.film-grain::before {
+   733→  content: '';
+   734→  position: absolute;
+   735→  inset: 0;
+   736→  opacity: 0.06;
+   737→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+   738→  pointer-events: none;
+   739→  z-index: 1;
+   740→  animation: noise-shift 0.08s steps(4) infinite;
+   741→}
+   742→
+   743→/* Vintage camera body texture */
+   744→.sk-camera-body {
+   745→  background: linear-gradient(145deg, #4a3728 0%, #3d2b1f 50%, #2a1f14 100%);
+   746→  box-shadow:
+   747→    0 4px 16px rgba(0,0,0,0.5),
+   748→    inset 0 1px 0 rgba(255,255,255,0.08),
+   749→    inset 0 -1px 0 rgba(0,0,0,0.3);
+   750→  border: 1px solid #5c4033;
+   751→}
+   752→
+   753→/* Camera leather grip texture */
+   754→.sk-camera-grip {
+   755→  background:
+   756→    repeating-linear-gradient(
+   757→      45deg,
+   758→      rgba(0,0,0,0.05) 0px,
+   759→      rgba(0,0,0,0.05) 1px,
+   760→      transparent 1px,
+   761→      transparent 4px
+   762→    ),
+   763→    linear-gradient(145deg, #5c4033, #3d2b1f);
+   764→}
+   765→
+   766→/* ═══════ OLD JOURNAL STYLES ═══════ */
+   767→
+   768→/* Page turn animation */
+   769→@keyframes page-turn {
+   770→  0% { transform: perspective(800px) rotateY(0deg); }
+   771→  50% { transform: perspective(800px) rotateY(-12deg); }
+   772→  100% { transform: perspective(800px) rotateY(0deg); }
+   773→}
+   774→
+   775→.page-turn {
+   776→  animation: page-turn 0.6s ease-in-out;
+   777→}
+   778→
+   779→/* Ink spread on write */
+   780→@keyframes ink-spread {
+   781→  0% { opacity: 0; filter: blur(4px); transform: scale(0.8); }
+   782→  60% { opacity: 0.06; filter: blur(2px); transform: scale(1.1); }
+   783→  100% { opacity: 0.04; filter: blur(2px); transform: scale(1); }
+   784→}
+   785→
+   786→.ink-spread {
+   787→  animation: ink-spread 0.8s ease-out forwards;
+   788→}
+   789→
+   790→/* Old paper page curl (bottom-right corner) */
+   791→@keyframes page-curl {
+   792→  0%, 100% { transform: rotate(0deg); }
+   793→  50% { transform: rotate(1deg); }
+   794→}
+   795→
+   796→/* Quill writing cursor */
+   797→.journal-cursor textarea {
+   798→  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235c4033' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z'/%3E%3Cline x1='16' y1='8' x2='2' y2='22'/%3E%3Cline x1='17.5' y1='15' x2='9' y2='15'/%3E%3C/svg%3E") 2 20, auto;
+   799→}
+   800→
+   801→/* Wax seal press animation */
+   802→@keyframes seal-press {
+   803→  0% { transform: scale(1.3); opacity: 0; }
+   804→  50% { transform: scale(0.95); opacity: 1; }
+   805→  70% { transform: scale(1.05); }
+   806→  100% { transform: scale(1); }
+   807→}
+   808→
+   809→.seal-press {
+   810→  animation: seal-press 0.5s ease-out;
+   811→}
+   812→
+   813→/* Old leather grain pattern */
+   814→.leather-grain {
+   815→  background-image:
+   816→    repeating-linear-gradient(
+   817→      0deg,
+   818→      transparent 0px,
+   819→      transparent 2px,
+   820→      rgba(0,0,0,0.03) 2px,
+   821→      rgba(0,0,0,0.03) 3px
+   822→    ),
+   823→    repeating-linear-gradient(
+   824→      90deg,
+   825→      transparent 0px,
+   826→      transparent 5px,
+   827→      rgba(0,0,0,0.02) 5px,
+   828→      rgba(0,0,0,0.02) 6px
+   829→    );
+   830→}
+   831→
+   832→/* Gold embossed text effect for journal cover */
+   833→.embossed-gold {
+   834→  color: #d4a574;
+   835→  text-shadow:
+   836→    0 1px 0 rgba(255,255,255,0.15),
+   837→    0 -1px 0 rgba(0,0,0,0.3),
+   838→    0 2px 4px rgba(0,0,0,0.3),
+   839→    0 0 20px rgba(196,149,106,0.15);
+   840→}
+   841→
+   842→/* Old string/twine binding effect */
+   843→.twine-binding {
+   844→  background: repeating-linear-gradient(
+   845→    90deg,
+   846→    transparent 0px,
+   847→    transparent 14px,
+   848→    #8b7355 14px,
+   849→    #8b7355 16px
+   850→  );
+   851→  height: 2px;
+   852→  opacity: 0.3;
+   853→}
+   854→
+   855→/* Torn paper edge (top) */
+   856→.torn-top {
+   857→  clip-path: polygon(
+   858→    0% 4%, 3% 2%, 5% 5%, 8% 1%, 12% 4%, 15% 2%, 18% 5%,
+   859→    22% 1%, 25% 3%, 28% 0%, 32% 4%, 35% 1%, 38% 3%, 42% 0%,
+   860→    45% 4%, 48% 2%, 52% 5%, 55% 1%, 58% 3%, 62% 0%, 65% 4%,
+   861→    68% 2%, 72% 5%, 75% 1%, 78% 3%, 82% 0%, 85% 4%, 88% 2%,
+   862→    92% 5%, 95% 1%, 98% 3%, 100% 2%,
+   863→    100% 100%, 0% 100%
+   864→  );
+   865→}
+   866→
+   867→/* Aged paper stain effect */
+   868→.paper-stain::after {
+   869→  content: '';
+   870→  position: absolute;
+   871→  top: 10%;
+   872→  left: 5%;
+   873→  width: 40%;
+   874→  height: 30%;
+   875→  border-radius: 50%;
+   876→  background: radial-gradient(ellipse, rgba(180,150,100,0.06), transparent 70%);
+   877→  pointer-events: none;
+   878→}
+   879→
+   880→/* ═══════ OLD TRANSITION LOADER ═══════ */
+   881→
+   882→/* Cassette reel spin */
+   883→@keyframes cassette-reel {
+   884→  from { transform: rotate(0deg); }
+   885→  to { transform: rotate(360deg); }
+   886→}
+   887→
+   888→.cassette-reel-spin {
+   889→  animation: cassette-reel 0.8s linear infinite;
+   890→}
+   891→
+   892→/* VHS tracking for loader */
+   893→@keyframes vhs-track-loader {
+   894→  0% { top: -3px; opacity: 0; }
+   895→  10% { opacity: 0.3; }
+   896→  90% { opacity: 0.3; }
+   897→  100% { top: 100vh; opacity: 0; }
+   898→}
+   899→
+   900→/* Old Windows-style hourglass cursor */
+   901→.old-hourglass {
+   902→  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 0h8v2l-3 5 3 5v2H4v-2l3-5-3-5V0z' fill='%233d2b1f' opacity='0.7'/%3E%3C/svg%3E") 8 8, wait;
+   903→}
+   904→
+   905→/* Old TV static transition */
+   906→@keyframes tv-static {
+   907→  0% { opacity: 0; }
+   908→  10% { opacity: 0.15; }
+   909→  20% { opacity: 0; }
+   910→  30% { opacity: 0.1; }
+   911→  40% { opacity: 0; }
+   912→  50% { opacity: 0.2; }
+   913→  60% { opacity: 0.05; }
+   914→  70% { opacity: 0.15; }
+   915→  80% { opacity: 0; }
+   916→  90% { opacity: 0.1; }
+   917→  100% { opacity: 0; }
+   918→}
+   919→
+   920→.tv-static {
+   921→  animation: tv-static 0.5s steps(10) forwards;
+   922→  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+   923→}
+   924→
+   925→/* Tamagotchi LCD screen */
+   926→.tamagotchi-screen {
+   927→  background: #9bbc0f;
+   928→  box-shadow: inset 0 2px 8px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.15);
+   929→  border: 3px solid #5c5c5c;
+   930→  border-radius: 12px;
+   931→  image-rendering: pixelated;
+   932→}
+   933→
+   934→.tamagotchi-pixel-text {
+   935→  font-family: 'Courier New', monospace;
+   936→  font-weight: bold;
+   937→  color: #306230;
+   938→  text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+   939→  letter-spacing: 0.05em;
+   940→}
+   941→
+   942→/* Floppy disk eject animation */
+   943→@keyframes floppy-eject {
+   944→  0% { transform: translateY(0) rotate(0deg); }
+   945→  30% { transform: translateY(-12px) rotate(-2deg); }
+   946→  60% { transform: translateY(-6px) rotate(1deg); }
+   947→  100% { transform: translateY(0) rotate(0deg); }
+   948→}
+   949→
+   950→.floppy-eject {
+   951→  animation: floppy-eject 0.6s ease-in-out;
+   952→}
+   953→
+   954→/* Rotary dial */
+   955→@keyframes dial-rotate {
+   956→  0% { transform: rotate(0deg); }
+   957→  100% { transform: rotate(300deg); }
+   958→}
+   959→
+   960→.dial-spin {
+   961→  animation: dial-rotate 0.5s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+   962→}
+   963→
+   964→/* Sticker pop-in */
+   965→@keyframes sticker-pop {
+   966→  0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+   967→  60% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+   968→  100% { transform: scale(1) rotate(var(--sticker-rotate, 0deg)); opacity: 1; }
+   969→}
+   970→
+   971→.sticker-pop {
+   972→  animation: sticker-pop 0.4s ease-out forwards;
+   973→}
+   974→
+   975→/* Phone ring shake */
+   976→@keyframes phone-ring {
+   977→  0%, 100% { transform: rotate(0deg); }
+   978→  10% { transform: rotate(12deg); }
+   979→  20% { transform: rotate(-12deg); }
+   980→  30% { transform: rotate(10deg); }
+   981→  40% { transform: rotate(-10deg); }
+   982→  50% { transform: rotate(6deg); }
+   983→  60% { transform: rotate(-6deg); }
+   984→  70% { transform: rotate(2deg); }
+   985→  80% { transform: rotate(0deg); }
+   986→}
+   987→
+   988→.phone-ring {
+   989→  animation: phone-ring 0.8s ease-in-out;
+   990→}
+   991→
+   992→/* Dial-up loading bar (chunky) */
+   993→@keyframes dialup-progress {
+   994→  0% { width: 0%; }
+   995→  15% { width: 12%; }
+   996→  30% { width: 25%; }
+   997→  45% { width: 38%; }
+   998→  55% { width: 42%; }
+   999→  60% { width: 55%; }
+  1000→  75% { width: 68%; }
+  1001→  85% { width: 80%; }
+  1002→  95% { width: 95%; }
+  1003→  100% { width: 100%; }
+  1004→}
+  1005→
+  1006→
+  1007→/* ═══════ DECADE THEME SYSTEM — ALL TABS ═══════ */
+  1008→
+  1009→/* ── 80s SYNTHWAVE THEME ── */
+  1010→[data-decade-theme="80s"] {
+  1011→  --decade-bg: #0a0a0a;
+  1012→  --decade-bg-card: #111111;
+  1013→  --decade-fg: #00ff88;
+  1014→  --decade-fg-dim: #00cc6a;
+  1015→  --decade-accent: #ff00ff;
+  1016→  --decade-muted: #00ff8855;
+  1017→  --decade-border: #00ff8833;
+  1018→  --decade-chip-bg: #00ff8815;
+  1019→  --decade-header-bg: #000000;
+  1020→  --decade-badge-bg: #ff00ff33;
+  1021→  --decade-badge-fg: #ff00ff;
+  1022→  --decade-radius: 2px;
+  1023→}
+  1024→
+  1025→/* 80s: Override ALL typography */
+  1026→[data-decade-theme="80s"] .old-title,
+  1027→[data-decade-theme="80s"] .old-heading,
+  1028→[data-decade-theme="80s"] .old-body,
+  1029→[data-decade-theme="80s"] .old-label,
+  1030→[data-decade-theme="80s"] .old-typewriter,
+  1031→[data-decade-theme="80s"] .old-btn,
+  1032→[data-decade-theme="80s"] .old-quote,
+  1033→[data-decade-theme="80s"] .old-handwritten {
+  1034→  font-family: 'VT323', 'Courier New', monospace !important;
+  1035→  text-shadow: none !important;
+  1036→  letter-spacing: 0.02em !important;
+  1037→}
+  1038→
+  1039→/* 80s: Text colors */
+  1040→[data-decade-theme="80s"] .old-body { color: #00ff88 !important; }
+  1041→[data-decade-theme="80s"] .old-typewriter { color: #00ff88aa !important; }
+  1042→[data-decade-theme="80s"] .old-label { color: #ff00ff !important; border-color: #ff00ff44 !important; }
+  1043→[data-decade-theme="80s"] .old-heading { color: #00ff88 !important; }
+  1044→[data-decade-theme="80s"] .old-title { color: #00ff88 !important; }
+  1045→[data-decade-theme="80s"] .old-quote { color: #00ff88cc !important; }
+  1046→[data-decade-theme="80s"] .old-handwritten { color: #ff00ff !important; }
+  1047→
+  1048→/* 80s: Catch-all for common sepia text colors inside themed area */
+  1049→[data-decade-theme="80s"] [class*="text-[#5c4033]"],
+  1050→[data-decade-theme="80s"] [class*="text-[#8b7355]"],
+  1051→[data-decade-theme="80s"] [class*="text-[#3d2b1f]"],
+  1052→[data-decade-theme="80s"] [class*="text-[#8b5e3c]"] {
+  1053→  color: #00ff88 !important;
+  1054→}
+  1055→[data-decade-theme="80s"] [class*="text-[#c4956a]"],
+  1056→[data-decade-theme="80s"] [class*="text-[#d4a574]"] {
+  1057→  color: #00ff88aa !important;
+  1058→}
+  1059→[data-decade-theme="80s"] [class*="text-[#6b6b6b]"] {
+  1060→  color: #00ff8866 !important;
+  1061→}
+  1062→[data-decade-theme="80s"] [class*="text-[#b8a888]"] {
+  1063→  color: #00ff8844 !important;
+  1064→}
+  1065→
+  1066→/* 80s: Synthwave grid background on root */
+  1067→[data-decade-theme="80s"]::before {
+  1068→  content: '';
+  1069→  position: absolute;
+  1070→  inset: 0;
+  1071→  background:
+  1072→    linear-gradient(transparent 60%, #00ff8808 60%, #00ff8808 61%, transparent 61%),
+  1073→    linear-gradient(90deg, transparent 60%, #00ff8808 60%, #00ff8808 61%, transparent 61%);
+  1074→  background-size: 60px 60px;
+  1075→  transform: perspective(400px) rotateX(45deg);
+  1076→  transform-origin: center top;
+  1077→  pointer-events: none;
+  1078→  z-index: 0;
+  1079→  opacity: 0.5;
+  1080→}
+  1081→
+  1082→/* 80s: Scanlines overlay at full opacity */
+  1083→[data-decade-theme="80s"]::after {
+  1084→  content: '';
+  1085→  position: absolute;
+  1086→  inset: 0;
+  1087→  background: repeating-linear-gradient(
+  1088→    0deg,
+  1089→    transparent,
+  1090→    transparent 1px,
+  1091→    rgba(0, 255, 136, 0.12) 1px,
+  1092→    rgba(0, 255, 136, 0.12) 2px
+  1093→  );
+  1094→  pointer-events: none;
+  1095→  z-index: 0;
+  1096→}
+  1097→
+  1098→/* 80s: LAYOUT SURFACES */
+  1099→[data-decade-theme="80s"] .sk-cork {
+  1100→  background-color: #0a0a0a !important;
+  1101→  background-image: none !important;
+  1102→  box-shadow: inset 0 2px 8px rgba(0,255,136,0.05), inset 0 -1px 4px rgba(0,0,0,0.5) !important;
+  1103→}
+  1104→[data-decade-theme="80s"] .sk-wood {
+  1105→  background: linear-gradient(90deg, #0d0d0d 0%, #1a1a1a 50%, #0d0d0d 100%) !important;
+  1106→  box-shadow: 0 3px 8px rgba(0,0,0,0.5), 0 0 15px rgba(0,255,136,0.1), inset 0 1px 0 rgba(0,255,136,0.1) !important;
+  1107→  border-bottom: 1px solid #00ff8833 !important;
+  1108→}
+  1109→[data-decade-theme="80s"] .sk-leather {
+  1110→  background: linear-gradient(135deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%) !important;
+  1111→  box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,255,136,0.05), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 20px rgba(0,255,136,0.08) !important;
+  1112→  border-top: 1px solid #00ff8833 !important;
+  1113→}
+  1114→[data-decade-theme="80s"] .sk-metal {
+  1115→  background: linear-gradient(180deg, #1a1a1a 0%, #111 30%, #1a1a1a 50%, #111 70%, #1a1a1a 100%) !important;
+  1116→  box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,255,136,0.1), inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 10px rgba(0,255,136,0.08) !important;
+  1117→  border: 1px solid #00ff8822 !important;
+  1118→  border-radius: 2px !important;
+  1119→}
+  1120→
+  1121→/* 80s: CARD SURFACES */
+  1122→[data-decade-theme="80s"] .sk-paper {
+  1123→  background: #111111 !important;
+  1124→  border: 1px solid #00ff8833 !important;
+  1125→  box-shadow: 0 0 8px #00ff8822, 0 0 20px #00ff8811, inset 0 1px 0 #00ff8822 !important;
+  1126→  border-radius: 2px !important;
+  1127→  background-image: none !important;
+  1128→}
+  1129→[data-decade-theme="80s"] .sk-paper-aged {
+  1130→  background: #0f0f0f !important;
+  1131→  border: 1px solid #00ff8828 !important;
+  1132→  box-shadow: 0 0 6px #00ff8818, inset 0 1px 0 #00ff8818 !important;
+  1133→  border-radius: 2px !important;
+  1134→  background-image: none !important;
+  1135→}
+  1136→[data-decade-theme="80s"] .sk-lined {
+  1137→  background-color: #0f0f0f !important;
+  1138→  background-image: linear-gradient(#00ff8812 1px, transparent 1px) !important;
+  1139→  background-size: 100% 28px !important;
+  1140→ background-position: 0 12px !important;
+  1141→  border: 1px solid #00ff8833 !important;
+  1142→  border-left: 3px solid #00ff88 !important;
+  1143→  box-shadow: 0 0 6px #00ff8818, inset 0 1px 0 #00ff8818 !important;
+  1144→}
+  1145→[data-decade-theme="80s"] .sk-polaroid {
+  1146→  background: #111 !important;
+  1147→  padding: 8px 8px 40px 8px !important;
+  1148→  box-shadow: 0 0 10px #00ff8822, 0 0 25px #00ff8811 !important;
+  1149→  border: 1px solid #00ff8833 !important;
+  1150→}
+  1151→[data-decade-theme="80s"] .sk-polaroid:hover {
+  1152→  box-shadow: 0 0 15px #ff00ff44, 0 0 30px #00ff8822 !important;
+  1153→  transform: rotate(0deg) scale(1.03) !important;
+  1154→}
+  1155→
+  1156→/* 80s: BUTTONS */
+  1157→[data-decade-theme="80s"] .sk-btn,
+  1158→[data-decade-theme="80s"] .old-btn {
+  1159→  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%) !important;
+  1160→  border: 1px solid #00ff8866 !important;
+  1161→  box-shadow: 0 0 10px #00ff8844, 0 0 20px #00ff8822, inset 0 0 8px #00ff8815 !important;
+  1162→  color: #00ff88 !important;
+  1163→  text-shadow: 0 0 8px #00ff8866 !important;
+  1164→  text-transform: uppercase !important;
+  1165→  border-radius: 2px !important;
+  1166→}
+  1167→[data-decade-theme="80s"] .sk-btn:hover,
+  1168→[data-decade-theme="80s"] .old-btn:hover {
+  1169→  background: linear-gradient(180deg, #00ff8820 0%, #00ff8810 100%) !important;
+  1170→  box-shadow: 0 0 12px #00ff8866, 0 0 25px #00ff8833, inset 0 0 10px #00ff8822 !important;
+  1171→}
+  1172→[data-decade-theme="80s"] .sk-btn:active,
+  1173→[data-decade-theme="80s"] .old-btn:active {
+  1174→  transform: translateY(0) !important;
+  1175→  box-shadow: 0 0 6px #00ff8844, inset 0 0 8px #00ff8822 !important;
+  1176→}
+  1177→
+  1178→/* 80s: INPUTS */
+  1179→[data-decade-theme="80s"] .sk-inset {
+  1180→  background: linear-gradient(180deg, #0a0a0a 0%, #111 100%) !important;
+  1181→  box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 0 6px #00ff8818 !important;
+  1182→  border: 1px solid #00ff8844 !important;
+  1183→  color: #00ff88 !important;
+  1184→}
+  1185→[data-decade-theme="80s"] .sk-inset::placeholder { color: #00ff8844 !important; }
+  1186→[data-decade-theme="80s"] .sk-inset:focus {
+  1187→  border-color: #00ff88 !important;
+  1188→  box-shadow: inset 0 0 8px rgba(0,0,0,0.5), 0 0 12px #00ff8833 !important;
+  1189→  outline: none !important;
+  1190→}
+  1191→
+  1192→/* 80s: DECORATIVE */
+  1193→[data-decade-theme="80s"] .sk-tape::before {
+  1194→  background: linear-gradient(180deg, rgba(0,255,136,0.3) 0%, rgba(0,255,136,0.15) 100%) !important;
+  1195→  box-shadow: 0 0 6px rgba(0,255,136,0.3) !important;
+  1196→}
+  1197→[data-decade-theme="80s"] .sk-pin::after {
+  1198→  background: radial-gradient(circle at 40% 35%, #ff00ff, #cc00cc 60%, #990099) !important;
+  1199→  box-shadow: 0 0 8px rgba(255,0,255,0.5), inset 0 1px 1px rgba(255,255,255,0.3) !important;
+  1200→}
+  1201→[data-decade-theme="80s"] .sk-sticker {
+  1202→  box-shadow: 0 0 6px #00ff8833, 0 0 0 2px #111, 0 0 0 4px #00ff8844 !important;
+  1203→}
+  1204→[data-decade-theme="80s"] .sk-vhs-label {
+  1205→  background: #ff00ff22 !important;
+  1206→  border: 1px solid #ff00ff !important;
+  1207→  border-style: solid !important;
+  1208→  box-shadow: 0 0 6px #ff00ff33 !important;
+  1209→  color: #ff00ff !important;
+  1210→}
+  1211→[data-decade-theme="80s"] .sk-noise::after { opacity: 0.04; }
+  1212→[data-decade-theme="80s"] .sk-tv-screen {
+  1213→  background: linear-gradient(135deg, #0a0a0a 0%, #0d1a0d 50%, #001a0d 100%) !important;
+  1214→  border: 2px solid #00ff8844 !important;
+  1215→  box-shadow: 0 0 20px rgba(0,255,136,0.2) inset, 0 0 40px rgba(0,0,0,0.5) inset, 0 0 15px #00ff8833 !important;
+  1216→}
+  1217→[data-decade-theme="80s"] .sk-neon-text {
+  1218→  text-shadow: 0 0 7px #fff, 0 0 10px #fff, 0 0 21px #fff, 0 0 42px #00ff88, 0 0 82px #00ff88, 0 0 92px #00ff88 !important;
+  1219→  color: #00ff88 !important;
+  1220→}
+  1221→
+  1222→/* 80s: SCROLLBAR */
+  1223→[data-decade-theme="80s"] .sk-scrollbar::-webkit-scrollbar-track {
+  1224→  background: #111 !important;
+  1225→  border-radius: 0 !important;
+  1226→}
+  1227→[data-decade-theme="80s"] .sk-scrollbar::-webkit-scrollbar-thumb {
+  1228→  background: #00ff8844 !important;
+  1229→  border-radius: 0 !important;
+  1230→}
+  1231→[data-decade-theme="80s"] ::-webkit-scrollbar-track { background: #111; }
+  1232→[data-decade-theme="80s"] ::-webkit-scrollbar-thumb { background: #00ff8844; border-radius: 0; }
+  1233→[data-decade-theme="80s"] ::-webkit-scrollbar-thumb:hover { background: #00ff8866; }
+  1234→
+  1235→/* 80s: Neon flicker animation */
+  1236→@keyframes neon-flicker {
+  1237→  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+  1238→    text-shadow: 0 0 4px #fff, 0 0 11px #fff, 0 0 19px #fff, 0 0 40px #00ff88, 0 0 80px #00ff88, 0 0 90px #00ff88;
+  1239→  }
+  1240→  20%, 24%, 55% { text-shadow: none; }
+  1241→}
+  1242→[data-decade-theme="80s"] .neon-title { animation: neon-flicker 1.5s infinite alternate; }
+  1243→
+  1244→/* 80s: Tab bar active tab */
+  1245→[data-decade-theme="80s"] [class*="shadow-[0_2px_4px"] {
+  1246→  background: #111 !important;
+  1247→  border: 1px solid #00ff8844 !important;
+  1248→  box-shadow: 0 0 8px #00ff8822, inset 0 1px 0 #00ff8822 !important;
+  1249→}
+  1250→
+  1251→/* 80s: Dividers and separators */
+  1252→[data-decade-theme="80s"] [class*="bg-[#a08868]"],
+  1253→[data-decade-theme="80s"] [class*="bg-[#d4c5a9"] {
+  1254→  background: #00ff8833 !important;
+  1255→}
+  1256→
+  1257→/* 80s: Bg color overrides */
+  1258→[data-decade-theme="80s"] [class*="bg-[#faf6eb"],
+  1259→[data-decade-theme="80s"] [class*="bg-[#f5edd6"],
+  1260→[data-decade-theme="80s"] [class*="bg-[#ede0c8"],
+  1261→[data-decade-theme="80s"] [class*="bg-[#e8d8b8"] {
+  1262→  background: #111 !important;
+  1263→}
+  1264→[data-decade-theme="80s"] [class*="bg-[#d4c5a9"] {
+  1265→  background: #00ff8815 !important;
+  1266→}
+  1267→[data-decade-theme="80s"] [class*="hover:bg-[#c4956a"] {
+  1268→  opacity: 0.8 !important;
+  1269→}
+  1270→
+  1271→/* 80s: White text on dark */
+  1272→[data-decade-theme="80s"] [class*="text-[#faf6eb"] {
+  1273→  color: #00ff88 !important;
+  1274→}
+  1275→
+  1276→/* ═══════════════════════════════════════════════ */
+  1277→
+  1278→/* ── 90s WINDOWS 95 THEME ── */
+  1279→[data-decade-theme="90s"] {
+  1280→  --decade-bg: #c0c0c0;
+  1281→  --decade-bg-card: #c0c0c0;
+  1282→  --decade-fg: #000000;
+  1283→  --decade-fg-dim: #333333;
+  1284→  --decade-accent: #000080;
+  1285→  --decade-muted: #808080;
+  1286→  --decade-border: #808080;
+  1287→  --decade-chip-bg: #ffffff;
+  1288→  --decade-header-bg: #000080;
+  1289→  --decade-badge-bg: #c0c0c0;
+  1290→  --decade-badge-fg: #000000;
+  1291→  --decade-radius: 0px;
+  1292→}
+  1293→
+  1294→/* 90s: Courier Prime for ALL typography */
+  1295→[data-decade-theme="90s"] .old-title,
+  1296→[data-decade-theme="90s"] .old-heading,
+  1297→[data-decade-theme="90s"] .old-body,
+  1298→[data-decade-theme="90s"] .old-label,
+  1299→[data-decade-theme="90s"] .old-typewriter,
+  1300→[data-decade-theme="90s"] .old-btn,
+  1301→[data-decade-theme="90s"] .old-quote,
+  1302→[data-decade-theme="90s"] .old-handwritten {
+  1303→  font-family: 'Courier Prime', 'Courier New', monospace !important;
+  1304→  text-shadow: none !important;
+  1305→  letter-spacing: 0 !important;
+  1306→}
+  1307→
+  1308→/* 90s: Text colors */
+  1309→[data-decade-theme="90s"] .old-body { color: #000000 !important; }
+  1310→[data-decade-theme="90s"] .old-typewriter { color: #000000 !important; }
+  1311→[data-decade-theme="90s"] .old-label { color: #000080 !important; border-color: #000080 !important; }
+  1312→[data-decade-theme="90s"] .old-heading { color: #000000 !important; }
+  1313→[data-decade-theme="90s"] .old-title { color: #000080 !important; }
+  1314→[data-decade-theme="90s"] .old-quote { color: #333333 !important; }
+  1315→[data-decade-theme="90s"] .old-handwritten { color: #333333 !important; }
+  1316→
+  1317→/* 90s: No pseudo-element backgrounds (grid/scanlines) */
+  1318→[data-decade-theme="90s"]::before,
+  1319→[data-decade-theme="90s"]::after {
+  1320→  display: none !important;
+  1321→}
+  1322→
+  1323→/* 90s: Catch-all sepia text overrides */
+  1324→[data-decade-theme="90s"] [class*="text-[#5c4033]"],
+  1325→[data-decade-theme="90s"] [class*="text-[#8b7355]"],
+  1326→[data-decade-theme="90s"] [class*="text-[#3d2b1f]"],
+  1327→[data-decade-theme="90s"] [class*="text-[#8b5e3c]"] {
+  1328→  color: #000000 !important;
+  1329→}
+  1330→[data-decade-theme="90s"] [class*="text-[#c4956a]"],
+  1331→[data-decade-theme="90s"] [class*="text-[#d4a574]"] {
+  1332→  color: #000080 !important;
+  1333→}
+  1334→[data-decade-theme="90s"] [class*="text-[#6b6b6b]"] {
+  1335→  color: #808080 !important;
+  1336→}
+  1337→[data-decade-theme="90s"] [class*="text-[#b8a888]"] {
+  1338→  color: #808080 !important;
+  1339→}
+  1340→
+  1341→/* 90s: LAYOUT SURFACES */
+  1342→[data-decade-theme="90s"] .sk-cork {
+  1343→  background-color: #c0c0c0 !important;
+  1344→  background-image: none !important;
+  1345→  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
+  1346→}
+  1347→[data-decade-theme="90s"] .sk-wood {
+  1348→  background: linear-gradient(90deg, #000080 0%, #0000b0 50%, #000080 100%) !important;
+  1349→  box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  1350→  border-bottom: 2px outset #dfdfdf !important;
+  1351→}
+  1352→[data-decade-theme="90s"] .sk-leather {
+  1353→  background: #c0c0c0 !important;
+  1354→  box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset -1px -1px #0a0a0a, inset 1px 1px #ffffff !important;
+  1355→  border-top: 2px outset #dfdfdf !important;
+  1356→}
+  1357→[data-decade-theme="90s"] .sk-metal {
+  1358→  background: #c0c0c0 !important;
+  1359→  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff !important;
+  1360→  border: 2px outset #dfdfdf !important;
+  1361→  border-radius: 0 !important;
+  1362→}
+  1363→
+  1364→/* 90s: CARD SURFACES */
+  1365→[data-decade-theme="90s"] .sk-paper {
+  1366→  background: #c0c0c0 !important;
+  1367→  border: 2px inset #808080 !important;
+  1368→  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff !important;
+  1369→  border-radius: 0 !important;
+  1370→  background-image: none !important;
+  1371→}
+  1372→[data-decade-theme="90s"] .sk-paper-aged {
+  1373→  background: #b0b0b0 !important;
+  1374→  border: 2px inset #808080 !important;
+  1375→  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff !important;
+  1376→  border-radius: 0 !important;
+  1377→  background-image: none !important;
+  1378→}
+  1379→[data-decade-theme="90s"] .sk-lined {
+  1380→  background-color: #ffffff !important;
+  1381→  background-image: linear-gradient(#808080 1px, transparent 1px) !important;
+  1382→  background-size: 100% 28px !important;
+  1383→  border: 2px inset #808080 !important;
+  1384→  border-left: 3px solid #000080 !important;
+  1385→  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff !important;
+  1386→}
+  1387→[data-decade-theme="90s"] .sk-polaroid {
+  1388→  background: #ffffff !important;
+  1389→  padding: 8px 8px 40px 8px !important;
+  1390→  box-shadow: 2px 2px 0 #0a0a0a !important;
+  1391→  border: none !important;
+  1392→}
+  1393→[data-decade-theme="90s"] .sk-polaroid:hover {
+  1394→  box-shadow: 2px 2px 0 #000080 !important;
+  1395→  transform: none !important;
+  1396→}
+  1397→
+  1398→/* 90s: BUTTONS — beveled 3D */
+  1399→[data-decade-theme="90s"] .sk-btn,
+  1400→[data-decade-theme="90s"] .old-btn {
+  1401→  background: linear-gradient(180deg, #dfdfdf 0%, #c0c0c0 45%, #b0b0b0 55%, #a0a0a0 100%) !important;
+  1402→  border: 2px outset #dfdfdf !important;
+  1403→  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff, inset -2px -2px grey, inset 2px 2px #dfdfdf !important;
+  1404→  color: #000000 !important;
+  1405→  text-shadow: none !important;
+  1406→  text-transform: none !important;
+  1407→  border-radius: 0 !important;
+  1408→  padding: 2px 8px !important;
+  1409→}
+  1410→[data-decade-theme="90s"] .sk-btn:hover,
+  1411→[data-decade-theme="90s"] .old-btn:hover {
+  1412→  background: linear-gradient(180deg, #b0b0b0 0%, #a0a0a0 45%, #909090 55%, #808080 100%) !important;
+  1413→}
+  1414→[data-decade-theme="90s"] .sk-btn:active,
+  1415→[data-decade-theme="90s"] .old-btn:active {
+  1416→  border-style: inset !important;
+  1417→  box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #ffffff, inset 2px 2px grey, inset -2px -2px #dfdfdf !important;
+  1418→  transform: translateY(0) !important;
+  1419→}
+  1420→
+  1421→/* 90s: INPUTS — sunken white */
+  1422→[data-decade-theme="90s"] .sk-inset {
+  1423→  background: #ffffff !important;
+  1424→  box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #ffffff !important;
+  1425→  border: 2px inset #808080 !important;
+  1426→  color: #000000 !important;
+  1427→}
+  1428→[data-decade-theme="90s"] .sk-inset::placeholder { color: #808080 !important; }
+  1429→[data-decade-theme="90s"] .sk-inset:focus {
+  1430→  outline: none !important;
+  1431→  border-color: #000080 !important;
+  1432→}
+  1433→
+  1434→/* 90s: DECORATIVE */
+  1435→[data-decade-theme="90s"] .sk-tape::before {
+  1436→  background: linear-gradient(180deg, #dfdfdf 0%, #c0c0c0 100%) !important;
+  1437→  box-shadow: 1px 1px 0 #0a0a0a !important;
+  1438→}
+  1439→[data-decade-theme="90s"] .sk-pin::after {
+  1440→  background: radial-gradient(circle at 40% 35%, #808080, #404040 60%, #202020) !important;
+  1441→  box-shadow: 1px 1px 0 #0a0a0a, inset 0 1px 1px rgba(255,255,255,0.3) !important;
+  1442→}
+  1443→[data-decade-theme="90s"] .sk-sticker {
+  1444→  box-shadow: 2px 2px 0 #0a0a0a, 0 0 0 2px #c0c0c0, 0 0 0 4px #808080 !important;
+  1445→}
+  1446→[data-decade-theme="90s"] .sk-vhs-label {
+  1447→  background: linear-gradient(90deg, #000080, #1084d0) !important;
+  1448→  border: 2px outset #dfdfdf !important;
+  1449→  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff !important;
+  1450→  color: #ffffff !important;
+  1451→}
+  1452→[data-decade-theme="90s"] .sk-noise::after { display: none !important; }
+  1453→[data-decade-theme="90s"] .sk-tv-screen {
+  1454→  background: #c0c0c0 !important;
+  1455→  border: 3px solid #808080 !important;
+  1456→  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff !important;
+  1457→  border-radius: 0 !important;
+  1458→}
+  1459→[data-decade-theme="90s"] .sk-neon-text {
+  1460→  text-shadow: none !important;
+  1461→  color: #000080 !important;
+  1462→}
+  1463→
+  1464→/* 90s: SCROLLBAR */
+  1465→[data-decade-theme="90s"] .sk-scrollbar::-webkit-scrollbar-track {
+  1466→  background: #c0c0c0 !important;
+  1467→  border: 1px inset #808080 !important;
+  1468→  border-radius: 0 !important;
+  1469→}
+  1470→[data-decade-theme="90s"] .sk-scrollbar::-webkit-scrollbar-thumb {
+  1471→  background: #c0c0c0 !important;
+  1472→  border: 2px outset #dfdfdf !important;
+  1473→  border-radius: 0 !important;
+  1474→}
+  1475→[data-decade-theme="90s"] ::-webkit-scrollbar-track { background: #c0c0c0; border: 1px inset #808080; }
+  1476→[data-decade-theme="90s"] ::-webkit-scrollbar-thumb { background: #c0c0c0; border: 2px outset #dfdfdf; }
+  1477→
+  1478→/* 90s: Tab bar active tab */
+  1479→[data-decade-theme="90s"] [class*="shadow-[0_2px_4px"] {
+  1480→  background: #c0c0c0 !important;
+  1481→  border: 2px inset #808080 !important;
+  1482→  box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #ffffff !important;
+  1483→}
+  1484→
+  1485→/* 90s: Dividers */
+  1486→[data-decade-theme="90s"] [class*="bg-[#a08868]"] {
+  1487→  background: #808080 !important;
+  1488→}
+  1489→
+  1490→/* 90s: Bg color overrides */
+  1491→[data-decade-theme="90s"] [class*="bg-[#faf6eb"],
+  1492→[data-decade-theme="90s"] [class*="bg-[#f5edd6"],
+  1493→[data-decade-theme="90s"] [class*="bg-[#ede0c8"],
+  1494→[data-decade-theme="90s"] [class*="bg-[#e8d8b8"] {
+  1495→  background: #c0c0c0 !important;
+  1496→}
+  1497→[data-decade-theme="90s"] [class*="bg-[#d4c5a9"] {
+  1498→  background: #b0b0b0 !important;
+  1499→}
+  1500→[data-decade-theme="90s"] [class*="hover:bg-[#c4956a"] {
+  1501→  opacity: 0.7 !important;
+  1502→}
+  1503→
+  1504→/* 90s: White text on dark */
+  1505→[data-decade-theme="90s"] [class*="text-[#faf6eb"] {
+  1506→  color: #ffffff !important;
+  1507→}
+  1508→
+  1509→/* ═══════════════════════════════════════════════ */
+  1510→
+  1511→/* ── 2000s WEB 2.0 THEME ── */
+  1512→[data-decade-theme="2000s"] {
+  1513→  --decade-bg: #d6eaff;
+  1514→  --decade-bg-card: #ffffff;
+  1515→  --decade-fg: #333333;
+  1516→  --decade-fg-dim: #555555;
+  1517→  --decade-accent: #ff8c00;
+  1518→  --decade-muted: #7799bb;
+  1519→  --decade-border: #a8c8e8;
+  1520→  --decade-chip-bg: #e8f4ff;
+  1521→  --decade-header-bg: #336699;
+  1522→  --decade-badge-bg: #e8f4ff;
+  1523→  --decade-badge-fg: #336699;
+  1524→  --decade-radius: 12px;
+  1525→}
+  1526→
+  1527→/* 2000s: Nunito for ALL typography — Web 2.0 clean */
+  1528→[data-decade-theme="2000s"] .old-title,
+  1529→[data-decade-theme="2000s"] .old-heading {
+  1530→  font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif !important;
+  1531→  text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+  1532→  letter-spacing: 0.01em !important;
+  1533→}
+  1534→[data-decade-theme="2000s"] .old-body {
+  1535→  font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif !important;
+  1536→  text-shadow: none !important;
+  1537→}
+  1538→[data-decade-theme="2000s"] .old-label,
+  1539→[data-decade-theme="2000s"] .old-typewriter {
+  1540→  font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif !important;
+  1541→  text-shadow: none !important;
+  1542→  letter-spacing: 0.03em !important;
+  1543→}
+  1544→[data-decade-theme="2000s"] .old-btn {
+  1545→  font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif !important;
+  1546→  text-shadow: 0 1px 0 rgba(255,255,255,0.3) !important;
+  1547→  text-transform: none !important;
+  1548→}
+  1549→[data-decade-theme="2000s"] .old-quote {
+  1550→  font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif !important;
+  1551→  color: #555555 !important;
+  1552→}
+  1553→[data-decade-theme="2000s"] .old-handwritten {
+  1554→  font-family: 'Nunito', 'Segoe UI', Tahoma, sans-serif !important;
+  1555→  color: #336699 !important;
+  1556→}
+  1557→
+  1558→/* 2000s: No pseudo-element backgrounds */
+  1559→[data-decade-theme="2000s"]::before,
+  1560→[data-decade-theme="2000s"]::after {
+  1561→  display: none !important;
+  1562→}
+  1563→
+  1564→/* 2000s: Text colors */
+  1565→[data-decade-theme="2000s"] .old-body { color: #333333 !important; }
+  1566→[data-decade-theme="2000s"] .old-typewriter { color: #555555 !important; }
+  1567→[data-decade-theme="2000s"] .old-label { color: #336699 !important; border-color: #336699 !important; }
+  1568→[data-decade-theme="2000s"] .old-heading { color: #333333 !important; }
+  1569→[data-decade-theme="2000s"] .old-title { color: #336699 !important; }
+  1570→
+  1571→/* 2000s: Catch-all sepia text overrides */
+  1572→[data-decade-theme="2000s"] [class*="text-[#5c4033]"],
+  1573→[data-decade-theme="2000s"] [class*="text-[#3d2b1f]"] {
+  1574→  color: #333333 !important;
+  1575→}
+  1576→[data-decade-theme="2000s"] [class*="text-[#8b7355]"] {
+  1577→  color: #555555 !important;
+  1578→}
+  1579→[data-decade-theme="2000s"] [class*="text-[#8b5e3c]"] {
+  1580→  color: #336699 !important;
+  1581→}
+  1582→[data-decade-theme="2000s"] [class*="text-[#c4956a]"] {
+  1583→  color: #ff8c00 !important;
+  1584→}
+  1585→[data-decade-theme="2000s"] [class*="text-[#d4a574]"] {
+  1586→  color: #336699 !important;
+  1587→}
+  1588→[data-decade-theme="2000s"] [class*="text-[#6b6b6b]"] {
+  1589→  color: #7799bb !important;
+  1590→}
+  1591→[data-decade-theme="2000s"] [class*="text-[#b8a888]"] {
+  1592→  color: #a8c8e8 !important;
+  1593→}
+  1594→
+  1595→/* 2000s: LAYOUT SURFACES */
+  1596→[data-decade-theme="2000s"] .sk-cork {
+  1597→  background-color: #d6eaff !important;
+  1598→  background-image: none !important;
+  1599→  box-shadow: inset 0 1px 4px rgba(51,102,153,0.08) !important;
+  1600→}
+  1601→[data-decade-theme="2000s"] .sk-wood {
+  1602→  background: linear-gradient(90deg, #336699 0%, #4477aa 50%, #336699 100%) !important;
+  1603→  box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 1px 0 rgba(255,255,255,0.1) inset !important;
+  1604→  border-bottom: none !important;
+  1605→}
+  1606→[data-decade-theme="2000s"] .sk-leather {
+  1607→  background: linear-gradient(135deg, #e8f4ff 0%, #d6eaff 50%, #c8e0f5 100%) !important;
+  1608→  box-shadow: 0 -1px 0 rgba(51,102,153,0.1) !important;
+  1609→  border-top: none !important;
+  1610→}
+  1611→[data-decade-theme="2000s"] .sk-metal {
+  1612→  background: linear-gradient(180deg, #f0f6fc 0%, #e0ecf8 30%, #eaf2fa 50%, #d8e6f4 70%, #e4eef8 100%) !important;
+  1613→  box-shadow: 0 2px 6px rgba(51,102,153,0.1), 0 1px 0 rgba(255,255,255,0.8) inset !important;
+  1614→  border: 1px solid #a8c8e8 !important;
+  1615→  border-radius: 12px !important;
+  1616→}
+  1617→
+  1618→/* 2000s: CARD SURFACES */
+  1619→[data-decade-theme="2000s"] .sk-paper {
+  1620→  background: #ffffff !important;
+  1621→  border: 1px solid #a8c8e8 !important;
+  1622→  box-shadow: 0 3px 10px rgba(51,102,153,0.15), 0 1px 3px rgba(0,0,0,0.08) !important;
+  1623→  border-radius: 12px !important;
+  1624→  background-image: none !important;
+  1625→}
+  1626→[data-decade-theme="2000s"] .sk-paper-aged {
+  1627→  background: #f0f6fc !important;
+  1628→  border: 1px solid #a8c8e8 !important;
+  1629→  box-shadow: 0 2px 8px rgba(51,102,153,0.1) !important;
+  1630→  border-radius: 12px !important;
+  1631→  background-image: none !important;
+  1632→}
+  1633→[data-decade-theme="2000s"] .sk-lined {
+  1634→  background-color: #ffffff !important;
+  1635→  background-image: linear-gradient(#d6eaff 1px, transparent 1px) !important;
+  1636→  background-size: 100% 28px !important;
+  1637→  border: 1px solid #a8c8e8 !important;
+  1638→  border-left: 4px solid #ff8c00 !important;
+  1639→  border-radius: 12px !important;
+  1640→  box-shadow: 0 2px 6px rgba(51,102,153,0.1) !important;
+  1641→}
+  1642→[data-decade-theme="2000s"] .sk-polaroid {
+  1643→  background: #ffffff !important;
+  1644→  padding: 10px 10px 44px 10px !important;
+  1645→  box-shadow: 0 3px 10px rgba(51,102,153,0.15), 0 6px 16px rgba(0,0,0,0.08) !important;
+  1646→  border: 1px solid #e0ecf8 !important;
+  1647→  border-radius: 4px !important;
+  1648→}
+  1649→[data-decade-theme="2000s"] .sk-polaroid:hover {
+  1650→  box-shadow: 0 6px 20px rgba(51,102,153,0.25), 0 12px 32px rgba(0,0,0,0.12) !important;
+  1651→  transform: rotate(0deg) scale(1.03) !important;
+  1652→}
+  1653→
+  1654→/* 2000s: BUTTONS — glossy gradient orange, rounded */
+  1655→[data-decade-theme="2000s"] .sk-btn,
+  1656→[data-decade-theme="2000s"] .old-btn {
+  1657→  background: linear-gradient(180deg, #ff9f2e 0%, #ff8c00 40%, #e67a00 70%, #cc6600 100%) !important;
+  1658→  border: 1px solid #cc6600 !important;
+  1659→  box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.3) inset !important;
+  1660→  color: #ffffff !important;
+  1661→  text-transform: none !important;
+  1662→  border-radius: 20px !important;
+  1663→  padding: 6px 16px !important;
+  1664→}
+  1665→[data-decade-theme="2000s"] .sk-btn:hover,
+  1666→[data-decade-theme="2000s"] .old-btn:hover {
+  1667→  background: linear-gradient(180deg, #ffaa44 0%, #ff9922 40%, #ee8811 70%, #dd7700 100%) !important;
+  1668→  box-shadow: 0 3px 8px rgba(255,140,0,0.3), 0 0 0 1px rgba(255,255,255,0.3) inset !important;
+  1669→}
+  1670→[data-decade-theme="2000s"] .sk-btn:active,
+  1671→[data-decade-theme="2000s"] .old-btn:active {
+  1672→  transform: translateY(1px) !important;
+  1673→  box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 3px rgba(0,0,0,0.2) !important;
+  1674→}
+  1675→
+  1676→/* 2000s: INPUTS — rounded blue */
+  1677→[data-decade-theme="2000s"] .sk-inset {
+  1678→  background: #ffffff !important;
+  1679→  box-shadow: 0 2px 6px rgba(51,102,153,0.1), inset 0 1px 3px rgba(0,0,0,0.05) !important;
+  1680→  border: 1px solid #a8c8e8 !important;
+  1681→  border-radius: 8px !important;
+  1682→  color: #333333 !important;
+  1683→}
+  1684→[data-decade-theme="2000s"] .sk-inset::placeholder { color: #7799bb !important; }
+  1685→[data-decade-theme="2000s"] .sk-inset:focus {
+  1686→  border-color: #336699 !important;
+  1687→  box-shadow: 0 0 0 3px rgba(51,102,153,0.15), inset 0 1px 3px rgba(0,0,0,0.05) !important;
+  1688→  outline: none !important;
+  1689→}
+  1690→
+  1691→/* 2000s: DECORATIVE */
+  1692→[data-decade-theme="2000s"] .sk-tape::before {
+  1693→  background: linear-gradient(180deg, rgba(168,200,232,0.6) 0%, rgba(168,200,232,0.3) 100%) !important;
+  1694→  box-shadow: 0 1px 3px rgba(51,102,153,0.1) !important;
+  1695→  border-radius: 2px !important;
+  1696→}
+  1697→[data-decade-theme="2000s"] .sk-pin::after {
+  1698→  background: radial-gradient(circle at 40% 35%, #5b9bd5, #336699 60%, #224466) !important;
+  1699→  box-shadow: 0 2px 4px rgba(51,102,153,0.3), inset 0 1px 1px rgba(255,255,255,0.4) !important;
+  1700→}
+  1701→[data-decade-theme="2000s"] .sk-sticker {
+  1702→  box-shadow: 0 3px 8px rgba(51,102,153,0.15), 0 0 0 2px #fff, 0 0 0 4px #a8c8e8 !important;
+  1703→}
+  1704→[data-decade-theme="2000s"] .sk-vhs-label {
+  1705→  background: #e8f4ff !important;
+  1706→  border: 1px solid #336699 !important;
+  1707→  border-style: solid !important;
+  1708→  border-radius: 20px !important;
+  1709→  box-shadow: 0 1px 3px rgba(51,102,153,0.1) !important;
+  1710→  color: #336699 !important;
+  1711→}
+  1712→[data-decade-theme="2000s"] .sk-noise::after { display: none !important; }
+  1713→[data-decade-theme="2000s"] .sk-tv-screen {
+  1714→  background: linear-gradient(135deg, #e8f4ff 0%, #d6eaff 50%, #c8e0f5 100%) !important;
+  1715→  border: 2px solid #a8c8e8 !important;
+  1716→  box-shadow: 0 0 20px rgba(51,102,153,0.1) inset, 0 4px 12px rgba(51,102,153,0.15) !important;
+  1717→  border-radius: 12px !important;
+  1718→}
+  1719→[data-decade-theme="2000s"] .sk-neon-text {
+  1720→  text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+  1721→  color: #336699 !important;
+  1722→}
+  1723→
+  1724→/* 2000s: Subtle glossy reflection on cards */
+  1725→[data-decade-theme="2000s"] .sk-paper::before {
+  1726→  content: '' !important;
+  1727→  position: absolute;
+  1728→  top: 0; left: 0; right: 0;
+  1729→  height: 50%;
+  1730→  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+  1731→  border-radius: inherit;
+  1732→  pointer-events: none;
+  1733→  z-index: 0;
+  1734→}
+  1735→
+  1736→/* 2000s: SCROLLBAR */
+  1737→[data-decade-theme="2000s"] .sk-scrollbar::-webkit-scrollbar-track {
+  1738→  background: #d6eaff !important;
+  1739→  border-radius: 10px !important;
+  1740→}
+  1741→[data-decade-theme="2000s"] .sk-scrollbar::-webkit-scrollbar-thumb {
+  1742→  background: #a8c8e8 !important;
+  1743→  border-radius: 10px !important;
+  1744→}
+  1745→[data-decade-theme="2000s"] ::-webkit-scrollbar-track { background: #d6eaff; border-radius: 10px; }
+  1746→[data-decade-theme="2000s"] ::-webkit-scrollbar-thumb { background: #a8c8e8; border-radius: 10px; }
+  1747→[data-decade-theme="2000s"] ::-webkit-scrollbar-thumb:hover { background: #336699; }
+  1748→
+  1749→/* 2000s: Tab bar active tab */
+  1750→[data-decade-theme="2000s"] [class*="shadow-[0_2px_4px"] {
+  1751→  background: #ffffff !important;
+  1752→  border: 1px solid #a8c8e8 !important;
+  1753→  box-shadow: 0 2px 6px rgba(51,102,153,0.1) !important;
+  1754→  border-radius: 10px !important;
+  1755→}
+  1756→
+  1757→/* 2000s: Dividers */
+  1758→[data-decade-theme="2000s"] [class*="bg-[#a08868]"] {
+  1759→  background: #a8c8e8 !important;
+  1760→}
+  1761→
+  1762→/* 2000s: Bg color overrides */
+  1763→[data-decade-theme="2000s"] [class*="bg-[#faf6eb"],
+  1764→[data-decade-theme="2000s"] [class*="bg-[#f5edd6"],
+  1765→[data-decade-theme="2000s"] [class*="bg-[#ede0c8"],
+  1766→[data-decade-theme="2000s"] [class*="bg-[#e8d8b8"] {
+  1767→  background: #ffffff !important;
+  1768→}
+  1769→[data-decade-theme="2000s"] [class*="bg-[#d4c5a9"] {
+  1770→  background: #e8f4ff !important;
+  1771→}
+  1772→[data-decade-theme="2000s"] [class*="hover:bg-[#c4956a"] {
+  1773→  opacity: 0.8 !important;
+  1774→}
+  1775→
+  1776→/* 2000s: White text on dark */
+  1777→[data-decade-theme="2000s"] [class*="text-[#faf6eb"] {
+  1778→  color: #ffffff !important;
+  1779→}
+  1780→
+  1781→

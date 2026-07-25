@@ -20,6 +20,8 @@ model User {
   sessions Session[]
   accounts Account[]
   journalSync JournalSync[]
+  syncRecords  SyncRecord[]
+  profile      UserProfile?
 }
 
 model Session {
@@ -68,11 +70,35 @@ model JournalSync {
 model AiInsight {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // "mood_trend", "pattern", "suggestion", "reflection"
+  type      String
   title     String
   content   String
-  metadata  String?  // JSON string for extra data
+  metadata  String?
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model SyncRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName String
+  recordId  String
+  data      String
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([userId, storeName, recordId])
+  @@index([userId, storeName])
+}
+
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  birthYear Int?
+  eraSkin   String?
+  onboardingComplete Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
 }

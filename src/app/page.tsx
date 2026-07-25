@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Gamepad2, BookOpen,
-  ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings,
-  Clapperboard, Phone, Film, Camera, ImageIcon,
+  ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings, CheckCircle2,
+  Clapperboard, Phone, Film, Camera, ImageIcon, SearchIcon,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -14,6 +14,7 @@ import {
 import OldJournal from '@/components/OldJournal';
 
 import OldTransitionLoader, { triggerOldLoader, hideOldLoader } from '@/components/OldTransitionLoader';
+import SearchOverlay from '@/components/SearchOverlay';
 import { MemoryReelFeed } from '@/components/memory-reel';
 import LocalDataBadge from '@/components/ui/LocalDataBadge';
 import AuthModal from '@/components/AuthModal';
@@ -24,9 +25,14 @@ import ContactsTab from '@/components/ContactsTab';
 import MoviesTab from '@/components/MoviesTab';
 import MemoryTab from '@/components/MemoryTab';
 import VintageCamera from '@/components/VintageCamera';
+import ShareRewind from '@/components/ShareRewind';
+import ThisDayInHistory from '@/components/ThisDayInHistory';
 import { runMigration } from '@/lib/idb-store/migrate';
+import OnboardingFlow from '@/components/OnboardingFlow';
 import { useSession, signOut } from 'next-auth/react';
+import { useSync } from '@/hooks/useSync';
 import { SessionProvider } from 'next-auth/react';
+import { getDB } from '@/lib/idb-store';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -404,8 +410,24 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
   const [activeTab, setActiveTab] = useState('journal');
   const [showReel, setShowReel] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [showShareRewind, setShowShareRewind] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const { data: session } = useSession();
+  const { syncStatus, syncNow } = useSync();
+
+  // Keyboard shortcut: Cmd+K / Ctrl+K to toggle search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(prev => !prev);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Trigger old-style cassette loader when switching tabs
   const handleTabChange = useCallback((tabId: string) => {
     if (tabId === activeTab) return;
@@ -455,6 +477,13 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
             <h2 className="old-title font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
               Rewind
             </h2>
+            <button
+              onClick={() => setShowSearch(true)}
+              className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
+              title="Search (⌘K)"
+            >
+              <SearchIcon className="h-3.5 w-3.5 text-[#5c4033]" />
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <div className="sk-vhs-label old-typewriter text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
@@ -467,6 +496,25 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
               >
                 <Camera className="h-3.5 w-3.5 text-[#5c4033]" />
               </button>
+            {/* Cloud sync button */}
+            {session?.user && (
+              <button
+                  onClick={syncNow}
+                  className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
+                  title={syncStatus === 'synced' ? 'Synced!' : syncStatus === 'error' ? 'Sync failed' : 'Cloud sync'}
+                >
+                  {syncStatus === 'syncing' ? (
+                    <RefreshCw className="h-3.5 w-3.5 text-[#5c4033] animate-spin" />
+                  ) : syncStatus === 'synced' ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                  ) : syncStatus === 'error' ? (
+                    <RefreshCw className="h-3.5 w-3.5 text-red-500" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5 text-[#5c4033]" />
+                  )}
+                </button>
+            )}
+
             <button
                 onClick={() => handleTabChange('settings')}
                 className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
@@ -516,6 +564,11 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           {/* Quote */}
           <section className="mb-6">
             <QuoteBanner quotes={data.quotes} />
+          </section>
+
+          {/* This Day in History */}
+          <section className="mb-6">
+            <ThisDayInHistory birthYear={birthYear} />
           </section>
 
           {/* Tab bar - metal */}
@@ -579,7 +632,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           {activeTab === 'memory' && (
             <AnimatePresence mode="wait">
               <motion.div key="memory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <MemoryTab onOpenCamera={() => setShowCamera(true)} />
+                <MemoryTab onOpenCamera={() => setShowCamera(true)} onOpenShareRewind={() => setShowShareRewind(true)} />
               </motion.div>
             </AnimatePresence>
           )}
@@ -664,6 +717,11 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
         {showCamera && <VintageCamera onClose={() => setShowCamera(false)} />}
       </AnimatePresence>
 
+      {/* ═══ SHARE REWIND OVERLAY ═══ */}
+      <AnimatePresence>
+        {showShareRewind && <ShareRewind open={showShareRewind} onClose={() => setShowShareRewind(false)} />}
+      </AnimatePresence>
+
       {/* ═══ AUTH MODAL OVERLAY ═══ */}
       <AnimatePresence>
         {showAuth && (
@@ -674,6 +732,16 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           />
         )}
       </AnimatePresence>
+
+      {/* ═══ SEARCH OVERLAY ═══ */}
+      <SearchOverlay
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        onNavigate={(tab) => {
+          handleTabChange(tab);
+          setShowSearch(false);
+        }}
+      />
 
       {/* Old-style cassette transition loader (global) */}
       <OldTransitionLoader />
@@ -687,11 +755,29 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
 export default function Home() {
   const [birthYear, setBirthYear] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
   // Run one-time localStorage → IndexedDB migration on first load
   useEffect(() => {
     if (typeof window !== 'undefined') {
       runMigration().catch(err => console.warn('[rewind] Migration error:', err));
+      // Check if onboarding was completed
+      (async () => {
+        try {
+          const db = await getDB();
+          const record: any = await db.get('era_skin', 'onboarding');
+          if (record?.complete) {
+            // Restore persisted birth year
+            if (record.birthYear) setBirthYear(record.birthYear);
+          } else {
+            setShowOnboarding(true);
+          }
+        } catch {
+          setShowOnboarding(true);
+        }
+        setOnboardingChecked(true);
+      })();
     }
   }, []);
 
@@ -704,6 +790,15 @@ export default function Home() {
     setTimeout(() => {
       setBirthYear(year);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      hideOldLoader();
+    }, 1100);
+  }, []);
+
+  const handleOnboardingComplete = useCallback((data: { birthYear: number; eraSkin: string }) => {
+    setShowOnboarding(false);
+    triggerOldLoader('Tuning into your era...');
+    setTimeout(() => {
+      setBirthYear(data.birthYear);
       hideOldLoader();
     }, 1100);
   }, []);
@@ -721,8 +816,15 @@ export default function Home() {
       {/* CRT Boot Loading Screen */}
       {loading && <CrtLoadingScreen onDone={handleLoadingDone} />}
 
+      {/* Onboarding (first visit only) */}
+      <AnimatePresence>
+        {showOnboarding && onboardingChecked && (
+          <OnboardingFlow onComplete={handleOnboardingComplete} />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
-        {birthYear === null ? (
+        {!showOnboarding && birthYear === null && onboardingChecked ? (
           <motion.div
             key="hero"
             initial={{ opacity: 0 }}
@@ -733,7 +835,7 @@ export default function Home() {
           >
             <HeroSection onSubmit={handleSubmit} />
           </motion.div>
-        ) : (
+        ) : birthYear !== null ? (
           <motion.div
             key="dashboard"
             initial={{ opacity: 0, y: 20 }}
@@ -744,7 +846,7 @@ export default function Home() {
           >
             <Dashboard birthYear={birthYear} onBack={handleBack} />
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );

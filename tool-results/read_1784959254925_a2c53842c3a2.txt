@@ -1,0 +1,652 @@
+   100→        </div>
+   101→
+   102→        {/* Title */}
+   103→        {phase >= 1 && (
+   104→          <motion.div
+   105→            initial={{ opacity: 0, scale: 0.9 }}
+   106→            animate={{ opacity: 1, scale: 1 }}
+   107→            transition={{ duration: 1.0 }}
+   108→            className="text-center mt-1 sm:mt-2 w-full"
+   109→          >
+   110→            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black crt-glow old-title tracking-wider" style={{ color: '#c4956a' }}>
+   111→              REWIND
+   112→            </h1>
+   113→            <div className="loading-bar-track sm:loading-bar-track-md mt-3 sm:mt-4 mx-auto">
+   114→              <div className="loading-bar-fill" style={{ animationDuration: '3.5s' }} />
+   115→            </div>
+   116→            <p className="old-typewriter text-[8px] sm:text-[10px] mt-2 sm:mt-3" style={{ color: 'rgba(196,149,106,0.5)' }}>
+   117→              <span style={{ animation: 'blink-cursor 0.8s step-end infinite' }}>_</span>
+   118→              {' '}press any key to continue_
+   119→            </p>
+   120→          </motion.div>
+   121→        )}
+   122→      </div>
+   123→
+   124→      {/* VHS timestamp corner */}
+   125→      <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 z-10">
+   126→        <span className="old-typewriter text-[8px] sm:text-[10px]" style={{ color: 'rgba(196,149,106,0.35)' }}>
+   127→          SP 0:00:00
+   128→        </span>
+   129→      </div>
+   130→      <div className="absolute bottom-2 sm:bottom-4 right-2 sm:right-4 z-10 flex items-center gap-1">
+   131→        <span className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500" style={{ animation: 'blink-cursor 1s step-end infinite' }} />
+   132→        <span className="old-typewriter text-[8px] sm:text-[10px]" style={{ color: 'rgba(196,149,106,0.4)' }}>
+   133→          REC
+   134→        </span>
+   135→      </div>
+   136→    </div>
+   137→  );
+   138→}
+   139→
+   140→/* ═══════════════════════════════════════════════════
+   141→   DUST MOTES (hydration-safe, uses useEffect)
+   142→   ═══════════════════════════════════════════════════ */
+   143→function DustMotes() {
+   144→  const [mounted, setMounted] = useState(false);
+   145→
+   146→  useEffect(() => {
+   147→    setMounted(true);
+   148→  }, []);
+   149→
+   150→  const motes = useMemo(() => {
+   151→    if (!mounted) return [];
+   152→    const colors = ['#c4956a', '#8b5e3c', '#d4a574', '#e8c9a0', '#b8845a'];
+   153→    return Array.from({ length: 25 }, (_, i) => ({
+   154→      id: i,
+   155→      w: 2 + Math.random() * 6,
+   156→      h: 2 + Math.random() * 6,
+   157→      l: Math.random() * 100,
+   158→      t: Math.random() * 100,
+   159→      bg: colors[i % 5],
+   160→      delay: Math.random() * 25,
+   161→      dur: 20 + Math.random() * 20,
+   162→    }));
+   163→  }, [mounted]);
+   164→
+   165→  return (
+   166→    <div className="pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden>
+   167→      {motes.map((m) => (
+   168→        <span
+   169→          key={m.id}
+   170→          className="absolute rounded-full opacity-15 animate-[float_25s_infinite_linear]"
+   171→          style={{
+   172→            width: `${m.w}px`,
+   173→            height: `${m.h}px`,
+   174→            left: `${m.l}%`,
+   175→            top: `${m.t}%`,
+   176→            background: m.bg,
+   177→            animationDelay: `${m.delay}s`,
+   178→            animationDuration: `${m.dur}s`,
+   179→          }}
+   180→        />
+   181→      ))}
+   182→    </div>
+   183→  );
+   184→}
+   185→
+   186→/* ═══════════════════════════════════════════════════
+   187→   HERO / LANDING (SKEUOMORPHIC)
+   188→   ═══════════════════════════════════════════════════ */
+   189→function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
+   190→  const [year, setYear] = useState('');
+   191→  const [hoveredDecade, setHoveredDecade] = useState<string | null>(null);
+   192→  const [tapeRotate] = useState(() => -2 + Math.random() * 4);
+   193→
+   194→  const handleSubmit = () => {
+   195→    const y = parseInt(year);
+   196→    if (y >= 1970 && y <= 2019) onSubmit(y);
+   197→  };
+   198→
+   199→  const decades = Object.values(nostalgiaData);
+   200→
+   201→  return (
+   202→    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative">
+   203→      <DustMotes />
+   204→
+   205→      <motion.div
+   206→        initial={{ opacity: 0, y: 30 }}
+   207→        animate={{ opacity: 1, y: 0 }}
+   208→        transition={{ duration: 0.8 }}
+   209→        className="text-center mb-8 z-10"
+   210→      >
+   211→        <motion.div
+   212→          animate={{ rotate: [0, 3, -3, 0] }}
+   213→          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+   214→          className="text-6xl md:text-8xl mb-3"
+   215→          style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
+   216→        >
+   217→          📼
+   218→        </motion.div>
+   219→        <h1 className="old-title text-5xl md:text-7xl font-black tracking-tight mb-3 text-transparent bg-clip-text"
+   220→          style={{
+   221→            backgroundImage: 'linear-gradient(180deg, #5c4033 0%, #8b5e3c 40%, #c4956a 100%)',
+   222→          }}
+   223→        >
+   224→          Rewind
+   225→        </h1>
+   226→        <p className="old-body text-base md:text-lg text-[#8b7355] max-w-md mx-auto leading-relaxed">
+   227→          Take a trip back to the days when life was simple.
+   228→          <br className="hidden md:block" />
+   229→          Remember who you were before the world told you who to be.
+   230→        </p>
+   231→      </motion.div>
+   232→
+   233→      <motion.div
+   234→        initial={{ opacity: 0, scale: 0.9, rotate: -1 }}
+   235→        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+   236→        transition={{ duration: 0.7, delay: 0.2, type: 'spring' }}
+   237→        className="z-10 w-full max-w-sm"
+   238→      >
+   239→        <div className="sk-paper rounded-lg p-6 sk-tape relative overflow-hidden sk-noise" style={{ '--tape-rotate': `${tapeRotate}deg` } as React.CSSProperties}>
+   240→          <label className="old-label block text-sm font-bold text-[#5c4033] mb-3 text-center">
+   241→            When were you born?
+   242→          </label>
+   243→          <div className="flex gap-2">
+   244→            <input
+   245→              type="number"
+   246→              min={1970}
+   247→              max={2019}
+   248→              placeholder="e.g. 1992"
+   249→              value={year}
+   250→              onChange={(e) => setYear(e.target.value)}
+   251→              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+   252→              className="sk-inset old-typewriter flex-1 text-center text-2xl font-bold rounded-lg p-3 text-[#5c4033] focus:outline-none transition-shadow focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),0_0_0_2px_#8b5e3c]"
+   253→              aria-label="Birth year"
+   254→            />
+   255→          </div>
+   256→          <button
+   257→            onClick={handleSubmit}
+   258→            className="sk-leather old-btn w-full mt-4 text-[#faf6eb] font-bold text-lg py-3.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] flex items-center justify-center gap-2"
+   259→          >
+   260→            <Clock className="h-5 w-5" />
+   261→            Take Me Back
+   262→          </button>
+   263→          <p className="old-typewriter text-xs text-center text-[#8b7355] mt-3 font-medium">
+   264→            1970 – 2019 &nbsp;·&nbsp; Your memories, your era
+   265→          </p>
+   266→        </div>
+   267→      </motion.div>
+   268→
+   269→      <motion.div
+   270→        initial={{ opacity: 0 }}
+   271→        animate={{ opacity: 1 }}
+   272→        transition={{ delay: 0.8 }}
+   273→        className="flex flex-wrap justify-center gap-3 mt-8 z-10 max-w-lg"
+   274→      >
+   275→        {decades.map((d, i) => (
+   276→          <motion.button
+   277→            key={d.decade}
+   278→            onMouseEnter={() => setHoveredDecade(d.decade)}
+   279→            onMouseLeave={() => setHoveredDecade(null)}
+   280→            onClick={() => {
+   281→              const y = parseInt(d.years.split('–')[0]);
+   282→              setYear(String(y));
+   283→              onSubmit(y);
+   284→            }}
+   285→            whileHover={{ scale: 1.08, y: -3 }}
+   286→            whileTap={{ scale: 0.95 }}
+   287→            className="sk-paper old-typewriter rounded-lg px-4 py-2 text-sm font-bold cursor-pointer transition-all duration-200 relative overflow-hidden sk-noise"
+   288→            style={{
+   289→              borderColor: hoveredDecade === d.decade ? d.color : '#c4b594',
+   290→              color: hoveredDecade === d.decade ? '#5c4033' : '#8b7355',
+   291→              boxShadow: hoveredDecade === d.decade
+   292→                ? `0 4px 16px ${d.color}40, 0 1px 3px rgba(0,0,0,0.1)`
+   293→                : '0 2px 6px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.06)',
+   294→            }}
+   295→          >
+   296→            {d.decade}
+   297→          </motion.button>
+   298→        ))}
+   299→      </motion.div>
+   300→
+   301→      <motion.p
+   302→        initial={{ opacity: 0 }}
+   303→        animate={{ opacity: 1 }}
+   304→        transition={{ delay: 1.2 }}
+   305→        className="old-body text-center text-[#8b7355] text-sm mt-8 z-10 max-w-sm leading-relaxed"
+   306→      >
+   307→        Everybody is running for jobs, money, markets…
+   308→        <br />but you&apos;re still <span className="old-title font-extrabold text-[#5c4033]">human</span>. Take a breath. Remember the good days.
+   309→      </motion.p>
+   310→    </div>
+   311→  );
+   312→}
+   313→
+   314→/* ═══════════════════════════════════════════════════
+   315→   QUOTE BANNER
+   316→   ═══════════════════════════════════════════════════ */
+   317→function QuoteBanner({ quotes }: { quotes: string[] }) {
+   318→  const [idx, setIdx] = useState(0);
+   319→  useEffect(() => {
+   320→    const t = setInterval(() => setIdx((i) => (i + 1) % quotes.length), 8000);
+   321→    return () => clearInterval(t);
+   322→  }, [quotes.length]);
+   323→
+   324→  return (
+   325→    <AnimatePresence mode="wait">
+   326→      <motion.div
+   327→        key={idx}
+   328→        initial={{ opacity: 0, y: 10 }}
+   329→        animate={{ opacity: 1, y: 0 }}
+   330→        exit={{ opacity: 0, y: -10 }}
+   331→        transition={{ duration: 0.5 }}
+   332→        className="sk-lined p-4 rounded-lg old-quote text-[#5c4033] text-sm md:text-base text-center"
+   333→      >
+   334→        &ldquo;{quotes[idx]}&rdquo;
+   335→      </motion.div>
+   336→    </AnimatePresence>
+   337→  );
+   338→}
+   339→
+   340→/* ═══════════════════════════════════════════════════
+   341→   PERSONAL TIMELINE
+   342→   ═══════════════════════════════════════════════════ */
+   343→function PersonalTimeline({ birthYear }: { birthYear: number }) {
+   344→  const timeline = getPersonalTimeline(birthYear);
+   345→  return (
+   346→    <div className="space-y-4">
+   347→      {timeline.map((entry, i) => {
+   348→        const d = nostalgiaData[entry.decade];
+   349→        return (
+   350→          <motion.div
+   351→            key={entry.decade}
+   352→            initial={{ opacity: 0, x: -20 }}
+   353→            whileInView={{ opacity: 1, x: 0 }}
+   354→            viewport={{ once: true }}
+   355→            transition={{ delay: i * 0.15 }}
+   356→          >
+   357→            <div className="sk-paper rounded-lg p-4 flex items-center gap-4 sk-noise relative overflow-hidden" style={{ '--tape-rotate': `${-3 + i * 2}deg` } as React.CSSProperties}>
+   358→              <div
+   359→                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-lg flex-shrink-0 old-title"
+   360→                style={{
+   361→                  background: `linear-gradient(135deg, ${d.color}, ${d.color}cc)`,
+   362→                  boxShadow: `0 3px 8px ${d.color}50, inset 0 1px 0 rgba(255,255,255,0.3)`,
+   363→                }}
+   364→              >
+   365→                {entry.age.replace('Age ', '')}
+   366→              </div>
+   367→              <div className="flex-1 min-w-0">
+   368→                <div className="flex items-center gap-2">
+   369→                  <span className="old-heading font-extrabold text-sm text-[#3d2b1f]">{entry.decade}</span>
+   370→                  <span className="sk-vhs-label old-label text-[10px] font-bold text-[#8b7355] px-2 py-0.5 rounded">{entry.age}</span>
+   371→                </div>
+   372→                <p className="old-body text-xs text-[#8b7355] mt-0.5">{entry.label}</p>
+   373→              </div>
+   374→              <ChevronRight className="h-4 w-4 text-[#b8a888]" />
+   375→            </div>
+   376→          </motion.div>
+   377→        );
+   378→      })}
+   379→    </div>
+   380→  );
+   381→}
+   382→
+   383→/* ═══════════════════════════════════════════════════
+   384→   DASHBOARD
+   385→   ═══════════════════════════════════════════════════ */
+   386→function getDecadeTheme(birthYear: number): string {
+   387→  const decade = Math.floor(birthYear / 10) * 10;
+   388→  if (decade === 1980) return '80s';
+   389→  if (decade === 1990) return '90s';
+   390→  if (decade === 2000) return '2000s';
+   391→  return '';
+   392→}
+   393→
+   394→const DECADE_BG: Record<string, string> = {
+   395→  '80s': '#0a0a0a',
+   396→  '90s': '#c0c0c0',
+   397→  '2000s': '#d6eaff',
+   398→};
+   399→
+   400→function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => void }) {
+   401→  const decadeKey = getDecadeForYear(birthYear);
+   402→  const data = nostalgiaData[decadeKey];
+   403→  const decadeTheme = getDecadeTheme(birthYear);
+   404→  const [activeTab, setActiveTab] = useState('journal');
+   405→  const [showReel, setShowReel] = useState(false);
+   406→  const [showCamera, setShowCamera] = useState(false);
+   407→  const [showAuth, setShowAuth] = useState(false);
+   408→  const { data: session } = useSession();
+   409→  // Trigger old-style cassette loader when switching tabs
+   410→  const handleTabChange = useCallback((tabId: string) => {
+   411→    if (tabId === activeTab) return;
+   412→    // Reel opens as a fullscreen overlay instead of tab switch
+   413→    if (tabId === 'reel') {
+   414→      triggerOldLoader('Threading the reel...');
+   415→      const timer = setTimeout(() => {
+   416→        setShowReel(true);
+   417→        hideOldLoader();
+   418→      }, 750);
+   419→      return;
+   420→    }
+   421→    triggerOldLoader();
+   422→    const timer = setTimeout(() => {
+   423→      setActiveTab(tabId);
+   424→      setTimeout(() => hideOldLoader(), 300);
+   425→    }, 900 + Math.random() * 600);
+   426→    // Cleanup — stored in a ref so it can be cancelled on unmount
+   427→    const ref = { current: timer };
+   428→    return () => clearTimeout(ref.current);
+   429→  }, [activeTab]);
+   430→
+   431→  const tabs = [
+   432→    { id: 'reel', label: 'Reel', icon: <Clapperboard className="h-4 w-4" /> },
+   433→    { id: 'movies', label: 'Movies', icon: <Film className="h-4 w-4" /> },
+   434→    { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
+   435→    { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
+   436→    { id: 'contacts', label: 'Contacts', icon: <Phone className="h-4 w-4" /> },
+   437→    { id: 'memory', label: 'Memory', icon: <ImageIcon className="h-4 w-4" /> },
+   438→    { id: 'timeline', label: 'Timeline', icon: <Clock className="h-4 w-4" /> },
+   439→  ];
+   440→
+   441→  return (
+   442→    <div
+   443→      className="min-h-screen flex flex-col"
+   444→      data-decade-theme={decadeTheme || undefined}
+   445→      style={{ position: 'relative' as const, background: DECADE_BG[decadeTheme || ''] || undefined, overflowX: 'hidden' as const }}
+   446→    >
+   447→      {/* Header - wood grain */}
+   448→      <header className="sticky top-0 z-30 sk-wood px-2 py-0">
+   449→        <div className="max-w-5xl mx-auto py-2.5 flex items-center justify-between">
+   450→          <div className="flex items-center gap-3">
+   451→            <button onClick={onBack} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
+   452→              <ArrowLeft className="h-3.5 w-3.5" /> Back
+   453→            </button>
+   454→            <div className="h-4 w-px bg-[#a08868]" />
+   455→            <h2 className="old-title font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+   456→              Rewind
+   457→            </h2>
+   458→          </div>
+   459→          <div className="flex items-center gap-2">
+   460→            <div className="sk-vhs-label old-typewriter text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
+   461→              {data.decade} &middot; Born {birthYear}
+   462→            </div>
+   463→            <button
+   464→                onClick={() => setShowCamera(true)}
+   465→                className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
+   466→                title="Camera"
+   467→              >
+   468→                <Camera className="h-3.5 w-3.5 text-[#5c4033]" />
+   469→              </button>
+   470→            <button
+   471→                onClick={() => handleTabChange('settings')}
+   472→                className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
+   473→                title="Settings"
+   474→              >
+   475→                <Settings className="h-3.5 w-3.5 text-[#5c4033]" />
+   476→              </button>
+   477→            {/* Auth button */}
+   478→            {session?.user ? (
+   479→              <div className="flex items-center gap-1.5">
+   480→                <span className="old-typewriter text-[9px] text-[#6b6b6b] hidden sm:inline max-w-[80px] truncate">
+   481→                  {session.user.name || session.user.email}
+   482→                </span>
+   483→                <button
+   484→                  onClick={() => signOut()}
+   485→                  className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
+   486→                  title="Sign out"
+   487→                >
+   488→                  <LogOut className="h-3.5 w-3.5 text-[#5c4033]" />
+   489→                </button>
+   490→              </div>
+   491→            ) : (
+   492→              <button
+   493→                onClick={() => setShowAuth(true)}
+   494→                className="sk-btn old-btn px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+   495→              >
+   496→                <User className="h-3 w-3" />
+   497→                <span className="hidden sm:inline">Sign In</span>
+   498→              </button>
+   499→            )}
+   500→          </div>
+   501→        </div>
+   502→      </header>
+   503→
+   504→      <main className="flex-1 sk-cork min-h-0">
+   505→        <div className="max-w-5xl mx-auto px-3 md:px-4 py-5 pb-20">
+   506→          {/* Hero */}
+   507→          <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
+   508→            <div className="sk-paper rounded-xl p-5 text-center sk-noise relative overflow-hidden">
+   509→              <h1 className="old-title text-3xl md:text-4xl font-black mb-1" style={{ color: data.color, textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}>
+   510→                {data.decade}
+   511→              </h1>
+   512→              <p className="old-body text-sm text-[#8b7355] font-medium">{data.tagline}</p>
+   513→            </div>
+   514→          </motion.section>
+   515→
+   516→          {/* Quote */}
+   517→          <section className="mb-6">
+   518→            <QuoteBanner quotes={data.quotes} />
+   519→          </section>
+   520→
+   521→          {/* Tab bar - metal */}
+   522→          <div className="sk-metal rounded-xl p-1 mb-6 flex gap-1 shadow-[0_3px_8px_rgba(0,0,0,0.2)]">
+   523→            {tabs.map(tab => (
+   524→              <button
+   525→                key={tab.id}
+   526→                onClick={() => handleTabChange(tab.id)}
+   527→                className={`flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer old-typewriter ${
+   528→                  activeTab === tab.id
+   529→                    ? 'sk-paper shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] text-[#3d2b1f]'
+   530→                    : 'text-[#6b6b6b] hover:text-[#3d2b1f] hover:bg-white/20'
+   531→                }`}
+   532→              >
+   533→                {tab.icon}
+   534→                <span className="hidden sm:inline">{tab.label}</span>
+   535→              </button>
+   536→            ))}
+   537→          </div>
+   538→
+   539→          {/* ═══ MOVIES TAB ═══ */}
+   540→          {activeTab === 'movies' && (
+   541→            <AnimatePresence mode="wait">
+   542→              <motion.div key="movies" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   543→                <MoviesTab birthYear={birthYear} />
+   544→              </motion.div>
+   545→            </AnimatePresence>
+   546→          )}
+   547→
+   548→          {/* ═══ JOURNAL TAB ═══ */}
+   549→          {activeTab === 'journal' && (
+   550→            <AnimatePresence mode="wait">
+   551→              <motion.div key="journal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   552→                <div className="text-center mb-5">
+   553→                  <p className="old-body text-sm text-[#5c4033] font-medium">Put pen to paper. Let your memories breathe in ink.</p>
+   554→                </div>
+   555→                <OldJournal />
+   556→              </motion.div>
+   557→            </AnimatePresence>
+   558→          )}
+   559→
+   560→          {/* ═══ GAMES TAB ═══ */}
+   561→          {activeTab === 'games' && (
+   562→            <AnimatePresence mode="wait">
+   563→              <motion.div key="games" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   564→                <GamesHub data={data} />
+   565→              </motion.div>
+   566→            </AnimatePresence>
+   567→          )}
+   568→
+   569→          {/* ═══ CONTACTS TAB ═══ */}
+   570→          {activeTab === 'contacts' && (
+   571→            <AnimatePresence mode="wait">
+   572→              <motion.div key="contacts" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   573→                <ContactsTab />
+   574→              </motion.div>
+   575→            </AnimatePresence>
+   576→          )}
+   577→
+   578→          {/* ═══ MEMORY TAB ═══ */}
+   579→          {activeTab === 'memory' && (
+   580→            <AnimatePresence mode="wait">
+   581→              <motion.div key="memory" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   582→                <MemoryTab onOpenCamera={() => setShowCamera(true)} />
+   583→              </motion.div>
+   584→            </AnimatePresence>
+   585→          )}
+   586→
+   587→          {/* ═══ TIMELINE TAB ═══ (includes AI Insights) */}
+   588→          {activeTab === 'timeline' && (
+   589→            <AnimatePresence mode="wait">
+   590→              <motion.div key="timeline" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+   591→                <h2 className="old-label text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
+   592→                  <Clock className="h-4 w-4" style={{ color: data.color }} /> Your Life Timeline
+   593→                </h2>
+   594→                <PersonalTimeline birthYear={birthYear} />
+   595→
+   596→                <div className="mt-10 mb-4">
+   597→                  <h2 className="old-label text-sm font-black text-[#5c4033] uppercase tracking-widest mb-4 flex items-center gap-2">
+   598→                    <Brain className="h-4 w-4" style={{ color: data.color }} /> AI Insights
+   599→                  </h2>
+   600→                  <AiInsightsPanel birthYear={birthYear} />
+   601→                  <div className="mt-4 sk-paper rounded-xl p-4 sk-noise text-center">
+   602→                    <p className="old-body text-xs text-[#8b7355]">
+   603→                      {session?.user
+   604→                        ? 'Insights are generated locally using AI. They never leave your device.'
+   605→                        : 'Sign in to save your insights history and access them from any device.'}
+   606→                    </p>
+   607→                    {!session?.user && (
+   608→                      <button
+   609→                        onClick={() => setShowAuth(true)}
+   610→                        className="sk-btn old-btn px-4 py-2 rounded-lg text-xs font-bold mt-3 cursor-pointer flex items-center gap-2 mx-auto"
+   611→                      >
+   612→                        <User className="h-3.5 w-3.5" /> Create Account
+   613→                      </button>
+   614→                    )}
+   615→                  </div>
+   616→                </div>
+   617→
+   618→                <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mt-10">
+   619→                  <div className="sk-paper rounded-xl p-6 sk-noise relative overflow-hidden max-w-md mx-auto">
+   620→                    <motion.div
+   621→                      animate={{ rotate: [0, 8, -8, 0] }}
+   622→                      transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+   623→                      className="text-5xl mb-3"
+   624→                    >🫂</motion.div>
+   625→                    <h3 className="old-title text-lg font-black text-[#3d2b1f] mb-2">You made it through.</h3>
+   626→                    <p className="old-body text-xs text-[#8b7355] leading-relaxed">
+   627→                      Every memory on this page is a piece of who you are. The world moves fast, but your roots are deep. You came from simpler times, and that strength lives in you still. Take care of yourself.
+   628→                    </p>
+   629→                    <button onClick={onBack} className="sk-btn old-btn px-5 py-2.5 rounded-lg font-bold mt-4 cursor-pointer inline-flex items-center gap-2">
+   630→                      <RefreshCw className="h-4 w-4" /> Start Over
+   631→                    </button>
+   632→                  </div>
+   633→                </motion.div>
+   634→              </motion.div>
+   635→            </AnimatePresence>
+   636→          )}
+   637→
+   638→        </div>
+   639→      </main>
+   640→
+   641→      <footer className="sk-leather px-4 py-3 mt-auto">
+   642→        <div className="max-w-5xl mx-auto flex flex-col items-center gap-2">
+   643→          <p className="old-typewriter text-[10px] text-[#d4a574] font-medium" style={{ textShadow: '0 1px 1px rgba(0,0,0,0.3)' }}>
+   644→            Rewind — because you&apos;re human, not a machine. Take it easy.
+   645→          </p>
+   646→          <LocalDataBadge />
+   647→          <button
+   648→            onClick={() => handleTabChange('settings')}
+   649→            className="old-typewriter text-[9px] text-[#a89878] hover:text-[#d4a574]
+   650→              transition-colors cursor-pointer underline underline-offset-2 decoration-dotted"
+   651→          >
+   652→            Settings
+   653→          </button>
+   654→        </div>
+   655→      </footer>
+   656→
+   657→      {/* ═══ MEMORY REEL OVERLAY ═══ */}
+   658→      <AnimatePresence>
+   659→        {showReel && <MemoryReelFeed birthYear={birthYear} onClose={() => setShowReel(false)} />}
+   660→      </AnimatePresence>
+   661→
+   662→      {/* ═══ CAMERA OVERLAY ═══ */}
+   663→      <AnimatePresence>
+   664→        {showCamera && <VintageCamera onClose={() => setShowCamera(false)} />}
+   665→      </AnimatePresence>
+   666→
+   667→      {/* ═══ AUTH MODAL OVERLAY ═══ */}
+   668→      <AnimatePresence>
+   669→        {showAuth && (
+   670→          <AuthModal
+   671→            isOpen={showAuth}
+   672→            onClose={() => setShowAuth(false)}
+   673→            onAuthSuccess={() => {}}
+   674→          />
+   675→        )}
+   676→      </AnimatePresence>
+   677→
+   678→      {/* Old-style cassette transition loader (global) */}
+   679→      <OldTransitionLoader />
+   680→    </div>
+   681→  );
+   682→}
+   683→
+   684→/* ═══════════════════════════════════════════════════
+   685→   APP ROOT
+   686→   ═══════════════════════════════════════════════════ */
+   687→export default function Home() {
+   688→  const [birthYear, setBirthYear] = useState<number | null>(null);
+   689→  const [loading, setLoading] = useState(true);
+   690→
+   691→  // Run one-time localStorage → IndexedDB migration on first load
+   692→  useEffect(() => {
+   693→    if (typeof window !== 'undefined') {
+   694→      runMigration().catch(err => console.warn('[rewind] Migration error:', err));
+   695→    }
+   696→  }, []);
+   697→
+   698→  const handleLoadingDone = useCallback(() => {
+   699→    setLoading(false);
+   700→  }, []);
+   701→
+   702→  const handleSubmit = useCallback((year: number) => {
+   703→    triggerOldLoader('Tuning into your era...');
+   704→    setTimeout(() => {
+   705→      setBirthYear(year);
+   706→      window.scrollTo({ top: 0, behavior: 'smooth' });
+   707→      hideOldLoader();
+   708→    }, 1100);
+   709→  }, []);
+   710→
+   711→  const handleBack = useCallback(() => {
+   712→    triggerOldLoader('Rewinding...');
+   713→    setTimeout(() => {
+   714→      setBirthYear(null);
+   715→      hideOldLoader();
+   716→    }, 850);
+   717→  }, []);
+   718→
+   719→  return (
+   720→    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(180deg, #f5edd6 0%, #ede0c8 40%, #e8d8b8 100%)' }}>
+   721→      {/* CRT Boot Loading Screen */}
+   722→      {loading && <CrtLoadingScreen onDone={handleLoadingDone} />}
+   723→
+   724→      <AnimatePresence mode="wait">
+   725→        {birthYear === null ? (
+   726→          <motion.div
+   727→            key="hero"
+   728→            initial={{ opacity: 0 }}
+   729→            animate={{ opacity: 1 }}
+   730→            exit={{ opacity: 0, y: -20 }}
+   731→            transition={{ duration: 0.4 }}
+   732→            style={{ opacity: loading ? 0 : 1 }}
+   733→          >
+   734→            <HeroSection onSubmit={handleSubmit} />
+   735→          </motion.div>
+   736→        ) : (
+   737→          <motion.div
+   738→            key="dashboard"
+   739→            initial={{ opacity: 0, y: 20 }}
+   740→            animate={{ opacity: 1, y: 0 }}
+   741→            exit={{ opacity: 0 }}
+   742→            transition={{ duration: 0.5 }}
+   743→            className="flex flex-col min-h-screen"
+   744→          >
+   745→            <Dashboard birthYear={birthYear} onBack={handleBack} />
+   746→          </motion.div>
+   747→        )}
+   748→      </AnimatePresence>
+   749→    </div>
+   750→  );
+   751→}

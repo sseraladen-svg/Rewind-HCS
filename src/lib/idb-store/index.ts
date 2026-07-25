@@ -101,7 +101,7 @@ const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBPDatabase<RewindDB>> | null = null;
 
-function getDB(): Promise<IDBPDatabase<RewindDB>> {
+export function getDB(): Promise<IDBPDatabase<RewindDB>> {
   if (!dbPromise) {
     dbPromise = openDB<RewindDB>(DB_NAME, DB_VERSION, {
       upgrade(db) {

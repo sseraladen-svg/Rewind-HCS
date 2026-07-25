@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ImagePlus, Trash2, Download, Camera, FolderOpen,
-  X, ChevronLeft, ChevronRight, ImageIcon, ZoomIn,
+  X, ChevronLeft, ChevronRight, ImageIcon, ZoomIn, Share2,
 } from 'lucide-react';
 import { getAllCameraPhotos, addCameraPhoto, deleteCameraPhoto } from '@/lib/idb-store';
 import type { CameraPhotoRecord } from '@/lib/idb-store/types';
@@ -34,7 +34,7 @@ function generateId(): string {
   return `mem_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export default function MemoryTab({ onOpenCamera }: { onOpenCamera: () => void }) {
+export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenCamera: () => void; onOpenShareRewind: () => void }) {
   const [items, setItems] = useState<MemoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'filmstrip'>('grid');
@@ -180,6 +180,16 @@ export default function MemoryTab({ onOpenCamera }: { onOpenCamera: () => void }
         >
           <FolderOpen className="h-4 w-4" /> Add from Gallery
         </button>
+
+        {/* Share a Rewind (only when 3+ photos exist) */}
+        {items.length >= 3 && (
+          <button
+            onClick={onOpenShareRewind}
+            className="old-btn px-5 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer bg-[#8b5e3c] text-[#faf6eb] hover:bg-[#6b4226] transition-colors"
+          >
+            <Share2 className="h-4 w-4" /> Share a Rewind
+          </button>
+        )}
 
         {/* View toggle (only when items exist) */}
         {items.length > 0 && (
