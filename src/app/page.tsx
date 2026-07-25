@@ -28,10 +28,8 @@ import VintageCamera from '@/components/VintageCamera';
 import ShareRewind from '@/components/ShareRewind';
 import ThisDayInHistory from '@/components/ThisDayInHistory';
 import SettingsTab from '@/components/SettingsTab';
-import DailyPrompt from '@/components/DailyPrompt';
 import RecentMemoriesStrip from '@/components/RecentMemoriesStrip';
 import PhotoTimeline from '@/components/PhotoTimeline';
-import WeeklyRewind from '@/components/WeeklyRewind';
 import MemoryBoard from '@/components/MemoryBoard';
 import { runMigration } from '@/lib/idb-store/migrate';
 import OnboardingFlow from '@/components/OnboardingFlow';
@@ -612,8 +610,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
           {activeTab === 'journal' && (
             <AnimatePresence mode="wait">
               <motion.div key="journal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <WeeklyRewind />
-                <DailyPrompt birthYear={birthYear} />
                 <div className="text-center mb-5">
                   <p className="old-body text-sm text-[#5c4033] font-medium">Put pen to paper. Let your memories breathe in ink.</p>
                 </div>
