@@ -1,0 +1,696 @@
+  1043→    setTimeout(() => setEjecting(false), 400);
+  1044→  };
+  1045→
+  1046→  const restart = () => setPet({ hunger: 80, happiness: 80, energy: 80 });
+  1047→
+  1048→  const StatBar = ({ label, value }: { label: string; value: number }) => (
+  1049→    <div className="flex items-center gap-2">
+  1050→      <span className="tamagotchi-pixel-text text-xs w-20">{label}</span>
+  1051→      <div className="flex-1 h-3 bg-[#306230]/30 rounded-sm overflow-hidden">
+  1052→        <div className="h-full bg-[#306230] rounded-sm transition-all duration-300" style={{ width: `${value}%` }} />
+  1053→      </div>
+  1054→      <span className="tamagotchi-pixel-text text-xs w-8 text-right">{value}</span>
+  1055→    </div>
+  1056→  );
+  1057→
+  1058→  return (
+  1059→    <section id="tamagotchi" className="scroll-mt-8">
+  1060→      <SectionHeader icon={Gamepad2} title="Tamagotchi" subtitle="Keep your virtual pet alive! Stats drop every 5 seconds." />
+  1061→      <div className="max-w-xs mx-auto">
+  1062→        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1063→          className="bg-[#8b5e3c] rounded-3xl p-3 shadow-lg" style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
+  1064→          {/* Egg shape top */}
+  1065→          <div className="bg-[#c4956a] rounded-t-2xl h-3 mx-4" />
+  1066→          {/* Screen */}
+  1067→          <div className="tamagotchi-screen rounded-xl p-4 mx-2 mb-3">
+  1068→            <div className={`text-center text-5xl mb-3 ${ejecting ? 'scale-110 transition-transform' : ''}`}>{face}</div>
+  1069→            {isDead ? (
+  1070→              <div className="text-center">
+  1071→                <p className="tamagotchi-pixel-text text-sm mb-2">GAME OVER</p>
+  1072→                <button onClick={restart} className="sk-btn rounded px-3 py-1 text-xs old-btn">Restart</button>
+  1073→              </div>
+  1074→            ) : (
+  1075→              <div className="space-y-2">
+  1076→                <StatBar label="Hunger" value={pet.hunger} />
+  1077→                <StatBar label="Happy" value={pet.happiness} />
+  1078→                <StatBar label="Energy" value={pet.energy} />
+  1079→              </div>
+  1080→            )}
+  1081→          </div>
+  1082→          {/* Buttons */}
+  1083→          {!isDead && (
+  1084→            <div className="grid grid-cols-4 gap-2 px-2 pb-3">
+  1085→              {([['🍔', 'hunger', 15], ['🎮', 'happiness', 15], ['💤', 'energy', 20], ['🧹', 'happiness', 10]] as const).map(([emoji, stat, amt]) => (
+  1086→                <button key={String(emoji)} onClick={() => doAction(stat as keyof PetState, amt)}
+  1087→                  className="sk-btn rounded-lg py-2 text-xl flex flex-col items-center gap-0.5">
+  1088→                  <span>{emoji}</span>
+  1089→                  <span className="text-[8px] old-label">{String(emoji) === '🍔' ? 'Feed' : String(emoji) === '🎮' ? 'Play' : String(emoji) === '💤' ? 'Sleep' : 'Clean'}</span>
+  1090→                </button>
+  1091→              ))}
+  1092→            </div>
+  1093→          )}
+  1094→        </motion.div>
+  1095→      </div>
+  1096→    </section>
+  1097→  );
+  1098→}
+  1099→
+  1100→// ═══════════════════════════════════════════════════════════════
+  1101→// 6. Floppy Disk Save Counter Section
+  1102→// ═══════════════════════════════════════════════════════════════
+  1103→
+  1104→const FLOPPY_MESSAGES = [
+  1105→  "Don't forget to label your disk!",
+  1106→  'Saving to A:\\...',
+  1107→  'Please wait... writing to disk',
+  1108→  'Disk full! Just kidding.',
+  1109→  'Make sure the write-protect tab is off!',
+  1110→];
+  1111→
+  1112→function FloppyDiskSection() {
+  1113→  const [count, setCount] = useDBState<number>(
+  1114→    getFloppySavesCount,
+  1115→    () => addFloppySave('Save').catch(() => {}),
+  1116→    0,
+  1117→  );
+  1118→  const [ejecting, setEjecting] = useState(false);
+  1119→  const [statusText, setStatusText] = useState('');
+  1120→
+  1121→  const handleSave = () => {
+  1122→    setEjecting(true);
+  1123→    setStatusText('Saving...');
+  1124→    setTimeout(() => {
+  1125→      setCount((prev: number) => prev + 1);
+  1126→      setStatusText('Saved!');
+  1127→      setTimeout(() => {
+  1128→        setStatusText(FLOPPY_MESSAGES[Math.floor(Math.random() * FLOPPY_MESSAGES.length)]);
+  1129→        setEjecting(false);
+  1130→      }, 800);
+  1131→    }, 600);
+  1132→  };
+  1133→
+  1134→  return (
+  1135→    <section id="floppy" className="scroll-mt-8">
+  1136→      <SectionHeader icon={Save} title="Floppy Disk Saver" subtitle="Save your progress like it's 1995." />
+  1137→      <div className="max-w-xs mx-auto text-center">
+  1138→        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1139→          className={`sk-paper rounded-xl p-6 relative ${ejecting ? 'floppy-eject' : ''}`}>
+  1140→          {/* CSS Floppy Disk */}
+  1141→          <div className="mx-auto w-36 h-44 bg-[#1a1a2e] rounded-lg relative mb-4"
+  1142→            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+  1143→            {/* Metal slider */}
+  1144→            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-14 h-8 bg-[#b0b0b0] rounded-b-md"
+  1145→              style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.3)' }}>
+  1146→              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-3 bg-[#1a1a2e] rounded-t-sm" />
+  1147→            </div>
+  1148→            {/* Label area */}
+  1149→            <div className="absolute top-12 left-3 right-3 bottom-3 sk-vhs-label rounded p-2 flex flex-col items-center justify-center">
+  1150→              <span className="old-label text-[8px] mb-1">REWIND.DAT</span>
+  1151→              <span className="old-typewriter text-xs text-[#8b5e3c]">Saves: {count}</span>
+  1152→            </div>
+  1153→          </div>
+  1154→          {/* Save button */}
+  1155→          <button onClick={handleSave} disabled={ejecting}
+  1156→            className="sk-btn rounded-xl px-8 py-3 old-btn text-sm mb-3 disabled:opacity-60">
+  1157→            💾 Save
+  1158→          </button>
+  1159→          <p className="old-typewriter text-xs text-muted-foreground h-4">{statusText}</p>
+  1160→        </motion.div>
+  1161→      </div>
+  1162→    </section>
+  1163→  );
+  1164→}
+  1165→
+  1166→// ═══════════════════════════════════════════════════════════════
+  1167→// 7. Rotary Phone Dial Section
+  1168→// ═══════════════════════════════════════════════════════════════
+  1169→
+  1170→const PHONE_MESSAGES = [
+  1171→  "Nobody's home! Leave a message after the beep.",
+  1172→  'The number you have dialed... is your childhood. Please try again.',
+  1173→  'Connection established. Rewinding memories...',
+  1174→];
+  1175→
+  1176→export function RotaryPhoneSection() {
+  1177→  const [dialed, setDialed] = useState<number[]>([]);
+  1178→  const [spinning, setSpinning] = useState(false);
+  1179→  const [ringing, setRinging] = useState(false);
+  1180→  const [callMsg, setCallMsg] = useState('');
+  1181→  const dialRef = useRef<HTMLDivElement>(null);
+  1182→
+  1183→  const dialNumber = (n: number) => {
+  1184→    if (spinning) return;
+  1185→    setSpinning(true);
+  1186→    setDialed((prev) => [...prev, n]);
+  1187→    if (dialRef.current) {
+  1188→      dialRef.current.classList.remove('dial-spin');
+  1189→      void dialRef.current.offsetWidth;
+  1190→      dialRef.current.classList.add('dial-spin');
+  1191→    }
+  1192→    setTimeout(() => setSpinning(false), 500);
+  1193→  };
+  1194→
+  1195→  const handleCall = () => {
+  1196→    if (dialed.length === 0 || ringing) return;
+  1197→    setRinging(true);
+  1198→    setTimeout(() => {
+  1199→      setCallMsg(PHONE_MESSAGES[Math.floor(Math.random() * PHONE_MESSAGES.length)]);
+  1200→      setRinging(false);
+  1201→    }, 1000);
+  1202→  };
+  1203→
+  1204→  const handleClear = () => { setDialed([]); setCallMsg(''); };
+  1205→
+  1206→  const holes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+  1207→  const getAngle = (i: number) => (i * 30 + 150) * (Math.PI / 180);
+  1208→
+  1209→  return (
+  1210→    <section id="phone" className="scroll-mt-8">
+  1211→      <SectionHeader icon={Phone} title="Rotary Phone" subtitle="Dial a number the old-fashioned way." />
+  1212→      <div className="max-w-xs mx-auto text-center">
+  1213→        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1214→          className="sk-paper rounded-xl p-6 relative">
+  1215→          {/* Dial */}
+  1216→          <div className="mx-auto w-48 h-48 rounded-full bg-[#2a1f14] relative mb-4 p-4"
+  1217→            style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.05)' }}>
+  1218→            <div ref={dialRef} className="w-full h-full rounded-full relative" style={{ transition: 'transform 0.5s cubic-bezier(0.2,0,0.2,1)' }}>
+  1219→              {holes.map((n, i) => {
+  1220→                const a = getAngle(i);
+  1221→                const r = 60;
+  1222→                const x = 96 + r * Math.cos(a) - 14;
+  1223→                const y = 96 + r * Math.sin(a) - 14;
+  1224→                return (
+  1225→                  <button key={n} onClick={() => dialNumber(n)} disabled={spinning}
+  1226→                    className="absolute w-7 h-7 rounded-full bg-[#f0e6d3] border border-[#a89878] flex items-center justify-center old-typewriter text-xs font-bold text-[#3d2b1f] hover:bg-[#faf6eb] disabled:opacity-50 cursor-pointer"
+  1227→                    style={{ left: x, top: y, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.2)' }}>
+  1228→                    {n}
+  1229→                  </button>
+  1230→                );
+  1231→              })}
+  1232→              {/* Center cap */}
+  1233→              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[#5c4033]"
+  1234→                style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} />
+  1235→            </div>
+  1236→          </div>
+  1237→          {/* Dialed number display */}
+  1238→          <div className="sk-inset rounded-lg px-4 py-2 mb-3">
+  1239→            <span className="old-typewriter text-lg tracking-[0.3em] text-[#5c4033]">
+  1240→              {dialed.length > 0 ? dialed.join('') : '—'}
+  1241→            </span>
+  1242→          </div>
+  1243→          {/* Ring animation */}
+  1244→          {ringing && <div className="text-3xl mb-2 phone-ring inline-block"><Phone className="h-7 w-7" /></div>}
+  1245→          {/* Call message */}
+  1246→          {callMsg && <p className="old-body text-sm text-[#8b5e3c] mb-3">{callMsg}</p>}
+  1247→          {/* Buttons */}
+  1248→          <div className="flex gap-3 justify-center">
+  1249→            <button onClick={handleCall} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Call</button>
+  1250→            <button onClick={handleClear} className="sk-btn rounded-lg px-5 py-2 old-btn text-xs">✕ Clear</button>
+  1251→          </div>
+  1252→        </motion.div>
+  1253→      </div>
+  1254→    </section>
+  1255→  );
+  1256→}
+  1257→
+  1258→// ═══════════════════════════════════════════════════════════════
+  1259→// 8. Retro Sticker Wall Section
+  1260→// ═══════════════════════════════════════════════════════════════
+  1261→
+  1262→const STICKER_EMOJIS = [
+  1263→  '⭐', '🎸', '🎮', '🎭', '🎬', '🎵', '📺', '📻', '📱', '📸',
+  1264→  '🍔', '🧸', '🎪', '🚀', '🌈', '💯', '👀', '🔥', '💎', '🍇',
+  1265→  '🌙', '🍀', '🏀', '🎨', '🎧',
+  1266→];
+  1267→
+  1268→interface PlacedSticker { id: string; emoji: string; x: number; y: number; rotation: number; }
+  1269→
+  1270→function StickerWallSection() {
+  1271→  const [stickers, setStickers] = useDBState<PlacedSticker[]>(
+  1272→    () => getAllStickers() as Promise<PlacedSticker[]>,
+  1273→    (val) => putAllStickers(val as any).catch(() => {}),
+  1274→    [],
+  1275→  );
+  1276→  const [pickedEmoji, setPickedEmoji] = useState<string | null>(null);
+  1277→  const wallRef = useRef<HTMLDivElement>(null);
+  1278→
+  1279→  const placeSticker = (e: React.MouseEvent<HTMLDivElement>) => {
+  1280→    if (!pickedEmoji || !wallRef.current) return;
+  1281→    const rect = wallRef.current.getBoundingClientRect();
+  1282→    const x = e.clientX - rect.left;
+  1283→    const y = e.clientY - rect.top;
+  1284→    const rotation = (Math.random() - 0.5) * 30;
+  1285→    setStickers((prev: PlacedSticker[]) => [...prev, { id: generateId(), emoji: pickedEmoji, x, y, rotation }]);
+  1286→  };
+  1287→
+  1288→  const clearWall = () => { setStickers([]); setPickedEmoji(null); };
+  1289→
+  1290→  return (
+  1291→    <section id="stickers" className="scroll-mt-8">
+  1292→      <SectionHeader icon={Sticker} title="Sticker Wall" subtitle="Pick a sticker, then click the board to place it." />
+  1293→      <div className="max-w-lg mx-auto">
+  1294→        {/* Emoji picker */}
+  1295→        <div className="sk-paper rounded-xl p-3 mb-4">
+  1296→          <div className="flex flex-wrap gap-2 justify-center">
+  1297→            {STICKER_EMOJIS.map((emoji) => (
+  1298→              <button key={emoji} onClick={() => setPickedEmoji(pickedEmoji === emoji ? null : emoji)}
+  1299→                className={`w-9 h-9 rounded-lg flex items-center justify-center text-xl cursor-pointer transition-all ${
+  1300→                  pickedEmoji === emoji ? 'sk-sticker scale-110 bg-[#faf6eb]' : 'hover:bg-[#faf6eb]/60'
+  1301→                }`}>
+  1302→                {emoji}
+  1303→              </button>
+  1304→            ))}
+  1305→          </div>
+  1306→        </div>
+  1307→        {/* Cork board */}
+  1308→        <div ref={wallRef} onClick={placeSticker}
+  1309→          className="sk-cork rounded-xl relative overflow-hidden cursor-crosshair"
+  1310→          style={{ height: pickedEmoji ? '300px' : '200px', transition: 'height 0.3s' }}>
+  1311→          {stickers.length === 0 && (
+  1312→            <div className="absolute inset-0 flex items-center justify-center old-handwritten text-[#8b7355] text-sm opacity-50 pointer-events-none">
+  1313→              {pickedEmoji ? 'Click here to place your sticker!' : 'Pick a sticker above to get started'}
+  1314→            </div>
+  1315→          )}
+  1316→          {stickers.map((s) => (
+  1317→            <div key={s.id} className="absolute text-2xl sticker-pop cursor-grab active:cursor-grabbing select-none"
+  1318→              style={{ left: s.x - 16, top: s.y - 16, '--sticker-rotate': `${s.rotation}deg` } as React.CSSProperties}>
+  1319→              {s.emoji}
+  1320→            </div>
+  1321→          ))}
+  1322→        </div>
+  1323→        {stickers.length > 0 && (
+  1324→          <div className="flex justify-center mt-3">
+  1325→            <button onClick={clearWall} className="sk-btn rounded-lg px-4 py-2 old-btn text-xs flex items-center gap-1.5">
+  1326→              <Trash2 className="w-3 h-3" /> Clear Wall
+  1327→            </button>
+  1328→          </div>
+  1329→        )}
+  1330→      </div>
+  1331→    </section>
+  1332→  );
+  1333→}
+  1334→
+  1335→// ═══════════════════════════════════════════════════════════════
+  1336→// 9. Retro Chat (AIM / MSN Messenger style)
+  1337→// ═══════════════════════════════════════════════════════════════
+  1338→
+  1339→interface ChatMessage {
+  1340→  id: string;
+  1341→  from: 'me' | 'buddy';
+  1342→  text: string;
+  1343→  time: string;
+  1344→  color: string;
+  1345→}
+  1346→
+  1347→const BUDDY_REPLIES = [
+  1348→  "hey!! whats up?? :D",
+  1349→  "omg remember when we used to stay up late chatting??",
+  1350→  "haha yeah that was so fun",
+  1351→  "did u watch that cartoon yesterday?? it was so good!!",
+  1352→  "brb my mom is calling me for dinner",
+  1353→  "back! sorry about that lol",
+  1354→  "i cant believe its already 11pm... time flies when ur having fun",
+  1355→  "u still have that mixtape i made u??",
+  1356→  "LOL thats hilarious",
+  1357→  "wanna come over tomorrow? we can play n64",
+  1358→  "my dad said we can rent a movie from blockbuster!!",
+  1359→  "a/s/l? lol jk",
+  1360→  "brb phone is ringing... its probably jessica",
+  1361→  "ok back. it was jessica. she said shes coming over too!",
+  1362→  "remember that time we snuck out at night?? so scary but fun",
+  1363→  "my mom made cookies!! chocolate chip :D",
+  1364→  "u online?? hello??",
+  1365→  "gtg its getting late. ttyl!!",
+  1366→  "omg i just heard the best song on the radio",
+  1367→  "check this out -> I just found the coolest website",
+  1368→  "haha ur so funny",
+  1369→  "wait wait wait... did u see that episode??",
+  1370→  "i love these smileys :) ;) :P :D >:( 8-)",
+  1371→  "summer vacation is gonna be so awesome this year!!",
+  1372→  "school is almost over!!! YESSS",
+  1373→  "do u have aol or msn?? add me!!",
+  1374→  "my screen name is NostalgiaKid2000 add me",
+  1375→  "gtg bye!! *waves*",
+  1376→];
+  1377→
+  1378→const BUDDY_NAMES = [
+  1379→  { name: 'CoolDude99', color: '#ff0000' },
+  1380→  { name: 'SunshineGal', color: '#ff69b4' },
+  1381→  { name: 'Sk8rBoi2000', color: '#0000ff' },
+  1382→  { name: 'xXDarkAngelXx', color: '#800080' },
+  1383→  { name: 'PizzaLover42', color: '#008080' },
+  1384→];
+  1385→
+  1386→export function RetroChatSection() {
+  1387→  const [messages, setMessages] = useDBState<ChatMessage[]>(
+  1388→    () => getAllChatMessages() as Promise<ChatMessage[]>,
+  1389→    (val) => putAllChatMessages(val as any).catch(() => {}),
+  1390→    [],
+  1391→  );
+  1392→  const [inputText, setInputText] = useState('');
+  1393→  const [buddyName] = useState(() => BUDDY_NAMES[Math.floor(Math.random() * BUDDY_NAMES.length)]);
+  1394→  const [statusText, setStatusText] = useState('Online');
+  1395→  const [showEmojis, setShowEmojis] = useState(false);
+  1396→  const chatEndRef = useRef<HTMLDivElement>(null);
+  1397→
+  1398→  const myColor = '#000080';
+  1399→
+  1400→  const emojis = [':)', ';)', ':P', ':D', ':(', '>:(', '8-)', 'O:)', ':O', '<3', 'XD', 'LOL'];
+  1401→
+  1402→  useEffect(() => {
+  1403→    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  1404→  }, [messages]);
+  1405→
+  1406→  // Buddy auto-replies
+  1407→  useEffect(() => {
+  1408→    if (messages.length === 0) return;
+  1409→    const lastMsg = messages[messages.length - 1];
+  1410→    if (lastMsg.from !== 'me') return;
+  1411→
+  1412→    // Show typing indicator
+  1413→    const typingDelay = 800 + Math.random() * 1200;
+  1414→    const replyDelay = typingDelay + 1000 + Math.random() * 1500;
+  1415→
+  1416→    const t1 = setTimeout(() => setStatusText('typing...'), typingDelay);
+  1417→    const t2 = setTimeout(() => {
+  1418→      const reply = BUDDY_REPLIES[Math.floor(Math.random() * BUDDY_REPLIES.length)];
+  1419→      const now = new Date();
+  1420→      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  1421→      const newMsg: ChatMessage = {
+  1422→        id: generateId(),
+  1423→        from: 'buddy',
+  1424→        text: reply,
+  1425→        time: timeStr,
+  1426→        color: buddyName.color,
+  1427→      };
+  1428→      setMessages((prev: ChatMessage[]) => [...prev, newMsg]);
+  1429→      setStatusText('Online');
+  1430→    }, replyDelay);
+  1431→
+  1432→    return () => {
+  1433→      clearTimeout(t1);
+  1434→      clearTimeout(t2);
+  1435→    };
+  1436→  }, [messages.length, buddyName.color, setMessages]);
+  1437→
+  1438→  const sendMessage = () => {
+  1439→    const text = inputText.trim();
+  1440→    if (!text) return;
+  1441→    const now = new Date();
+  1442→    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  1443→    const newMsg: ChatMessage = {
+  1444→      id: generateId(),
+  1445→      from: 'me',
+  1446→      text,
+  1447→      time: timeStr,
+  1448→      color: myColor,
+  1449→    };
+  1450→    setMessages((prev: ChatMessage[]) => [...prev, newMsg]);
+  1451→    setInputText('');
+  1452→    setShowEmojis(false);
+  1453→  };
+  1454→
+  1455→  const insertEmoji = (emoji: string) => {
+  1456→    setInputText(prev => prev + ' ' + emoji);
+  1457→    setShowEmojis(false);
+  1458→  };
+  1459→
+  1460→  const clearChat = () => {
+  1461→    setMessages([]);
+  1462→    setStatusText('Online');
+  1463→  };
+  1464→
+  1465→  return (
+  1466→    <section id="chat" className="scroll-mt-8">
+  1467→      <SectionHeader icon={MessageSquare} title="Retro Chat" subtitle="Chat like it's 2001. AIM style." />
+  1468→
+  1469→      <div className="max-w-lg mx-auto">
+  1470→        <motion.div
+  1471→          initial={{ opacity: 0, scale: 0.95 }}
+  1472→          animate={{ opacity: 1, scale: 1 }}
+  1473→          className="rounded-sm overflow-hidden"
+  1474→          style={{
+  1475→            border: '2px solid',
+  1476→            borderColor: '#808080 #ffffff #ffffff #808080',
+  1477→            boxShadow: '2px 2px 0 #000',
+  1478→          }}
+  1479→        >
+  1480→          {/* Window title bar - AIM style */}
+  1481→          <div
+  1482→            className="flex items-center justify-between px-3 py-1.5"
+  1483→            style={{
+  1484→              background: 'linear-gradient(180deg, #3168d5 0%, #2456b5 40%, #1a3f8a 100%)',
+  1485→              borderBottom: '1px solid #000',
+  1486→            }}
+  1487→          >
+  1488→            <div className="flex items-center gap-2">
+  1489→              <MessageSquare className="w-3.5 h-3.5 text-white/80" />
+  1490→              <span style={{ fontFamily: 'Tahoma, Verdana, sans-serif', fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>
+  1491→                AIM - Instant Message
+  1492→              </span>
+  1493→            </div>
+  1494→            <div className="flex items-center gap-1">
+  1495→              <button onClick={() => {}} className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+  1496→                <Minimize2 className="w-3 h-3" />
+  1497→              </button>
+  1498→              <button onClick={() => {}} className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 text-[10px]">
+  1499→                <X className="w-3 h-3" />
+  1500→              </button>
+  1501→            </div>
+  1502→          </div>
+  1503→
+  1504→          {/* Toolbar */}
+  1505→          <div
+  1506→            className="flex items-center gap-1 px-2 py-1"
+  1507→            style={{ background: '#c0c0c0', borderBottom: '1px solid #808080' }}
+  1508→          >
+  1509→            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px', color: '#000' }}>
+  1510→              To:
+  1511→            </span>
+  1512→            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px', fontWeight: 'bold', color: buddyName.color }}>
+  1513→              {buddyName.name}
+  1514→            </span>
+  1515→            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080', marginLeft: '8px' }}>
+  1516→              ({statusText})
+  1517→            </span>
+  1518→          </div>
+  1519→
+  1520→          {/* Chat area */}
+  1521→          <div
+  1522→            className="relative"
+  1523→            style={{
+  1524→              height: '320px',
+  1525→              background: '#ffffff',
+  1526→              fontFamily: 'Tahoma, Verdana, Arial, sans-serif',
+  1527→              fontSize: '12px',
+  1528→              overflowY: 'auto',
+  1529→            }}
+  1530→          >
+  1531→            {messages.length === 0 && (
+  1532→              <div className="absolute inset-0 flex flex-col items-center justify-center text-[#808080]">
+  1533→                <span className="text-3xl mb-2">💬</span>
+  1534→                <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '11px' }}>
+  1535→                  Start a conversation with <b style={{ color: buddyName.color }}>{buddyName.name}</b>
+  1536→                </p>
+  1537→                <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#a0a0a0', marginTop: '4px' }}>
+  1538→                  Type something below and hit Send
+  1539→                </p>
+  1540→              </div>
+  1541→            )}
+  1542→            {messages.map((msg) => (
+  1543→              <div key={msg.id} className="px-3 py-1 hover:bg-[#f0f0ff]/50" style={{ lineHeight: '1.5' }}>
+  1544→                <span style={{ fontWeight: 'bold', color: msg.color, fontSize: '12px' }}>
+  1545→                  {msg.from === 'me' ? 'Me' : buddyName.name}:
+  1546→                </span>{' '}
+  1547→                <span style={{ color: '#000', fontSize: '12px' }}>{msg.text}</span>
+  1548→                <span className="ml-2" style={{ color: '#808080', fontSize: '10px' }}>{msg.time}</span>
+  1549→              </div>
+  1550→            ))}
+  1551→            <div ref={chatEndRef} />
+  1552→          </div>
+  1553→
+  1554→          {/* Input area */}
+  1555→          <div
+  1556→            className="px-2 py-2"
+  1557→            style={{ background: '#c0c0c0', borderTop: '1px solid #808080' }}
+  1558→          >
+  1559→            {/* Emoji picker */}
+  1560→            <AnimatePresence>
+  1561→              {showEmojis && (
+  1562→                <motion.div
+  1563→                  initial={{ opacity: 0, height: 0 }}
+  1564→                  animate={{ opacity: 1, height: 'auto' }}
+  1565→                  exit={{ opacity: 0, height: 0 }}
+  1566→                  className="mb-2 flex flex-wrap gap-1 p-2 overflow-hidden"
+  1567→                  style={{ background: '#ffffff', border: '1px solid #808080' }}
+  1568→                >
+  1569→                  {emojis.map(e => (
+  1570→                    <button key={e} onClick={() => insertEmoji(e)}
+  1571→                      className="px-1.5 py-0.5 text-sm hover:bg-[#e0e0ff] cursor-pointer"
+  1572→                      style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '13px' }}>
+  1573→                      {e}
+  1574→                    </button>
+  1575→                  ))}
+  1576→                </motion.div>
+  1577→              )}
+  1578→            </AnimatePresence>
+  1579→
+  1580→            <div className="flex items-center gap-2">
+  1581→              <div
+  1582→                className="flex-1"
+  1583→                style={{
+  1584→                  border: '2px solid',
+  1585→                  borderColor: '#808080 #ffffff #ffffff #808080',
+  1586→                }}
+  1587→              >
+  1588→                <input
+  1589→                  type="text"
+  1590→                  value={inputText}
+  1591→                  onChange={e => setInputText(e.target.value)}
+  1592→                  onKeyDown={e => { if (e.key === 'Enter') sendMessage(); }}
+  1593→                  placeholder="Type a message..."
+  1594→                  className="w-full px-2 py-1.5 text-[12px] outline-none"
+  1595→                  style={{
+  1596→                    fontFamily: 'Tahoma, Verdana, sans-serif',
+  1597→                    background: '#ffffff',
+  1598→                    color: '#000',
+  1599→                  }}
+  1600→                />
+  1601→              </div>
+  1602→              <button
+  1603→                onClick={() => setShowEmojis(!showEmojis)}
+  1604→                className="px-2 py-1.5 cursor-pointer"
+  1605→                style={{
+  1606→                  background: '#c0c0c0',
+  1607→                  border: '2px solid',
+  1608→                  borderColor: '#ffffff #808080 #808080 #ffffff',
+  1609→                  fontSize: '14px',
+  1610→                }}
+  1611→                title="Emoticons"
+  1612→              >
+  1613→                <SmilePlus className="w-4 h-4 text-[#000]" />
+  1614→              </button>
+  1615→              <button
+  1616→                onClick={sendMessage}
+  1617→                className="px-3 py-1.5 cursor-pointer font-bold"
+  1618→                style={{
+  1619→                  fontFamily: 'Tahoma, sans-serif',
+  1620→                  fontSize: '11px',
+  1621→                  background: 'linear-gradient(180deg, #e8e8e8, #c0c0c0)',
+  1622→                  border: '2px solid',
+  1623→                  borderColor: '#ffffff #808080 #808080 #ffffff',
+  1624→                  color: '#000',
+  1625→                }}
+  1626→              >
+  1627→                Send
+  1628→              </button>
+  1629→            </div>
+  1630→          </div>
+  1631→
+  1632→          {/* Bottom bar with clear */}
+  1633→          <div
+  1634→            className="flex items-center justify-between px-3 py-1"
+  1635→            style={{ background: '#c0c0c0', borderTop: '1px solid #ffffff' }}
+  1636→          >
+  1637→            <span style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080' }}>
+  1638→              {messages.length > 0 ? `${messages.length} message${messages.length > 1 ? 's' : ''}` : 'No messages yet'}
+  1639→            </span>
+  1640→            {messages.length > 0 && (
+  1641→              <button onClick={clearChat}
+  1642→                style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#808080', textDecoration: 'underline' }}
+  1643→                className="hover:text-[#000] cursor-pointer">
+  1644→                Clear Chat
+  1645→              </button>
+  1646→            )}
+  1647→          </div>
+  1648→        </motion.div>
+  1649→
+  1650→        {/* Fun AIM-era info */}
+  1651→        <div className="mt-4 text-center space-y-1">
+  1652→          <p className="old-handwritten text-xs text-[#8b7355]">
+  1653→            Chatting with <b style={{ color: buddyName.color }}>{buddyName.name}</b> on AIM
+  1654→          </p>
+  1655→          <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#a0a0a0' }}>
+  1656→            &quot;You&apos;ve Got Mail!&quot; 📬
+  1657→          </p>
+  1658→        </div>
+  1659→      </div>
+  1660→    </section>
+  1661→  );
+  1662→}
+  1663→
+  1664→// ═══════════════════════════════════════════════════════════════
+  1665→// Main Component — NostalgiaFeatures
+  1666→// ═══════════════════════════════════════════════════════════════
+  1667→
+  1668→export default function NostalgiaFeatures() {
+  1669→  const isClient = useIsClient();
+  1670→  const visitCount = useVisitCounter();
+  1671→
+  1672→  if (!isClient) {
+  1673→    return (
+  1674→      <div className="min-h-screen flex items-center justify-center bg-background">
+  1675→        <motion.div
+  1676→          animate={{ opacity: [0.3, 1, 0.3] }}
+  1677→          transition={{ duration: 1.5, repeat: Infinity }}
+  1678→          className="old-typewriter text-muted-foreground text-sm"
+  1679→        >
+  1680→          Loading... please wait...
+  1681→        </motion.div>
+  1682→      </div>
+  1683→    );
+  1684→  }
+  1685→
+  1686→  return (
+  1687→    <main className="min-h-screen bg-background">
+  1688→      {/* Decorative noise overlay */}
+  1689→      <div className="fixed inset-0 sk-noise pointer-events-none z-50" />
+  1690→
+  1691→      <div className="relative z-10 max-w-3xl mx-auto px-4 py-12 md:py-16 space-y-16 md:space-y-20">
+  1692→        {/* ── Guestbook ── */}
+  1693→        <GuestbookSection visitorCount={visitCount} />
+  1694→
+  1695→        <Separator className="opacity-30" />
+  1696→
+  1697→        {/* ── Mixtape Creator ── */}
+  1698→        <MixtapeSection />
+  1699→
+  1700→        <Separator className="opacity-30" />
+  1701→
+  1702→        {/* ── Magic 8-Ball ── */}
+  1703→        <Magic8BallSection />
+  1704→
+  1705→        <Separator className="opacity-30" />
+  1706→
+  1707→        {/* ── Visit Counter ── */}
+  1708→        <VisitCounterSection count={visitCount} />
+  1709→
+  1710→        <Separator className="opacity-30" />
+  1711→
+  1712→        {/* ── Tamagotchi ── */}
+  1713→        <TamagotchiSection />
+  1714→
+  1715→        <Separator className="opacity-30" />
+  1716→
+  1717→        {/* ── Floppy Disk Saver ── */}
+  1718→        <FloppyDiskSection />
+  1719→
+  1720→        <Separator className="opacity-30" />
+  1721→
+  1722→        {/* ── Sticker Wall ── */}
+  1723→        <StickerWallSection />
+  1724→
+  1725→        {/* Footer */}
+  1726→        <footer className="pt-8 pb-4 text-center">
+  1727→          <Separator className="opacity-20 mb-6" />
+  1728→          <p className="old-handwritten text-muted-foreground text-sm">
+  1729→            ~ made with 💾 and nostalgia ~
+  1730→          </p>
+  1731→          <p className="old-label text-[10px] text-[#8b7355] mt-2">
+  1732→            REWIND © {new Date().getFullYear()} · BEST VIEWED IN NETSCAPE NAVIGATOR 4.0
+  1733→          </p>
+  1734→        </footer>
+  1735→      </div>
+  1736→    </main>
+  1737→  );
+  1738→}

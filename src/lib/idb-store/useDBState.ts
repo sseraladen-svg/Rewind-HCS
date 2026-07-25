@@ -27,7 +27,7 @@ export function useDBState<T>(
   const [value, setValue] = useState<T>(initial);
   const [loaded, setLoaded] = useState(false);
   const saverRef = useRef(saver);
-  saverRef.current = saver;
+  useEffect(() => { saverRef.current = saver; });
 
   // Load from IDB on mount
   useEffect(() => {

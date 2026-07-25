@@ -371,7 +371,6 @@ export default function VintageCamera({ onClose }: { onClose: () => void }) {
       dbObjectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
       dbObjectUrlsRef.current = [];
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ── Format time ── */

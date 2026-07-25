@@ -84,21 +84,21 @@ const overlayVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
   exit: { opacity: 0 },
-};
+} as const;
 
 const panelVariants = {
   hidden: { y: 40, opacity: 0 },
   visible: {
     y: 0,
     opacity: 1,
-    transition: { type: 'spring', damping: 28, stiffness: 300 },
+    transition: { type: 'spring' as const, damping: 28, stiffness: 300 },
   },
   exit: { y: 40, opacity: 0 },
 };
 
 const stepContentVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
-  center: { x: 0, opacity: 1, transition: { duration: 0.35, ease: 'easeOut' } },
+  center: { x: 0, opacity: 1, transition: { duration: 0.35, ease: 'easeOut' as const } },
   exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
 };
 
@@ -598,7 +598,7 @@ export default function ShareRewind({ open, onClose }: ShareRewindProps) {
           // Get natural dimensions
           const img = await loadImage(url);
           if (cancelled) {
-            URLs.forEach(u => URL.revokeObjectURL(u));
+            urls.forEach(u => URL.revokeObjectURL(u));
             return;
           }
           items.push({

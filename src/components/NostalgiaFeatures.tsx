@@ -146,7 +146,7 @@ function useDBState<T>(
 
   useEffect(() => {
     loader().then((loaded) => setValue(loaded)).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const set = useCallback(
     (updater: T | ((prev: T) => T)) => {
@@ -156,7 +156,7 @@ function useDBState<T>(
         return next;
       });
     },
-    [saver], // eslint-disable-line react-hooks/exhaustive-deps
+    [saver],
   );
 
   return [value, set];
@@ -993,6 +993,18 @@ function VisitCounterSection({ count }: { count: number }) {
 
 interface PetState { hunger: number; happiness: number; energy: number; }
 
+function StatBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="tamagotchi-pixel-text text-xs w-20">{label}</span>
+      <div className="flex-1 h-3 bg-[#306230]/30 rounded-sm overflow-hidden">
+        <div className="h-full bg-[#306230] rounded-sm transition-all duration-300" style={{ width: `${value}%` }} />
+      </div>
+      <span className="tamagotchi-pixel-text text-xs w-8 text-right">{value}</span>
+    </div>
+  );
+}
+
 function TamagotchiSection() {
   const [pet, setPet] = useDBState<PetState>(
     async () => {
@@ -1032,16 +1044,6 @@ function TamagotchiSection() {
   };
 
   const restart = () => setPet({ hunger: 80, happiness: 80, energy: 80 });
-
-  const StatBar = ({ label, value }: { label: string; value: number }) => (
-    <div className="flex items-center gap-2">
-      <span className="tamagotchi-pixel-text text-xs w-20">{label}</span>
-      <div className="flex-1 h-3 bg-[#306230]/30 rounded-sm overflow-hidden">
-        <div className="h-full bg-[#306230] rounded-sm transition-all duration-300" style={{ width: `${value}%` }} />
-      </div>
-      <span className="tamagotchi-pixel-text text-xs w-8 text-right">{value}</span>
-    </div>
-  );
 
   return (
     <section id="tamagotchi" className="scroll-mt-8">

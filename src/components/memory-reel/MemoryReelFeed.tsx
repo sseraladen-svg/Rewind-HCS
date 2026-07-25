@@ -57,6 +57,14 @@ export default function MemoryReelFeed({
     getReelReactions().then(setReactions).catch(() => {});
   }, []);
 
+  const goNext = useCallback(() => {
+    setActiveIndex(i => Math.min(i + 1, feed.length - 1));
+  }, [feed.length]);
+
+  const goPrev = useCallback(() => {
+    setActiveIndex(i => Math.max(i - 1, 0));
+  }, []);
+
   // Keyboard navigation
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -72,15 +80,7 @@ export default function MemoryReelFeed({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [activeIndex, feed.length]);
-
-  const goNext = useCallback(() => {
-    setActiveIndex(i => Math.min(i + 1, feed.length - 1));
-  }, [feed.length]);
-
-  const goPrev = useCallback(() => {
-    setActiveIndex(i => Math.max(i - 1, 0));
-  }, []);
+  }, [goNext, goPrev, onClose]);
 
   // Touch / mouse drag
   const handleDragStart = useCallback((clientY: number) => {
@@ -159,14 +159,16 @@ export default function MemoryReelFeed({
 
   const currentCard = feed[activeIndex];
 
-  // Direction for animation
+  // Direction for animation (derived from ref, no extra render)
+  const directionRef = useRef(0);
   const [direction, setDirection] = useState(0);
-  const prevIndex = useRef(activeIndex);
-  useEffect(() => {
-    if (activeIndex > prevIndex.current) setDirection(1);
-    else if (activeIndex < prevIndex.current) setDirection(-1);
-    prevIndex.current = activeIndex;
-  }, [activeIndex]);
+  const prevIndexRef = useRef(activeIndex);
+  // Update direction synchronously when activeIndex changes (during render, not in effect)
+  if (activeIndex !== prevIndexRef.current) {
+    directionRef.current = activeIndex > prevIndexRef.current ? 1 : -1;
+    setDirection(directionRef.current);
+    prevIndexRef.current = activeIndex;
+  }
 
   const variants = {
     enter: (d: number) => ({

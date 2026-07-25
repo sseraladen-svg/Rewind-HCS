@@ -235,7 +235,7 @@ async function getBoardMemos(): Promise<PinnedMemory[]> {
 async function saveBoardMemos(memos: PinnedMemory[]): Promise<void> {
   try {
     const db = await getDB();
-    await db.put('era_skin', { id: BOARD_MEMOS_ID, memos });
+    await db.put('era_skin', { id: BOARD_MEMOS_ID, skin_id: 'board', memos } as any);
   } catch {
     // silently fail
   }

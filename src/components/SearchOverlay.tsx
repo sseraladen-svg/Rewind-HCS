@@ -136,7 +136,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
       // Defer state reset to avoid cascading render lint warning
       const t = setTimeout(() => {
         setQuery('');
-        setResults({ movies: [], journals: [], nostalgia: [], actions: [] });
+        setResults({ movies: [], journals: [], nostalgia: [], photos: [], actions: [] });
         setHasSearched(false);
       }, 0);
       return () => clearTimeout(t);
@@ -441,6 +441,7 @@ function ResultGroups({
     movies: SearchResult[];
     journals: SearchResult[];
     nostalgia: SearchResult[];
+    photos: SearchResult[];
     actions: SearchResult[];
   };
   getCategoryIcon: (cat: string) => React.ReactNode;

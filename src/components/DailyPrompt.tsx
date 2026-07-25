@@ -138,7 +138,7 @@ async function getStoredPrompt(): Promise<string | null> {
 async function storePrompt(text: string): Promise<void> {
   try {
     const db = await getDB();
-    await db.put('era_skin', { id: PROMPT_STORE_ID, date: getDayIndex(), text });
+    await db.put('era_skin', { id: PROMPT_STORE_ID, skin_id: 'prompt', date: getDayIndex(), text } as any);
   } catch {
     // silently fail
   }
