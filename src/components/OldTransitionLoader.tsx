@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { soundCassetteRewind } from '@/lib/sounds';
 
 /* ═══════ OLD-STYLE TRANSITION LOADER ═══════
    Shows a cassette tape loading animation when switching
@@ -13,6 +14,7 @@ let globalShowFn: ((msg?: string) => void) | null = null;
 let globalHideFn: (() => void) | null = null;
 
 export function triggerOldLoader(msg?: string) {
+  soundCassetteRewind();
   globalShowFn?.(msg);
 }
 

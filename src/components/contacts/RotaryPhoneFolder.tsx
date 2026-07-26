@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone } from 'lucide-react';
+import { soundDialPulse, soundPhoneRing, soundButtonClick } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════════════════
    Rotary Phone Section — Interactive rotary dial with spin & ring shake
@@ -27,6 +28,7 @@ export default function RotaryPhoneFolder() {
 
   const dialNumber = useCallback((n: number) => {
     if (spinning) return;
+    soundDialPulse();
     setSpinning(true);
     setDialed((prev) => [...prev, n]);
 
@@ -49,6 +51,7 @@ export default function RotaryPhoneFolder() {
   const handleCall = useCallback(() => {
     if (dialed.length === 0 || ringing) return;
     setRinging(true);
+    soundPhoneRing();
     setRingCount(0);
     setCallMsg('');
 
@@ -64,6 +67,7 @@ export default function RotaryPhoneFolder() {
   }, [dialed, ringing]);
 
   const handleClear = useCallback(() => {
+    soundButtonClick();
     setDialed([]);
     setCallMsg('');
     setRingCount(0);

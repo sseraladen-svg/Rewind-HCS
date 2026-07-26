@@ -14,6 +14,7 @@ import {
   type PipelineConfig,
 } from '@/lib/image-pipeline';
 import { getAllCameraPhotos, addCameraPhoto, deleteCameraPhoto } from '@/lib/idb-store';
+import { soundShutter, soundRecordStart, soundRecordStop, soundDelete, soundButtonClick, soundGalleryOpen } from '@/lib/sounds';
 
 /* ═══════ TYPES ═══════ */
 interface CapturedItem {

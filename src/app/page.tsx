@@ -37,6 +37,10 @@ import { useSession, signOut } from 'next-auth/react';
 import { useSync } from '@/hooks/useSync';
 import { SessionProvider } from 'next-auth/react';
 import { getDB } from '@/lib/idb-store';
+import {
+  initAudio, soundBootBeep, soundBootReady, soundButtonClick, soundTabSwitch,
+  soundCassetteRewind, soundVhsGlitch, soundChime, soundShutter,
+} from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    CRT / VHS LOADING SCREEN
@@ -60,13 +64,19 @@ function CrtLoadingScreen({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
-    // Reveal boot lines one by one
+    // Initialize audio on first boot
+    timers.push(setTimeout(() => initAudio(), 100));
+    // Reveal boot lines one by one with beep sounds
     allBootLines.forEach((line, i) => {
       timers.push(setTimeout(() => {
         setBootLines(prev => [...prev, line]);
+        soundBootBeep();
         if (i === allBootLines.length - 1) {
           // Last line — show title after a beat
-          timers.push(setTimeout(() => setPhase(1), 1000));
+          timers.push(setTimeout(() => {
+            setPhase(1);
+            soundBootReady();
+          }, 1000));
         }
       }, 500 + i * 500));
     });
@@ -196,14 +206,18 @@ function DustMotes() {
 /* ═══════════════════════════════════════════════════
    HERO / LANDING (SKEUOMORPHIC)
    ═══════════════════════════════════════════════════ */
-function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
-  const [year, setYear] = useState('');
+function HeroSection({ onSubmit, prefilledYear }: { onSubmit: (year: number) => void; prefilledYear: string }) {
+  const [year, setYear] = useState(prefilledYear);
   const [hoveredDecade, setHoveredDecade] = useState<string | null>(null);
   const [tapeRotate] = useState(() => -2 + Math.random() * 4);
 
   const handleSubmit = () => {
     const y = parseInt(year);
-    if (y >= 1970 && y <= 2019) onSubmit(y);
+    if (y >= 1970 && y <= 2019) {
+      soundButtonClick();
+      soundCassetteRewind();
+      onSubmit(y);
+    }
   };
 
   const decades = Object.values(nostalgiaData);
@@ -290,6 +304,8 @@ function HeroSection({ onSubmit }: { onSubmit: (year: number) => void }) {
             onClick={() => {
               const y = parseInt(d.years.split('–')[0]);
               setYear(String(y));
+              soundButtonClick();
+              soundCassetteRewind();
               onSubmit(y);
             }}
             whileHover={{ scale: 1.08, y: -3 }}
@@ -435,9 +451,14 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
 
   // Trigger old-style cassette loader when switching tabs
   const handleTabChange = useCallback((tabId: string) => {
-    if (tabId === activeTab) return;
+    if (tabId === activeTab) {
+      soundButtonClick();
+      return;
+    }
+    soundTabSwitch();
     // Reel opens as a fullscreen overlay instead of tab switch
     if (tabId === 'reel') {
+      soundCassetteRewind();
       triggerOldLoader('Threading the reel...');
       const timer = setTimeout(() => {
         setShowReel(true);
@@ -475,7 +496,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
       <header className="sticky top-0 z-30 sk-wood px-2 py-0">
         <div className="max-w-5xl mx-auto py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
+            <button onClick={() => { soundButtonClick(); soundVhsGlitch(); onBack(); }} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
               <ArrowLeft className="h-3.5 w-3.5" /> Back
             </button>
             <div className="h-4 w-px bg-[#a08868]" />
@@ -495,7 +516,7 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
               {data.decade} &middot; Born {birthYear}
             </div>
             <button
-                onClick={() => setShowCamera(true)}
+                onClick={() => { soundShutter(); setShowCamera(true); }}
                 className="w-7 h-7 rounded-full bg-[#d4c5a9]/50 hover:bg-[#c4956a]/30 flex items-center justify-center transition-colors cursor-pointer"
                 title="Camera"
               >
@@ -790,19 +811,20 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [prefilledYear, setPrefilledYear] = useState<string>('');
 
   // Run one-time localStorage → IndexedDB migration on first load
   useEffect(() => {
     if (typeof window !== 'undefined') {
       runMigration().catch(err => console.warn('[rewind] Migration error:', err));
-      // Check if onboarding was completed
+      // Check if onboarding was completed — only pre-fill, never auto-skip
       (async () => {
         try {
           const db = await getDB();
           const record: any = await db.get('era_skin', 'onboarding');
-          if (record?.complete) {
-            // Restore persisted birth year
-            if (record.birthYear) setBirthYear(record.birthYear);
+          if (record?.complete && record.birthYear) {
+            // Pre-fill the year on landing page, but don't auto-navigate
+            setPrefilledYear(String(record.birthYear));
           } else {
             setShowOnboarding(true);
           }
@@ -866,7 +888,7 @@ export default function Home() {
             transition={{ duration: 0.4 }}
             style={{ opacity: loading ? 0 : 1 }}
           >
-            <HeroSection onSubmit={handleSubmit} />
+            <HeroSection onSubmit={handleSubmit} prefilledYear={prefilledYear} />
           </motion.div>
         ) : birthYear !== null ? (
           <motion.div

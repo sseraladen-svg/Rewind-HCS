@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RotateCcw, Play, CheckCircle2, XCircle, Timer, ArrowLeft, Gamepad2 } from 'lucide-react';
 import { type DecadeData, type NostalgiaItem } from '@/lib/nostalgia-data';
+import { soundCardFlip, soundMatchFound, soundGameWrong, soundQuizCorrect, soundQuizWrong, soundButtonClick } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    HELPERS & TYPES
@@ -85,6 +86,7 @@ function MemoryMatchGame({ data }: { data: DecadeData }) {
   }, [data]);
 
   const resetGame = useCallback(() => {
+    soundButtonClick();
     setCards(createMatchCards(data));
     setFlippedIds([]);
     setMoves(0);
@@ -98,6 +100,7 @@ function MemoryMatchGame({ data }: { data: DecadeData }) {
     setCards(prev => {
       const card = prev.find(c => c.id === id);
       if (!card || card.isFlipped || card.isMatched) return prev;
+      soundCardFlip();
       return prev.map(c => c.id === id ? { ...c, isFlipped: true } : c);
     });
 
@@ -117,6 +120,7 @@ function MemoryMatchGame({ data }: { data: DecadeData }) {
 
             if (first.label === second.label) {
               // Match!
+              soundMatchFound();
               const updated = currentCards.map(c =>
                 c.id === first.id || c.id === second.id
                   ? { ...c, isMatched: true, isFlipped: true }
@@ -132,6 +136,7 @@ function MemoryMatchGame({ data }: { data: DecadeData }) {
               return updated;
             } else {
               // No match — flip back
+              soundGameWrong();
               setTimeout(() => {
                 setCards(cc => cc.map(c =>
                   c.id === first.id || c.id === second.id
@@ -240,7 +245,12 @@ function GuessTheYearGame({ data }: { data: DecadeData }) {
     if (showResult || !q) return;
     setSelected(optIdx);
     setShowResult(true);
-    if (optIdx === q.correct) setScore(s => s + 1);
+    if (optIdx === q.correct) {
+      soundQuizCorrect();
+      setScore(s => s + 1);
+    } else {
+      soundQuizWrong();
+    }
     setTimeout(() => {
       if (qIdx + 1 < questions.length) {
         setQIdx(i => i + 1);
@@ -253,6 +263,7 @@ function GuessTheYearGame({ data }: { data: DecadeData }) {
   };
 
   const resetGame = () => {
+    soundButtonClick();
     const fresh = buildTrivia(data);
     setQuestions(fresh);
     setQIdx(0); setScore(0); setSelected(null); setShowResult(false); setDone(false);
@@ -384,6 +395,7 @@ function WhackGame({ data }: { data: DecadeData }) {
 
   const startGame = useCallback(() => {
     // Clear any previous intervals
+    soundButtonClick();
     stopGame();
 
     const fresh = Array(GRID).fill(null);
@@ -546,7 +558,7 @@ export default function GamesHub({ data }: { data: DecadeData }) {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  onClick={() => setActiveGame(game.id)}
+                  onClick={() => { soundButtonClick(); setActiveGame(game.id); }}
                   className="sk-paper rounded-xl p-5 sk-noise cursor-pointer text-left transition-all duration-200 hover:shadow-[0_4px_16px_rgba(0,0,0,0.15)] active:translate-y-0.5 group relative overflow-hidden"
                 >
                   <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">{game.emoji}</div>
@@ -568,7 +580,7 @@ export default function GamesHub({ data }: { data: DecadeData }) {
             className="space-y-4"
           >
             <button
-              onClick={() => setActiveGame('hub')}
+              onClick={() => { soundButtonClick(); setActiveGame('hub'); }}
               className="sk-btn old-btn px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer mb-2"
             >
               <ArrowLeft className="h-3.5 w-3.5" /> Back to Games

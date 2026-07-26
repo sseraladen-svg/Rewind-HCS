@@ -7,6 +7,10 @@ import {
   Calendar, Heart, CloudRain, Sun, Moon, Cloud, Zap,
   Bookmark, PenTool, Droplets,
 } from 'lucide-react';
+import {
+  soundTypewriterKey, soundPageTurn, soundSave, soundDelete,
+  soundButtonClick, soundFloppyInsert,
+} from '@/lib/sounds';
 
 /* ═══════ TYPES ═══════ */
 interface JournalEntry {
@@ -210,6 +214,7 @@ function EntryEditor({
             type="text"
             value={title}
             onChange={e => setTitle(e.target.value)}
+            onKeyDown={e => { if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) soundTypewriterKey(); }}
             placeholder="Dear Diary..."
             className="w-full old-title text-xl font-black text-[#3d2b1f] bg-transparent border-none outline-none placeholder:text-[#c4b594]/60"
             style={{ textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}
@@ -262,6 +267,7 @@ function EntryEditor({
             ref={textareaRef}
             value={body}
             onChange={e => setBody(e.target.value)}
+            onKeyDown={e => { if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) soundTypewriterKey(); }}
             placeholder="Write your thoughts here... Let the ink flow like the old days..."
             className="w-full h-full min-h-[260px] old-handwritten text-sm text-[#3d2b1f] leading-[28px] bg-transparent border-none outline-none resize-none placeholder:text-[#c4b594]/50"
             style={{
@@ -603,11 +609,13 @@ export default function OldJournal() {
 
   const handleSave = useCallback((entry: Omit<JournalEntry, 'id' | 'createdAt'>) => {
     if (editEntry) {
+      soundSave();
       // Update existing
       const updated = { ...editEntry, ...entry };
       setEntries(prev => prev.map(e => e.id === editEntry.id ? updated : e));
       putJournalEntry(updated).catch(() => {});
     } else {
+      soundFloppyInsert();
       // Add new
       const newEntry: JournalEntry = {
         ...entry,
@@ -628,6 +636,7 @@ export default function OldJournal() {
       setTimeout(() => setConfirmDelete(false), 3000);
       return;
     }
+    soundDelete();
     setEntries(prev => {
       const updated = prev.filter(e => e.id !== selectedId);
       deleteJournalEntry(selectedId).catch(() => {});
@@ -657,7 +666,7 @@ export default function OldJournal() {
         {view === 'cover' && (
           <JournalCover
             key="cover"
-            onOpen={() => entries.length > 0 ? setView('list') : setView('write')}
+            onOpen={() => { soundPageTurn(); entries.length > 0 ? setView('list') : setView('write'); }}
             entryCount={entries.length}
           />
         )}
@@ -667,9 +676,9 @@ export default function OldJournal() {
           <EntriesList
             key="list"
             entries={entries}
-            onSelect={id => { setSelectedId(id); setView('read'); }}
+            onSelect={id => { soundPageTurn(); setSelectedId(id); setView('read'); }}
             onNew={() => { setEditEntry(undefined); setView('write'); }}
-            onBack={() => setView('cover')}
+            onBack={() => { soundButtonClick(); setView('cover'); }}
           />
         )}
 
@@ -679,6 +688,7 @@ export default function OldJournal() {
             key={`write-${editEntry?.id ?? 'new'}`}
             onSave={handleSave}
             onCancel={() => {
+              soundButtonClick();
               setEditEntry(undefined);
               setView(entries.length > 0 ? 'list' : 'cover');
             }}
@@ -695,9 +705,11 @@ export default function OldJournal() {
             onDelete={handleDelete}
             onClose={() => setView('list')}
             onPrev={() => {
+              soundPageTurn();
               if (currentIndex > 0) setSelectedId(entries[currentIndex - 1].id);
             }}
             onNext={() => {
+              soundPageTurn();
               if (currentIndex < entries.length - 1) setSelectedId(entries[currentIndex + 1].id);
             }}
             hasPrev={currentIndex > 0}

@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { getDB, setEraSkinId, getEraSkinId } from '@/lib/idb-store';
+import { soundButtonClick, soundChime, soundTabSwitch } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════════════════
    Types
@@ -490,7 +491,7 @@ function EraSkinStep({
               key={era.id}
               whileHover={{ scale: 1.04, y: -3 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => setSelectedEra(era.id)}
+              onClick={() => { soundTabSwitch(); setSelectedEra(era.id); }}
               className={`rounded-xl overflow-hidden cursor-pointer transition-all duration-300 relative ${
                 isSelected
                   ? 'ring-2 ring-offset-2'
@@ -816,11 +817,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   /* ───── Navigation helpers ───── */
   const goNext = useCallback(() => {
+    soundButtonClick();
     setDirection(STEP_DIRECTION.forward);
     setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
   }, []);
 
   const goBack = useCallback(() => {
+    soundButtonClick();
     setDirection(STEP_DIRECTION.backward);
     setCurrentStep((s) => Math.max(s - 1, 0));
   }, []);
@@ -836,6 +839,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   /* ───── Handle final completion ───── */
   const handleComplete = useCallback(() => {
+    soundChime();
     const year = parseInt(birthYear);
     const era = selectedEra || 'mixed';
     setIsCompleting(true);

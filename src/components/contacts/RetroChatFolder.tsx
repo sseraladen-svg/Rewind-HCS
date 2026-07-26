@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Minimize2, X, SmilePlus, Users, ChevronLeft, User, Volume2, VolumeX, Search } from 'lucide-react';
 import { getAllChatMessages, putAllChatMessages } from '@/lib/idb-store/index';
+import { soundAimDoorOpen, soundAimMessage, soundButtonClick, soundTypewriterKey } from '@/lib/sounds';
 
 /* ══════════════════════════════════════════════════════════════════
    Retro Chat - Enhanced AIM-style chat with buddy list
@@ -203,7 +204,7 @@ function ChatRoom({ onClose }: { onClose: () => void }) {
           <Users className="w-3.5 h-3.5 text-white/80" />
           <span style={{ fontFamily: 'Tahoma, Verdana, sans-serif', fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>AIM Chat Room - 90s Nostalgia Lounge</span>
         </div>
-        <button onClick={onClose} className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 cursor-pointer"><X className="w-3 h-3" /></button>
+        <button onClick={() => { soundButtonClick(); onClose(); }} className="w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 cursor-pointer"><X className="w-3 h-3" /></button>
       </div>
       {/* Room info */}
       <div className="px-3 py-1 text-center" style={{ background: '#c0c0c0', borderBottom: '1px solid #808080' }}>
@@ -248,7 +249,7 @@ function BuddyProfile({ buddy, onClose }: { buddy: Buddy; onClose: () => void })
             <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '9px', color: buddy.status === 'online' ? '#008000' : '#808080' }}>{buddy.status === 'online' ? 'Online' : buddy.status === 'away' ? 'Away' : 'Idle'}</p>
           </div>
         </div>
-        <button onClick={onClose} className="text-[#808080] hover:text-black cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+        <button onClick={() => { soundButtonClick(); onClose(); }} className="text-[#808080] hover:text-black cursor-pointer"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="sk-inset rounded-sm p-2 mb-2">
         <p style={{ fontFamily: 'Tahoma, sans-serif', fontSize: '10px', color: '#333' }}>{buddy.profile}</p>
@@ -321,6 +322,7 @@ export default function RetroChatFolder() {
         return updated;
       });
       setStatusText('Online');
+      soundAimMessage();
       if (soundEnabled) { setShowSoundWave(true); setTimeout(() => setShowSoundWave(false), 800); }
     }, replyDelay);
 
@@ -330,6 +332,7 @@ export default function RetroChatFolder() {
   const sendMessage = useCallback(() => {
     const text = inputText.trim();
     if (!text) return;
+    soundTypewriterKey();
     const newMsg: ChatMessage = { id: generateId(), from: 'me', buddyName: activeBuddy.name, text, time: getTimeStr(), color: myColor };
     setAllMessages(prev => {
       const buddyMsgs = [...(prev[activeBuddy.name] || []), newMsg];
@@ -367,7 +370,7 @@ export default function RetroChatFolder() {
           {/* Window title bar */}
           <div className="flex items-center justify-between px-3 py-1.5" style={{ background: 'linear-gradient(180deg, #3168d5 0%, #2456b5 40%, #1a3f8a 100%)', borderBottom: '1px solid #000' }}>
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowBuddyList(!showBuddyList)} className="sm:hidden w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 cursor-pointer"><ChevronLeft className="w-3.5 h-3.5" /></button>
+              <button onClick={() => { soundButtonClick(); setShowBuddyList(!showBuddyList); }} className="sm:hidden w-5 h-5 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 cursor-pointer"><ChevronLeft className="w-3.5 h-3.5" /></button>
               <MessageSquare className="w-3.5 h-3.5 text-white/80" />
               <span style={{ fontFamily: 'Tahoma, Verdana, sans-serif', fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>AIM - Instant Message</span>
             </div>
@@ -385,7 +388,7 @@ export default function RetroChatFolder() {
           {!connected ? (
             <DialUpOverlay onComplete={handleConnected} />
           ) : showChatRoom ? (
-            <ChatRoom onClose={() => setShowChatRoom(false)} />
+            <ChatRoom onClose={() => { soundButtonClick(); setShowChatRoom(false); }} />
           ) : (
             <div className="flex" style={{ height: '380px' }}>
               {/* Buddy list sidebar */}
@@ -408,7 +411,7 @@ export default function RetroChatFolder() {
                           const lastBuddyMsg = buddyMsgs.filter(m => m.from === 'buddy').length > 0;
                           const unread = isActive ? 0 : (buddyMsgs.length > 0 && buddyMsgs[buddyMsgs.length - 1].from === 'buddy' ? 1 : 0);
                           return (
-                            <button key={buddy.name} onClick={() => { setActiveBuddy(buddy); setShowProfile(false); }}
+                            <button key={buddy.name} onClick={() => { soundAimDoorOpen(); setActiveBuddy(buddy); setShowProfile(false); }}
                               className={`w-full text-left px-2 py-1.5 flex items-center gap-2 transition-colors cursor-pointer ${isActive ? 'bg-[#000080]/10' : 'hover:bg-[#000080]/5'}`}>
                               <div className="relative flex-shrink-0">
                                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold" style={{ background: buddy.color }}>{buddy.name[0]}</div>
@@ -450,7 +453,7 @@ export default function RetroChatFolder() {
 
                 {/* Buddy profile popup */}
                 <AnimatePresence>
-                  {showProfile && <BuddyProfile buddy={activeBuddy} onClose={() => setShowProfile(false)} />}
+                  {showProfile && <BuddyProfile buddy={activeBuddy} onClose={() => { soundButtonClick(); setShowProfile(false); }} />}
                 </AnimatePresence>
 
                 {/* Messages */}

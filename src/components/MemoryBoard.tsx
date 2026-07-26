@@ -21,6 +21,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { getDB } from '@/lib/idb-store';
+import { soundButtonClick, soundSave, soundDelete, soundPageTurn } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    Memory Board — Enhanced Collaborative Edition
@@ -309,6 +310,7 @@ export default function MemoryBoard() {
   // ── Personal board handlers
   const handleAdd = async () => {
     if (!newText.trim()) return;
+    soundButtonClick();
     const memo: PinnedMemory = {
       id: `memo-${Date.now()}`,
       text: newText.trim(),
@@ -320,11 +322,13 @@ export default function MemoryBoard() {
     const updated = [memo, ...memos];
     setMemos(updated);
     await saveBoardMemos(updated);
+    soundSave();
     setNewText('');
     setShowForm(false);
   };
 
   const handleDelete = async (id: string) => {
+    soundDelete();
     const updated = memos.filter((m) => m.id !== id);
     setMemos(updated);
     await saveBoardMemos(updated);
@@ -470,7 +474,7 @@ export default function MemoryBoard() {
           return (
             <button
               key={t.id}
-              onClick={() => setTheme(t.id)}
+              onClick={() => { soundPageTurn(); setTheme(t.id); }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer border ${
                 isActive
                   ? t.id === 'cork'
@@ -493,7 +497,7 @@ export default function MemoryBoard() {
       {/* ═══ Tab Switcher ═══ */}
       <div className="flex items-center gap-1 sk-inset rounded-lg p-1">
         <button
-          onClick={() => setActiveTab('personal')}
+          onClick={() => { soundPageTurn(); setActiveTab('personal'); }}
           className={`flex-1 py-2 rounded-md text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'personal'
               ? 'sk-paper sk-noise shadow-sm'
@@ -504,7 +508,7 @@ export default function MemoryBoard() {
           Personal Board
         </button>
         <button
-          onClick={() => setActiveTab('shared')}
+          onClick={() => { soundPageTurn(); setActiveTab('shared'); }}
           className={`flex-1 py-2 rounded-md text-xs font-bold transition-all cursor-pointer ${
             activeTab === 'shared'
               ? 'sk-paper sk-noise shadow-sm'

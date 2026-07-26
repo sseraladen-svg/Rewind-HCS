@@ -1,0 +1,728 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+     4→     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→     5→import {
+     6→     6→  BookOpen, Feather, Plus, Trash2, ChevronLeft, ChevronRight,
+     7→     7→  Calendar, Heart, CloudRain, Sun, Moon, Cloud, Zap,
+     8→     8→  Bookmark, PenTool, Droplets,
+     9→     9→} from 'lucide-react';
+    10→    10→
+    11→    11→/* ═══════ TYPES ═══════ */
+    12→    12→interface JournalEntry {
+    13→    13→  id: string;
+    14→    14→  date: string;       // ISO date string
+    15→    15→  title: string;
+    16→    16→  body: string;
+    17→    17→  mood: string;       // emoji
+    18→    18→  weather: string;    // emoji
+    19→    19→  createdAt: number;
+    20→    20→}
+    21→    21→
+    22→    22→const MOODS = [
+    23→    23→  { id: 'happy', emoji: '😊', label: 'Happy' },
+    24→    24→  { id: 'nostalgic', emoji: '🥺', label: 'Nostalgic' },
+    25→    25→  { id: 'peaceful', emoji: '😌', label: 'Peaceful' },
+    26→    26→  { id: 'excited', emoji: '🤩', label: 'Excited' },
+    27→    27→  { id: 'thoughtful', emoji: '🤔', label: 'Thoughtful' },
+    28→    28→  { id: 'sad', emoji: '😢', label: 'Sad' },
+    29→    29→  { id: 'grateful', emoji: '🙏', label: 'Grateful' },
+    30→    30→  { id: 'love', emoji: '❤️', label: 'Love' },
+    31→    31→];
+    32→    32→
+    33→    33→const WEATHERS = [
+    34→    34→  { id: 'sunny', emoji: '☀️', label: 'Sunny' },
+    35→    35→  { id: 'cloudy', emoji: '☁️', label: 'Cloudy' },
+    36→    36→  { id: 'rainy', emoji: '🌧️', label: 'Rainy' },
+    37→    37→  { id: 'night', emoji: '🌙', label: 'Night' },
+    38→    38→  { id: 'stormy', emoji: '⛈️', label: 'Stormy' },
+    39→    39→  { id: 'snowy', emoji: '❄️', label: 'Snowy' },
+    40→    40→];
+    41→    41→
+    42→    42→import {
+    43→    43→  getAllJournalEntries, addJournalEntry, putJournalEntry, deleteJournalEntry,
+    44→    44→} from '@/lib/idb-store';
+    45→    45→
+    46→    46→function loadEntriesFromDB() {
+    47→    47→  return getAllJournalEntries();
+    48→    48→}
+    49→    49→
+    50→    50→function formatDate(iso: string): string {
+    51→    51→  const d = new Date(iso);
+    52→    52→  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    53→    53→  const day = d.getDate();
+    54→    54→  const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';
+    55→    55→  return `${months[d.getMonth()]} ${day}${suffix}, ${d.getFullYear()}`;
+    56→    56→}
+    57→    57→
+    58→    58→function formatTimeAgo(ts: number): string {
+    59→    59→  const diff = Date.now() - ts;
+    60→    60→  const mins = Math.floor(diff / 60000);
+    61→    61→  if (mins < 1) return 'Just now';
+    62→    62→  if (mins < 60) return `${mins}m ago`;
+    63→    63→  const hrs = Math.floor(mins / 60);
+    64→    64→  if (hrs < 24) return `${hrs}h ago`;
+    65→    65→  const days = Math.floor(hrs / 24);
+    66→    66→  if (days < 7) return `${days}d ago`;
+    67→    67→  return formatDate(new Date(ts).toISOString());
+    68→    68→}
+    69→    69→
+    70→    70→/* ═══════ INK SPLATTER DECORATIONS ═══════ */
+    71→    71→function InkBlot({ className = '' }: { className?: string }) {
+    72→    72→  const id = useRef(Math.random().toString(36).slice(2));
+    73→    73→  return (
+    74→    74→    <svg className={`absolute pointer-events-none opacity-[0.04] ${className}`} width="60" height="60" viewBox="0 0 60 60">
+    75→    75→      <filter id={`blur-${id.current}`}>
+    76→    76→        <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+    77→    77→      </filter>
+    78→    78→      <circle cx="30" cy="30" r="20" fill="#3d2b1f" filter={`url(#blur-${id.current})`} />
+    79→    79→      <circle cx="22" cy="25" r="8" fill="#3d2b1f" filter={`url(#blur-${id.current})`} />
+    80→    80→      <circle cx="38" cy="35" r="6" fill="#3d2b1f" filter={`url(#blur-${id.current})`} />
+    81→    81→    </svg>
+    82→    82→  );
+    83→    83→}
+    84→    84→
+    85→    85→/* ═══════ WAX SEAL ═══════ */
+    86→    86→function WaxSeal({ emoji = '🔒' }: { emoji?: string }) {
+    87→    87→  return (
+    88→    88→    <div className="relative flex items-center justify-center" style={{ width: 56, height: 56 }}>
+    89→    89→      <div
+    90→    90→        className="absolute inset-0 rounded-full"
+    91→    91→        style={{
+    92→    92→          background: 'radial-gradient(circle at 40% 35%, #c0392b, #922b21 50%, #7b241c 80%, #641e16)',
+    93→    93→          boxShadow: '0 3px 10px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.2), inset 0 -2px 4px rgba(0,0,0,0.3)',
+    94→    94→        }}
+    95→    95→      />
+    96→    96→      <div className="absolute inset-[3px] rounded-full border-2 border-[#e74c3c]/30" />
+    97→    97→      <span className="relative z-10 text-xl">{emoji}</span>
+    98→    98→      {/* Wax drip */}
+    99→    99→      <div
+   100→   100→        className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-3 rounded-b-full"
+   101→   101→        style={{ background: 'radial-gradient(circle, #c0392b, #7b241c)' }}
+   102→   102→      />
+   103→   103→    </div>
+   104→   104→  );
+   105→   105→}
+   106→   106→
+   107→   107→/* ═══════ BOOKMARK RIBBON ═══════ */
+   108→   108→function BookmarkRibbon({ color = '#c0392b' }: { color?: string }) {
+   109→   109→  return (
+   110→   110→    <div className="absolute -top-1 right-6 z-10">
+   111→   111→      <div className="relative" style={{ width: 24, height: 50 }}>
+   112→   112→        <div
+   113→   113→          className="absolute top-0 left-0 w-full h-full"
+   114→   114→          style={{
+   115→   115→            background: color,
+   116→   116→            clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%)',
+   117→   117→            boxShadow: '2px 2px 4px rgba(0,0,0,0.2)',
+   118→   118→          }}
+   119→   119→        />
+   120→   120→        <div
+   121→   121→          className="absolute top-0 left-0 w-full h-2"
+   122→   122→          style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.2), transparent)' }}
+   123→   123→        />
+   124→   124→      </div>
+   125→   125→    </div>
+   126→   126→  );
+   127→   127→}
+   128→   128→
+   129→   129→/* ═══════ PAGE CORNER FOLD ═══════ */
+   130→   130→function PageCornerFold() {
+   131→   131→  return (
+   132→   132→    <div className="absolute bottom-0 right-0 pointer-events-none">
+   133→   133→      <svg width="40" height="40" viewBox="0 0 40 40">
+   134→   134→        <path d="M0 40 L40 40 L40 0 Z" fill="#e8dcc8" />
+   135→   135→        <path d="M0 40 L40 40 L40 0 Z" fill="url(#cornerFoldGrad)" />
+   136→   136→        <defs>
+   137→   137→          <linearGradient id="cornerFoldGrad" x1="0" y1="0" x2="1" y2="1">
+   138→   138→            <stop offset="0%" stopColor="#d4c5a9" />
+   139→   139→            <stop offset="100%" stopColor="#c4b594" />
+   140→   140→          </linearGradient>
+   141→   141→        </defs>
+   142→   142→        <path d="M10 40 L40 40 L40 10 Z" fill="#ede0c8" stroke="#c4b594" strokeWidth="0.5" />
+   143→   143→      </svg>
+   144→   144→    </div>
+   145→   145→  );
+   146→   146→}
+   147→   147→
+   148→   148→/* ═══════ QUILL PEN CURSOR DECORATION ═══════ */
+   149→   149→function QuillDecoration() {
+   150→   150→  return (
+   151→   151→    <div className="absolute bottom-4 right-4 opacity-20 pointer-events-none">
+   152→   152→      <Feather className="h-8 w-8 text-[#5c4033]" style={{ transform: 'rotate(-30deg)' }} />
+   153→   153→    </div>
+   154→   154→  );
+   155→   155→}
+   156→   156→
+   157→   157→/* ═══════ ENTRY EDITOR (Writing Mode) ═══════ */
+   158→   158→function EntryEditor({
+   159→   159→  onSave,
+   160→   160→  onCancel,
+   161→   161→  initialEntry,
+   162→   162→}: {
+   163→   163→  onSave: (entry: Omit<JournalEntry, 'id' | 'createdAt'>) => void;
+   164→   164→  onCancel: () => void;
+   165→   165→  initialEntry?: JournalEntry;
+   166→   166→}) {
+   167→   167→  const [title, setTitle] = useState(initialEntry?.title ?? '');
+   168→   168→  const [body, setBody] = useState(initialEntry?.body ?? '');
+   169→   169→  const [mood, setMood] = useState(initialEntry?.mood ?? MOODS[0].id);
+   170→   170→  const [weather, setWeather] = useState(initialEntry?.weather ?? WEATHERS[0].id);
+   171→   171→  const [date, setDate] = useState(initialEntry?.date ?? new Date().toISOString().split('T')[0]);
+   172→   172→  const textareaRef = useRef<HTMLTextAreaElement>(null);
+   173→   173→
+   174→   174→  const moodEmoji = MOODS.find(m => m.id === mood)?.emoji ?? '😊';
+   175→   175→  const weatherEmoji = WEATHERS.find(w => w.id === weather)?.emoji ?? '☀️';
+   176→   176→
+   177→   177→  const handleSave = () => {
+   178→   178→    if (!body.trim() && !title.trim()) return;
+   179→   179→    onSave({ date, title: title.trim() || 'Untitled', body: body.trim(), mood, weather });
+   180→   180→  };
+   181→   181→
+   182→   182→  return (
+   183→   183→    <motion.div
+   184→   184→      initial={{ opacity: 0, x: 30 }}
+   185→   185→      animate={{ opacity: 1, x: 0 }}
+   186→   186→      exit={{ opacity: 0, x: -30 }}
+   187→   187→      className="min-h-full"
+   188→   188→    >
+   189→   189→      {/* Journal Page */}
+   190→   190→      <div className="relative sk-paper-aged rounded-lg overflow-hidden mx-auto max-w-lg" style={{ minHeight: 480 }}>
+   191→   191→        <BookmarkRibbon />
+   192→   192→        <InkBlot className="-top-4 -left-4" />
+   193→   193→        <PageCornerFold />
+   194→   194→
+   195→   195→        {/* Page header area */}
+   196→   196→        <div className="pt-10 pb-4 px-6 border-b border-dashed border-[#c4b594]/50">
+   197→   197→          {/* Date */}
+   198→   198→          <div className="flex items-center gap-2 mb-3">
+   199→   199→            <Calendar className="h-3.5 w-3.5 text-[#8b7355]" />
+   200→   200→            <input
+   201→   201→              type="date"
+   202→   202→              value={date}
+   203→   203→              onChange={e => setDate(e.target.value)}
+   204→   204→              className="old-typewriter text-xs text-[#8b7355] bg-transparent border-none outline-none cursor-pointer"
+   205→   205→            />
+   206→   206→          </div>
+   207→   207→
+   208→   208→          {/* Title */}
+   209→   209→          <input
+   210→   210→            type="text"
+   211→   211→            value={title}
+   212→   212→            onChange={e => setTitle(e.target.value)}
+   213→   213→            placeholder="Dear Diary..."
+   214→   214→            className="w-full old-title text-xl font-black text-[#3d2b1f] bg-transparent border-none outline-none placeholder:text-[#c4b594]/60"
+   215→   215→            style={{ textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}
+   216→   216→          />
+   217→   217→
+   218→   218→          {/* Mood + Weather row */}
+   219→   219→          <div className="flex items-center gap-4 mt-3 flex-wrap">
+   220→   220→            <div className="flex items-center gap-1.5">
+   221→   221→              <Heart className="h-3 w-3 text-[#8b7355]" />
+   222→   222→              <span className="old-label text-[9px]">Feeling:</span>
+   223→   223→              <div className="flex gap-1">
+   224→   224→                {MOODS.map(m => (
+   225→   225→                  <button
+   226→   226→                    key={m.id}
+   227→   227→                    onClick={() => setMood(m.id)}
+   228→   228→                    className={`w-6 h-6 rounded-full flex items-center justify-center text-sm transition-all cursor-pointer ${
+   229→   229→                      mood === m.id ? 'bg-[#c4956a]/30 scale-125 ring-2 ring-[#8b5e3c]/40' : 'hover:scale-110'
+   230→   230→                    }`}
+   231→   231→                    title={m.label}
+   232→   232→                  >
+   233→   233→                    {m.emoji}
+   234→   234→                  </button>
+   235→   235→                ))}
+   236→   236→              </div>
+   237→   237→            </div>
+   238→   238→            <div className="flex items-center gap-1.5">
+   239→   239→              <Cloud className="h-3 w-3 text-[#8b7355]" />
+   240→   240→              <span className="old-label text-[9px]">Weather:</span>
+   241→   241→              <div className="flex gap-1">
+   242→   242→                {WEATHERS.map(w => (
+   243→   243→                  <button
+   244→   244→                    key={w.id}
+   245→   245→                    onClick={() => setWeather(w.id)}
+   246→   246→                    className={`w-6 h-6 rounded-full flex items-center justify-center text-sm transition-all cursor-pointer ${
+   247→   247→                      weather === w.id ? 'bg-[#c4956a]/30 scale-125 ring-2 ring-[#8b5e3c]/40' : 'hover:scale-110'
+   248→   248→                    }`}
+   249→   249→                    title={w.label}
+   250→   250→                  >
+   251→   251→                    {w.emoji}
+   252→   252→                  </button>
+   253→   253→                ))}
+   254→   254→              </div>
+   255→   255→            </div>
+   256→   256→          </div>
+   257→   257→        </div>
+   258→   258→
+   259→   259→        {/* Writing area - lined paper */}
+   260→   260→        <div className="relative px-6 py-4" style={{ minHeight: 260 }}>
+   261→   261→          <textarea
+   262→   262→            ref={textareaRef}
+   263→   263→            value={body}
+   264→   264→            onChange={e => setBody(e.target.value)}
+   265→   265→            placeholder="Write your thoughts here... Let the ink flow like the old days..."
+   266→   266→            className="w-full h-full min-h-[260px] old-handwritten text-sm text-[#3d2b1f] leading-[28px] bg-transparent border-none outline-none resize-none placeholder:text-[#c4b594]/50"
+   267→   267→            style={{
+   268→   268→              backgroundImage: 'linear-gradient(#c4d8e8 1px, transparent 1px)',
+   269→   269→              backgroundSize: '100% 28px',
+   270→   270→              backgroundPosition: '0 0',
+   271→   271→              backgroundAttachment: 'local',
+   272→   272→            }}
+   273→   273→          />
+   274→   274→          <InkBlot className="-bottom-3 right-8 w-10 h-10" />
+   275→   275→          <QuillDecoration />
+   276→   276→        </div>
+   277→   277→
+   278→   278→        {/* Page footer */}
+   279→   279→        <div className="px-6 py-3 border-t border-dashed border-[#c4b594]/50 flex items-center justify-between">
+   280→   280→          <button onClick={onCancel} className="sk-btn old-btn px-4 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-[#8b7355]">
+   281→   281→            Cancel
+   282→   282→          </button>
+   283→   283→          <div className="flex items-center gap-2">
+   284→   284→            <span className="old-label text-[9px] text-[#8b7355]">
+   285→   285→              {moodEmoji} {weatherEmoji}
+   286→   286→            </span>
+   287→   287→            <button
+   288→   288→              onClick={handleSave}
+   289→   289→              className="sk-btn old-btn px-5 py-2 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1.5"
+   290→   290→            >
+   291→   291→              <PenTool className="h-3 w-3" /> {initialEntry ? 'Update Entry' : 'Seal & Save'}
+   292→   292→            </button>
+   293→   293→          </div>
+   294→   294→        </div>
+   295→   295→      </div>
+   296→   296→    </motion.div>
+   297→   297→  );
+   298→   298→}
+   299→   299→
+   300→   300→/* ═══════ ENTRY VIEWER (Reading Mode) ═══════ */
+   301→   301→function EntryViewer({
+   302→   302→  entry,
+   303→   303→  onEdit,
+   304→   304→  onDelete,
+   305→   305→  onClose,
+   306→   306→  onPrev,
+   307→   307→  onNext,
+   308→   308→  hasPrev,
+   309→   309→  hasNext,
+   310→   310→  index,
+   311→   311→  total,
+   312→   312→}: {
+   313→   313→  entry: JournalEntry;
+   314→   314→  onEdit: () => void;
+   315→   315→  onDelete: () => void;
+   316→   316→  onClose: () => void;
+   317→   317→  onPrev: () => void;
+   318→   318→  onNext: () => void;
+   319→   319→  hasPrev: boolean;
+   320→   320→  hasNext: boolean;
+   321→   321→  index: number;
+   322→   322→  total: number;
+   323→   323→}) {
+   324→   324→  const moodEmoji = MOODS.find(m => m.id === entry.mood)?.emoji ?? '';
+   325→   325→  const weatherEmoji = WEATHERS.find(w => w.id === entry.weather)?.emoji ?? '';
+   326→   326→
+   327→   327→  return (
+   328→   328→    <motion.div
+   329→   329→      key={entry.id}
+   330→   330→      initial={{ opacity: 0, rotateY: -15 }}
+   331→   331→      animate={{ opacity: 1, rotateY: 0 }}
+   332→   332→      exit={{ opacity: 0, rotateY: 15 }}
+   333→   333→      transition={{ duration: 0.4 }}
+   334→   334→      className="min-h-full flex flex-col"
+   335→   335→    >
+   336→   336→      <div className="relative sk-paper-aged rounded-lg overflow-hidden mx-auto max-w-lg flex-1 flex flex-col" style={{ minHeight: 480 }}>
+   337→   337→        <BookmarkRibbon color="#8b5e3c" />
+   338→   338→        <InkBlot className="-top-3 right-12 w-12 h-12" />
+   339→   339→        <PageCornerFold />
+   340→   340→
+   341→   341→        {/* Page header */}
+   342→   342→        <div className="pt-10 pb-3 px-6 border-b border-dashed border-[#c4b594]/50">
+   343→   343→          <div className="flex items-start justify-between mb-2">
+   344→   344→            <div>
+   345→   345→              <p className="old-typewriter text-[10px] text-[#8b7355] tracking-wider uppercase flex items-center gap-1.5">
+   346→   346→                <Calendar className="h-3 w-3" /> {formatDate(entry.date)}
+   347→   347→              </p>
+   348→   348→              <h2 className="old-title text-xl font-black text-[#3d2b1f] mt-1" style={{ textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}>
+   349→   349→                {entry.title}
+   350→   350→              </h2>
+   351→   351→            </div>
+   352→   352→            <WaxSeal emoji={moodEmoji} />
+   353→   353→          </div>
+   354→   354→          <div className="flex items-center gap-3 mt-2">
+   355→   355→            <span className="old-label text-[9px] flex items-center gap-1">
+   356→   356→              <Heart className="h-3 w-3" /> {moodEmoji} {MOODS.find(m => m.id === entry.mood)?.label}
+   357→   357→            </span>
+   358→   358→            <span className="old-label text-[9px] flex items-center gap-1">
+   359→   359→              <Cloud className="h-3 w-3" /> {weatherEmoji} {WEATHERS.find(w => w.id === entry.weather)?.label}
+   360→   360→            </span>
+   361→   361→            <span className="old-label text-[9px] text-[#c4b594]">
+   362→   362→              {formatTimeAgo(entry.createdAt)}
+   363→   363→            </span>
+   364→   364→          </div>
+   365→   365→        </div>
+   366→   366→
+   367→   367→        {/* Body - handwritten on lined paper */}
+   368→   368→        <div className="flex-1 px-6 py-5 relative overflow-y-auto sk-scrollbar" style={{ minHeight: 280 }}>
+   369→   369→          <div
+   370→   370→            className="old-handwritten text-sm text-[#3d2b1f] leading-[28px] whitespace-pre-wrap"
+   371→   371→            style={{
+   372→   372→              backgroundImage: 'linear-gradient(#c4d8e8 1px, transparent 1px)',
+   373→   373→              backgroundSize: '100% 28px',
+   374→   374→              backgroundPosition: '0 0',
+   375→   375→              backgroundAttachment: 'local',
+   376→   376→            }}
+   377→   377→          >
+   378→   378→            {entry.body}
+   379→   379→          </div>
+   380→   380→          <InkBlot className="bottom-4 left-4 w-8 h-8" />
+   381→   381→          <QuillDecoration />
+   382→   382→        </div>
+   383→   383→
+   384→   384→        {/* Page footer - navigation */}
+   385→   385→        <div className="px-6 py-3 border-t border-dashed border-[#c4b594]/50">
+   386→   386→          <div className="flex items-center justify-between">
+   387→   387→            <div className="flex items-center gap-2">
+   388→   388→              <button onClick={onPrev} disabled={!hasPrev} className={`sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${!hasPrev ? 'opacity-30 cursor-not-allowed' : ''}`}>
+   389→   389→                <ChevronLeft className="h-3 w-3 inline" /> Prev
+   390→   390→              </button>
+   391→   391→              <span className="old-typewriter text-[10px] text-[#8b7355]">{index + 1} / {total}</span>
+   392→   392→              <button onClick={onNext} disabled={!hasNext} className={`sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${!hasNext ? 'opacity-30 cursor-not-allowed' : ''}`}>
+   393→   393→                Next <ChevronRight className="h-3 w-3 inline" />
+   394→   394→              </button>
+   395→   395→            </div>
+   396→   396→            <div className="flex items-center gap-2">
+   397→   397→              <button onClick={onEdit} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1">
+   398→   398→                <PenTool className="h-3 w-3" /> Edit
+   399→   399→              </button>
+   400→   400→              <button onClick={onDelete} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer text-red-700 flex items-center gap-1">
+   401→   401→                <Trash2 className="h-3 w-3" /> Discard
+   402→   402→              </button>
+   403→   403→            </div>
+   404→   404→          </div>
+   405→   405→        </div>
+   406→   406→      </div>
+   407→   407→    </motion.div>
+   408→   408→  );
+   409→   409→}
+   410→   410→
+   411→   411→/* ═══════ JOURNAL COVER ═══════ */
+   412→   412→function JournalCover({ onOpen, entryCount }: { onOpen: () => void; entryCount: number }) {
+   413→   413→  return (
+   414→   414→    <motion.div
+   415→   415→      initial={{ opacity: 0, scale: 0.95 }}
+   416→   416→      animate={{ opacity: 1, scale: 1 }}
+   417→   417→      className="flex flex-col items-center justify-center px-4 py-8"
+   418→   418→    >
+   419→   419→      {/* Leather-bound book */}
+   420→   420→      <motion.div
+   421→   421→        whileHover={{ scale: 1.02, rotate: -1 }}
+   422→   422→        whileTap={{ scale: 0.98 }}
+   423→   423→        onClick={onOpen}
+   424→   424→        className="cursor-pointer relative"
+   425→   425→        style={{ perspective: 800 }}
+   426→   426→      >
+   427→   427→        {/* Book spine shadow */}
+   428→   428→        <div className="absolute -left-3 top-2 bottom-2 w-3 rounded-l" style={{
+   429→   429→          background: 'linear-gradient(90deg, #2a1f14, #3d2b1f)',
+   430→   430→          boxShadow: '-2px 0 6px rgba(0,0,0,0.3)',
+   431→   431→        }} />
+   432→   432→
+   433→   433→        {/* Book cover */}
+   434→   434→        <div
+   435→   435→          className="relative w-72 sm:w-80 rounded-r-lg overflow-hidden"
+   436→   436→          style={{
+   437→   437→            background: 'linear-gradient(145deg, #6b4226 0%, #5c3a22 30%, #4a2e18 60%, #3d2b1f 100%)',
+   438→   438→            boxShadow: '6px 6px 20px rgba(0,0,0,0.4), -1px 0 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08)',
+   439→   439→            padding: '2rem 1.5rem',
+   440→   440→            minHeight: 380,
+   441→   441→          }}
+   442→   442→        >
+   443→   443→          {/* Leather texture */}
+   444→   444→          <div className="absolute inset-0 opacity-10" style={{
+   445→   445→            backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px)',
+   446→   446→          }} />
+   447→   447→
+   448→   448→          {/* Decorative border */}
+   449→   449→          <div className="absolute inset-4 border border-double border-[#8b5e3c]/30 rounded" />
+   450→   450→          <div className="absolute inset-6 border border-[#8b5e3c]/20 rounded" />
+   451→   451→
+   452→   452→          {/* Content */}
+   453→   453→          <div className="relative z-10 flex flex-col items-center justify-between h-full" style={{ minHeight: 340 }}>
+   454→   454→            <div className="text-center mt-4">
+   455→   455→              <WaxSeal emoji="📖" />
+   456→   456→            </div>
+   457→   457→
+   458→   458→            <div className="text-center my-6">
+   459→   459→              <h2 className="old-title text-3xl font-black text-[#d4a574] mb-2" style={{
+   460→   460→                textShadow: '0 2px 4px rgba(0,0,0,0.4), 0 0 20px rgba(196,149,106,0.15)',
+   461→   461→              }}>
+   462→   462→                My Journal
+   463→   463→              </h2>
+   464→   464→              <div className="w-24 h-px mx-auto mb-2" style={{
+   465→   465→                background: 'linear-gradient(90deg, transparent, #8b5e3c, transparent)',
+   466→   466→              }} />
+   467→   467→              <p className="old-handwritten text-sm text-[#a08868] italic">
+   468→   468→                A collection of thoughts, memories &amp; reflections
+   469→   469→              </p>
+   470→   470→            </div>
+   471→   471→
+   472→   472→            <div className="text-center mb-4">
+   473→   473→              {entryCount > 0 ? (
+   474→   474→                <div className="sk-vhs-label px-4 py-1.5 rounded inline-block mb-3">
+   475→   475→                  <span className="old-typewriter text-xs font-bold text-[#5c4033]">
+   476→   476→                    {entryCount} {entryCount === 1 ? 'Entry' : 'Entries'}
+   477→   477→                  </span>
+   478→   478→                </div>
+   479→   479→              ) : (
+   480→   480→                <p className="old-handwritten text-xs text-[#8b7355]/60 mb-3">Your story awaits...</p>
+   481→   481→              )}
+   482→   482→              <div className="flex items-center justify-center gap-1.5 text-[#a08868]">
+   483→   483→                <Feather className="h-4 w-4" style={{ transform: 'rotate(-20deg)' }} />
+   484→   484→                <span className="old-typewriter text-[10px] tracking-wider">OPEN TO WRITE</span>
+   485→   485→                <Feather className="h-4 w-4" style={{ transform: 'rotate(20deg) scaleX(-1)' }} />
+   486→   486→              </div>
+   487→   487→            </div>
+   488→   488→          </div>
+   489→   489→
+   490→   490→          {/* Corner ornaments */}
+   491→   491→          <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-[#8b5e3c]/40 rounded-tl" />
+   492→   492→          <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-[#8b5e3c]/40 rounded-tr" />
+   493→   493→          <div className="absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-[#8b5e3c]/40 rounded-bl" />
+   494→   494→          <div className="absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-[#8b5e3c]/40 rounded-br" />
+   495→   495→        </div>
+   496→   496→      </motion.div>
+   497→   497→    </motion.div>
+   498→   498→  );
+   499→   499→}
+   500→   500→
+   501→   501→/* ═══════ ENTRIES LIST ═══════ */
+   502→   502→function EntriesList({
+   503→   503→  entries,
+   504→   504→  onSelect,
+   505→   505→  onNew,
+   506→   506→  onBack,
+   507→   507→}: {
+   508→   508→  entries: JournalEntry[];
+   509→   509→  onSelect: (id: string) => void;
+   510→   510→  onNew: () => void;
+   511→   511→  onBack: () => void;
+   512→   512→}) {
+   513→   513→  return (
+   514→   514→    <motion.div
+   515→   515→      initial={{ opacity: 0, y: 15 }}
+   516→   516→      animate={{ opacity: 1, y: 0 }}
+   517→   517→      exit={{ opacity: 0, y: -15 }}
+   518→   518→      className="max-w-lg mx-auto"
+   519→   519→    >
+   520→   520→      {/* Back button */}
+   521→   521→      <button onClick={onBack} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1 mb-4">
+   522→   522→        <ChevronLeft className="h-3.5 w-3.5" /> Back to Journal
+   523→   523→      </button>
+   524→   524→
+   525→   525→      <div className="flex items-center justify-between mb-4">
+   526→   526→        <h3 className="old-title text-lg font-black text-[#3d2b1f]" style={{ textShadow: '0 1px 0 rgba(255,255,255,0.3)' }}>
+   527→   527→          📜 All Entries
+   528→   528→        </h3>
+   529→   529→        <button onClick={onNew} className="sk-btn old-btn px-4 py-2 rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1.5">
+   530→   530→          <Plus className="h-3.5 w-3.5" /> New Entry
+   531→   531→        </button>
+   532→   532→      </div>
+   533→   533→
+   534→   534→      {entries.length === 0 ? (
+   535→   535→        <div className="sk-paper rounded-xl p-8 text-center">
+   536→   536→          <div className="text-4xl mb-3">📝</div>
+   537→   537→          <p className="old-handwritten text-sm text-[#8b7355]">No entries yet. Start writing your first memory.</p>
+   538→   538→        </div>
+   539→   539→      ) : (
+   540→   540→        <div className="space-y-3">
+   541→   541→          {entries.map((entry, i) => {
+   542→   542→            const moodEmoji = MOODS.find(m => m.id === entry.mood)?.emoji ?? '';
+   543→   543→            const weatherEmoji = WEATHERS.find(w => w.id === entry.weather)?.emoji ?? '';
+   544→   544→            return (
+   545→   545→              <motion.button
+   546→   546→                key={entry.id}
+   547→   547→                initial={{ opacity: 0, x: -10 }}
+   548→   548→                animate={{ opacity: 1, x: 0 }}
+   549→   549→                transition={{ delay: i * 0.05 }}
+   550→   550→                onClick={() => onSelect(entry.id)}
+   551→   551→                className="w-full text-left cursor-pointer"
+   552→   552→              >
+   553→   553→                <div
+   554→   554→                  className="sk-paper rounded-lg p-4 hover:shadow-lg transition-all relative overflow-hidden group"
+   555→   555→                  style={{
+   556→   556→                    transform: `rotate(${(i % 3 - 1) * 0.5}deg)`,
+   557→   557→                  }}
+   558→   558→                >
+   559→   559→                  <InkBlot className="-top-2 -right-2 w-8 h-8 opacity-[0.03]" />
+   560→   560→                  <PageCornerFold />
+   561→   561→                  <div className="flex items-start justify-between gap-3">
+   562→   562→                    <div className="flex-1 min-w-0">
+   563→   563→                      <div className="flex items-center gap-2 mb-1">
+   564→   564→                        <span className="old-typewriter text-[9px] text-[#8b7355] tracking-wider uppercase">
+   565→   565→                          {formatDate(entry.date)}
+   566→   566→                        </span>
+   567→   567→                        <span className="text-xs">{moodEmoji} {weatherEmoji}</span>
+   568→   568→                      </div>
+   569→   569→                      <h4 className="old-title text-sm font-black text-[#3d2b1f] truncate">{entry.title}</h4>
+   570→   570→                      <p className="old-handwritten text-xs text-[#8b7355] mt-1 line-clamp-2 leading-relaxed">
+   571→   571→                        {entry.body || 'Empty entry...'}
+   572→   572→                      </p>
+   573→   573→                    </div>
+   574→   574→                    <ChevronRight className="h-4 w-4 text-[#c4b594] mt-1 group-hover:text-[#8b5e3c] transition-colors flex-shrink-0" />
+   575→   575→                  </div>
+   576→   576→                </div>
+   577→   577→              </motion.button>
+   578→   578→            );
+   579→   579→          })}
+   580→   580→        </div>
+   581→   581→      )}
+   582→   582→    </motion.div>
+   583→   583→  );
+   584→   584→}
+   585→   585→
+   586→   586→/* ═══════ MAIN JOURNAL COMPONENT ═══════ */
+   587→   587→export default function OldJournal() {
+   588→   588→  const [entries, setEntries] = useState<JournalEntry[]>([]);
+   589→   589→  const [view, setView] = useState<'cover' | 'list' | 'write' | 'read'>('cover');
+   590→   590→  const [selectedId, setSelectedId] = useState<string | null>(null);
+   591→   591→  const [editEntry, setEditEntry] = useState<JournalEntry | undefined>(undefined);
+   592→   592→  const [confirmDelete, setConfirmDelete] = useState(false);
+   593→   593→
+   594→   594→  // Load entries from IndexedDB
+   595→   595→  const loadEntries = useMemo(() => loadEntriesFromDB, []);
+   596→   596→  useEffect(() => {
+   597→   597→    let cancelled = false;
+   598→   598→    loadEntries().then(data => {
+   599→   599→      if (!cancelled) setEntries(data);
+   600→   600→    }).catch(() => {});
+   601→   601→    return () => { cancelled = true; };
+   602→   602→  }, [loadEntries]);
+   603→   603→
+   604→   604→  const handleSave = useCallback((entry: Omit<JournalEntry, 'id' | 'createdAt'>) => {
+   605→   605→    if (editEntry) {
+   606→   606→      // Update existing
+   607→   607→      const updated = { ...editEntry, ...entry };
+   608→   608→      setEntries(prev => prev.map(e => e.id === editEntry.id ? updated : e));
+   609→   609→      putJournalEntry(updated).catch(() => {});
+   610→   610→    } else {
+   611→   611→      // Add new
+   612→   612→      const newEntry: JournalEntry = {
+   613→   613→        ...entry,
+   614→   614→        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+   615→   615→        createdAt: Date.now(),
+   616→   616→      };
+   617→   617→      setEntries(prev => [newEntry, ...prev]);
+   618→   618→      addJournalEntry(newEntry).catch(() => {});
+   619→   619→    }
+   620→   620→    setEditEntry(undefined);
+   621→   621→    setView('read');
+   622→   622→  }, [editEntry]);
+   623→   623→
+   624→   624→  const handleDelete = useCallback(() => {
+   625→   625→    if (!selectedId) return;
+   626→   626→    if (!confirmDelete) {
+   627→   627→      setConfirmDelete(true);
+   628→   628→      setTimeout(() => setConfirmDelete(false), 3000);
+   629→   629→      return;
+   630→   630→    }
+   631→   631→    setEntries(prev => {
+   632→   632→      const updated = prev.filter(e => e.id !== selectedId);
+   633→   633→      deleteJournalEntry(selectedId).catch(() => {});
+   634→   634→      return updated;
+   635→   635→    });
+   636→   636→    setSelectedId(null);
+   637→   637→    setView('list');
+   638→   638→    setConfirmDelete(false);
+   639→   639→  }, [selectedId, confirmDelete]);
+   640→   640→
+   641→   641→  const handleEdit = useCallback(() => {
+   642→   642→    if (!selectedId) return;
+   643→   643→    const entry = entries.find(e => e.id === selectedId);
+   644→   644→    if (entry) {
+   645→   645→      setEditEntry(entry);
+   646→   646→      setView('write');
+   647→   647→    }
+   648→   648→  }, [selectedId, entries]);
+   649→   649→
+   650→   650→  const currentEntry = entries.find(e => e.id === selectedId);
+   651→   651→  const currentIndex = entries.findIndex(e => e.id === selectedId);
+   652→   652→
+   653→   653→  return (
+   654→   654→    <div className="relative min-h-full pb-4">
+   655→   655→      <AnimatePresence mode="wait">
+   656→   656→        {/* ═══ COVER VIEW ═══ */}
+   657→   657→        {view === 'cover' && (
+   658→   658→          <JournalCover
+   659→   659→            key="cover"
+   660→   660→            onOpen={() => entries.length > 0 ? setView('list') : setView('write')}
+   661→   661→            entryCount={entries.length}
+   662→   662→          />
+   663→   663→        )}
+   664→   664→
+   665→   665→        {/* ═══ ENTRIES LIST ═══ */}
+   666→   666→        {view === 'list' && (
+   667→   667→          <EntriesList
+   668→   668→            key="list"
+   669→   669→            entries={entries}
+   670→   670→            onSelect={id => { setSelectedId(id); setView('read'); }}
+   671→   671→            onNew={() => { setEditEntry(undefined); setView('write'); }}
+   672→   672→            onBack={() => setView('cover')}
+   673→   673→          />
+   674→   674→        )}
+   675→   675→
+   676→   676→        {/* ═══ WRITE/EDIT ═══ */}
+   677→   677→        {view === 'write' && (
+   678→   678→          <EntryEditor
+   679→   679→            key={`write-${editEntry?.id ?? 'new'}`}
+   680→   680→            onSave={handleSave}
+   681→   681→            onCancel={() => {
+   682→   682→              setEditEntry(undefined);
+   683→   683→              setView(entries.length > 0 ? 'list' : 'cover');
+   684→   684→            }}
+   685→   685→            initialEntry={editEntry}
+   686→   686→          />
+   687→   687→        )}
+   688→   688→
+   689→   689→        {/* ═══ READ ENTRY ═══ */}
+   690→   690→        {view === 'read' && currentEntry && (
+   691→   691→          <EntryViewer
+   692→   692→            key={`read-${currentEntry.id}`}
+   693→   693→            entry={currentEntry}
+   694→   694→            onEdit={handleEdit}
+   695→   695→            onDelete={handleDelete}
+   696→   696→            onClose={() => setView('list')}
+   697→   697→            onPrev={() => {
+   698→   698→              if (currentIndex > 0) setSelectedId(entries[currentIndex - 1].id);
+   699→   699→            }}
+   700→   700→            onNext={() => {
+   701→   701→              if (currentIndex < entries.length - 1) setSelectedId(entries[currentIndex + 1].id);
+   702→   702→            }}
+   703→   703→            hasPrev={currentIndex > 0}
+   704→   704→            hasNext={currentIndex < entries.length - 1}
+   705→   705→            index={currentIndex}
+   706→   706→            total={entries.length}
+   707→   707→          />
+   708→   708→        )}
+   709→   709→      </AnimatePresence>
+   710→   710→
+   711→   711→      {/* Delete confirmation toast */}
+   712→   712→      <AnimatePresence>
+   713→   713→        {confirmDelete && (
+   714→   714→          <motion.div
+   715→   715→            initial={{ opacity: 0, y: 20 }}
+   716→   716→            animate={{ opacity: 1, y: 0 }}
+   717→   717→            exit={{ opacity: 0, y: 20 }}
+   718→   718→            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 sk-paper rounded-lg px-4 py-2 shadow-xl"
+   719→   719→          >
+   720→   720→            <p className="old-handwritten text-xs text-[#c0392b]">
+   721→   721→              Tap &quot;Discard&quot; again to confirm deletion
+   722→   722→            </p>
+   723→   723→          </motion.div>
+   724→   724→        )}
+   725→   725→      </AnimatePresence>
+   726→   726→    </div>
+   727→   727→  );
+   728→   728→}

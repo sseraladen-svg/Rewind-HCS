@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { getAllCameraPhotos, addCameraPhoto, deleteCameraPhoto } from '@/lib/idb-store';
 import type { CameraPhotoRecord } from '@/lib/idb-store/types';
+import { soundButtonClick, soundGalleryOpen, soundDelete, soundPageTurn } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    Memory Tab — Stored camera photos + device gallery uploads
@@ -111,6 +112,7 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
 
   // ── Delete a photo ──
   const handleDelete = useCallback(async (id: string, url: string) => {
+    soundDelete();
  setItems((prev) => prev.filter((item) => item.id !== id));
     URL.revokeObjectURL(url);
     urlCacheRef.current = urlCacheRef.current.filter((u) => u !== url);
@@ -169,7 +171,7 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
       {/* ── Action Buttons ── */}
       <div className="flex flex-wrap gap-3 justify-center">
         <button
-          onClick={onOpenCamera}
+          onClick={() => { soundButtonClick(); onOpenCamera(); }}
           className="sk-btn old-btn px-5 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer"
         >
           <Camera className="h-4 w-4" /> Take Photo
@@ -184,7 +186,7 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
         {/* Share a Rewind (only when 3+ photos exist) */}
         {items.length >= 3 && (
           <button
-            onClick={onOpenShareRewind}
+            onClick={() => { soundButtonClick(); onOpenShareRewind(); }}
             className="old-btn px-5 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer bg-[#8b5e3c] text-[#faf6eb] hover:bg-[#6b4226] transition-colors"
           >
             <Share2 className="h-4 w-4" /> Share a Rewind
@@ -195,14 +197,14 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
         {items.length > 0 && (
           <div className="flex items-center gap-1 sk-paper rounded-lg p-1">
             <button
-              onClick={() => setViewMode('grid')}
+              onClick={() => { soundPageTurn(); setViewMode('grid'); }}
               className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${viewMode === 'grid' ? 'sk-paper shadow-sm' : 'opacity-60 hover:opacity-100'}`}
               title="Grid view"
             >
               <ImageIcon className="h-3.5 w-3.5" />
             </button>
             <button
-              onClick={() => setViewMode('filmstrip')}
+              onClick={() => { soundPageTurn(); setViewMode('filmstrip'); }}
               className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer ${viewMode === 'filmstrip' ? 'sk-paper shadow-sm' : 'opacity-60 hover:opacity-100'}`}
               title="Filmstrip view"
             >
@@ -255,7 +257,7 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
               <button
-                onClick={onOpenCamera}
+                onClick={() => { soundButtonClick(); onOpenCamera(); }}
                 className="sk-btn old-btn px-5 py-2.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer"
               >
                 <Camera className="h-4 w-4" /> Open Camera
@@ -281,7 +283,7 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
               key={item.id}
               item={item}
               index={i}
-              onView={() => setLightboxIdx(i)}
+              onView={() => { soundGalleryOpen(); setLightboxIdx(i); }}
               onDelete={() => handleDelete(item.id, item.url)}
               onDownload={() => handleDownload(item)}
             />
@@ -303,7 +305,7 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.04 }}
                 className="relative flex-shrink-0 cursor-pointer group"
-                onClick={() => setLightboxIdx(i)}
+                onClick={() => { soundGalleryOpen(); setLightboxIdx(i); }}
               >
                 {/* Film frame */}
                 <div
@@ -418,7 +420,7 @@ export default function MemoryTab({ onOpenCamera, onOpenShareRewind }: { onOpenC
               {/* Action buttons below polaroid */}
               <div className="flex justify-center gap-3 mt-4">
                 <button
-                  onClick={() => handleDownload(lightboxItem)}
+                  onClick={() => { soundButtonClick(); handleDownload(lightboxItem); }}
                   className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Download className="h-3.5 w-3.5" /> Save
@@ -473,7 +475,7 @@ function MemoryCard({
             <motion.button
               initial={{ opacity: 0, scale: 0.5 }}
               whileHover={{ scale: 1.1 }}
-              onClick={(e) => { e.stopPropagation(); onDownload(); }}
+              onClick={(e) => { e.stopPropagation(); soundButtonClick(); onDownload(); }}
               className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
               title="Download"
             >
