@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, RefreshCw } from 'lucide-react';
 import { getDB } from '@/lib/idb-store';
+import { soundChime, soundButtonClick } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    Daily Nostalgia Prompt
@@ -159,10 +160,12 @@ export default function DailyPrompt({ birthYear }: { birthYear: number }) {
         setPrompt(todayPrompt);
         await storePrompt(todayPrompt);
       }
+      soundChime();
     })();
   }, [birthYear]);
 
   const handleNewPrompt = async () => {
+    soundButtonClick();
     const decadeKey = getDecadeKey(birthYear);
     const prompts = PROMPTS[decadeKey] || PROMPTS['1990s'];
     // Pick a different prompt

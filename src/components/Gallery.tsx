@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Film, Tv, Sparkles, Loader2, ImageOff } from 'lucide-react';
+import { soundPageTurn, soundButtonClick, soundGalleryOpen } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════
    Gallery — Nostalgic poster gallery with lightbox
@@ -56,10 +57,12 @@ export default function Gallery({ birthYear }: { birthYear: number }) {
 
   const goNext = () => {
     if (lightboxIdx === null) return;
+    soundPageTurn();
     setLightboxIdx((lightboxIdx + 1) % filtered.length);
   };
   const goPrev = () => {
     if (lightboxIdx === null) return;
+    soundPageTurn();
     setLightboxIdx((lightboxIdx - 1 + filtered.length) % filtered.length);
   };
 
@@ -94,16 +97,16 @@ export default function Gallery({ birthYear }: { birthYear: number }) {
       {/* ── Filter chips ── */}
       {items.length > 0 && (
         <div className="flex flex-wrap gap-2 justify-center mb-5">
-          <FilterChip active={filter === 'all'} onClick={() => setFilter('all')}>
+          <FilterChip active={filter === 'all'} onClick={() => { soundButtonClick(); setFilter('all'); }}>
             All ({items.length})
           </FilterChip>
-          <FilterChip active={filter === 'movie'} onClick={() => setFilter('movie')}>
+          <FilterChip active={filter === 'movie'} onClick={() => { soundButtonClick(); setFilter('movie'); }}>
             <Film className="h-3 w-3" /> Movies
           </FilterChip>
-          <FilterChip active={filter === 'tv'} onClick={() => setFilter('tv')}>
+          <FilterChip active={filter === 'tv'} onClick={() => { soundButtonClick(); setFilter('tv'); }}>
             <Tv className="h-3 w-3" /> TV
           </FilterChip>
-          <FilterChip active={filter === 'cartoon'} onClick={() => setFilter('cartoon')}>
+          <FilterChip active={filter === 'cartoon'} onClick={() => { soundButtonClick(); setFilter('cartoon'); }}>
             <Sparkles className="h-3 w-3" /> Cartoons
           </FilterChip>
         </div>
@@ -138,7 +141,7 @@ export default function Gallery({ birthYear }: { birthYear: number }) {
               >
                 <div
                   className={`sk-paper overflow-hidden cursor-pointer group relative ${h}`}
-                  onClick={() => setLightboxIdx(i)}
+                  onClick={() => { soundGalleryOpen(); setLightboxIdx(i); }}
                 >
                   {/* Poster image */}
                   <img

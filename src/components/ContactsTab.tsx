@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import VoiceMessages from '@/components/VoiceMessages';
 import RotaryPhoneFolder from '@/components/contacts/RotaryPhoneFolder';
 import RetroChatFolder from '@/components/contacts/RetroChatFolder';
+import { soundButtonClick, soundTabSwitch } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════════════════
    Contacts Tab — Subfolder navigation for:
@@ -80,7 +81,11 @@ export default function ContactsTab() {
           return (
             <motion.button
               key={folder.key}
-              onClick={() => toggleFolder(folder.key)}
+              onClick={() => {
+                soundButtonClick();
+                if (!isOpen) soundTabSwitch();
+                toggleFolder(folder.key);
+              }}
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.98 }}
               className={`relative sk-paper rounded-xl p-5 text-center cursor-pointer transition-all duration-200 group ${
@@ -137,7 +142,7 @@ export default function ContactsTab() {
             {/* Back button */}
             <div className="flex justify-center mb-4">
               <button
-                onClick={() => setOpenFolder(null)}
+                onClick={() => { soundButtonClick(); setOpenFolder(null); }}
                 className="sk-btn rounded-lg px-4 py-2 old-btn text-xs flex items-center gap-2"
               >
                 <span className="text-sm">â©</span>

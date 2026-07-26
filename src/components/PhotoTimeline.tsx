@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, ImageOff } from 'lucide-react';
 import { getAllCameraPhotos } from '@/lib/idb-store';
+import { soundGalleryOpen } from '@/lib/sounds';
 import type { CameraPhotoRecord } from '@/lib/idb-store/types';
 
 /* ═══════════════════════════════════════════════════
@@ -136,6 +137,7 @@ export default function PhotoTimeline() {
                 viewport={{ once: true }}
                 transition={{ delay: pi * 0.05 }}
                 className="sk-paper rounded-lg overflow-hidden group hover:shadow-lg transition-all cursor-pointer"
+                onClick={() => soundGalleryOpen()}
               >
                 <div className="aspect-square relative overflow-hidden bg-[#e8dcc8]">
                   <img

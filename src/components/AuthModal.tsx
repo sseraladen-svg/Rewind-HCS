@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Lock, Mail, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
+import { soundButtonClick } from '@/lib/sounds';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -29,17 +30,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   };
 
   const handleClose = () => {
+    soundButtonClick();
     reset();
     onClose();
   };
 
   const switchMode = () => {
+    soundButtonClick();
     reset();
     setMode(prev => prev === 'login' ? 'register' : 'login');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    soundButtonClick();
     setError('');
     setLoading(true);
 

@@ -18,6 +18,7 @@ import {
 import { getAllCameraPhotos } from '@/lib/idb-store';
 import type { CameraPhotoRecord } from '@/lib/idb-store/types';
 import { processFrame, PIPELINE_PRESETS } from '@/lib/image-pipeline';
+import { soundButtonClick, soundSave, soundGalleryOpen } from '@/lib/sounds';
 
 /* ═══════ TYPES ═══════ */
 
@@ -576,6 +577,7 @@ export default function ShareRewind({ open, onClose }: ShareRewindProps) {
   /* ── Load photos from IDB ── */
   useEffect(() => {
     if (!open) return;
+    soundGalleryOpen();
 
     let cancelled = false;
 
@@ -718,6 +720,7 @@ export default function ShareRewind({ open, onClose }: ShareRewindProps) {
 
   /* ── Download ── */
   const handleDownload = useCallback(() => {
+    soundSave();
     if (!canvasRef.current) return;
     const link = document.createElement('a');
     link.download = `rewind-collage-${Date.now()}.png`;
@@ -727,6 +730,7 @@ export default function ShareRewind({ open, onClose }: ShareRewindProps) {
 
   /* ── Share ── */
   const handleShare = useCallback(async () => {
+    soundSave();
     if (!canvasRef.current) return;
     try {
       const blob = await new Promise<Blob>((resolve, reject) => {
@@ -968,7 +972,7 @@ export default function ShareRewind({ open, onClose }: ShareRewindProps) {
                         return (
                           <motion.button
                             key={s.key}
-                            onClick={() => setStyle(s.key)}
+                            onClick={() => { soundButtonClick(); setStyle(s.key); }}
                             className={`relative sk-paper rounded-xl p-5 text-left transition-all duration-200 ${
                               isActive
                                 ? 'ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.2)]'

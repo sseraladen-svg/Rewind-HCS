@@ -6,6 +6,7 @@ import {
   X, Download, Upload, Trash2, HardDrive, Shield,
   AlertTriangle, CheckCircle2, FileJson,
 } from 'lucide-react';
+import { soundButtonClick, soundFloppyInsert, soundSave, soundDelete } from '@/lib/sounds';
 import {
   exportAllData, clearAllStores,
   getAllJournalEntries, addJournalEntry, putJournalEntry, deleteJournalEntry,
@@ -63,6 +64,7 @@ export default function ManageDataScreen({ onClose }: { onClose: () => void }) {
 
   // ─── Export ───
   const handleExport = useCallback(async () => {
+    soundFloppyInsert();
     try {
       const data = await exportAllData();
       const json = JSON.stringify(data, null, 2);
@@ -153,6 +155,7 @@ export default function ManageDataScreen({ onClose }: { onClose: () => void }) {
       }
 
       flashStatus('Data restored! Reload the page to see changes.');
+      soundSave();
       loadStorageEstimate();
     } catch (err) {
       console.error('Import failed:', err);
@@ -165,6 +168,7 @@ export default function ManageDataScreen({ onClose }: { onClose: () => void }) {
 
   // ─── Clear All ───
   const handleClearAll = useCallback(async () => {
+    soundButtonClick();
     if (!showConfirmClear) {
       setShowConfirmClear(true);
       setTimeout(() => setShowConfirmClear(false), 5000);
@@ -172,6 +176,7 @@ export default function ManageDataScreen({ onClose }: { onClose: () => void }) {
     }
     try {
       await clearAllStores();
+      soundDelete();
       flashStatus('All data cleared. Reload the page.');
       loadStorageEstimate();
     } catch (err) {
@@ -204,7 +209,7 @@ export default function ManageDataScreen({ onClose }: { onClose: () => void }) {
             </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => { soundButtonClick(); onClose(); }}
             className="w-8 h-8 rounded-full flex items-center justify-center
               hover:bg-white/10 transition-colors cursor-pointer"
           >
@@ -255,7 +260,7 @@ export default function ManageDataScreen({ onClose }: { onClose: () => void }) {
 
             {/* Import */}
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => { soundButtonClick(); fileInputRef.current?.click(); }}
               className="w-full sk-btn old-btn px-4 py-3 rounded-xl text-sm font-bold
                 flex items-center gap-3 cursor-pointer"
             >

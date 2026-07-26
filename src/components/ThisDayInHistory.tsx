@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, CalendarDays, BookOpen } from 'lucide-react';
 import { getAllJournalEntries } from '@/lib/idb-store';
 import type { JournalEntryRecord } from '@/lib/idb-store/types';
+import { soundChime, soundPageTurn } from '@/lib/sounds';
 
 interface HistoryItem {
   year: number;
@@ -91,6 +92,11 @@ export default function ThisDayInHistory({ birthYear }: { birthYear: number }) {
     return () => { cancelled = true; };
   }, [birthYear]);
 
+  // Play a nostalgic chime when the component first loads
+  useEffect(() => {
+    soundChime();
+  }, []);
+
   const scroll = (dir: 'left' | 'right') => {
     if (!scrollRef.current) return;
     const amount = scrollRef.current.clientWidth * 0.7;
@@ -138,14 +144,14 @@ export default function ThisDayInHistory({ birthYear }: { birthYear: number }) {
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => scroll('left')}
+            onClick={() => { soundPageTurn(); scroll('left'); }}
             className="p-1.5 rounded-md bg-amber-900/40 hover:bg-amber-900/60 text-amber-300 transition-colors"
             aria-label="Scroll left"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
-            onClick={() => scroll('right')}
+            onClick={() => { soundPageTurn(); scroll('right'); }}
             className="p-1.5 rounded-md bg-amber-900/40 hover:bg-amber-900/60 text-amber-300 transition-colors"
             aria-label="Scroll right"
           >

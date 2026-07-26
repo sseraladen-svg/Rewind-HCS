@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Loader2, RefreshCw, Brain, Heart, Lightbulb, BookOpen } from 'lucide-react';
 import { getAllJournalEntries } from '@/lib/idb-store';
+import { soundButtonClick, soundChime } from '@/lib/sounds';
 
 interface InsightData {
   moodSummary: string;
@@ -18,6 +19,7 @@ export default function AiInsightsPanel({ birthYear }: { birthYear: number }) {
   const [error, setError] = useState('');
 
   const fetchInsights = useCallback(async () => {
+    soundButtonClick();
     setLoading(true);
     setError('');
     try {
@@ -42,6 +44,7 @@ export default function AiInsightsPanel({ birthYear }: { birthYear: number }) {
       }
 
       setInsights(data.insights);
+      soundChime();
     } catch {
       setError('Network error. Make sure you\'re signed in and try again.');
     }

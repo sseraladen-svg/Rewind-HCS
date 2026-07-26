@@ -25,6 +25,7 @@ import {
   upsertReelReflection,
 } from '@/lib/idb-store';
 import type { ExportData } from '@/lib/idb-store';
+import { soundButtonClick } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    Settings Tab — single home for all app configuration
@@ -49,7 +50,7 @@ function SettingsSection({
   return (
     <div className="sk-paper rounded-xl overflow-hidden sk-noise">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { soundButtonClick(); setOpen(o => !o); }}
         className="w-full flex items-center justify-between px-5 py-4 cursor-pointer
           hover:bg-[#f5edd6]/40 transition-colors"
       >
@@ -213,7 +214,7 @@ function DataManagementInline() {
       {/* Actions */}
       <div className="space-y-3">
         <button
-          onClick={handleExport}
+          onClick={() => { soundButtonClick(); handleExport(); }}
           className="w-full sk-btn old-btn px-4 py-3 rounded-xl text-sm font-bold
             flex items-center gap-3 cursor-pointer"
         >
@@ -229,7 +230,7 @@ function DataManagementInline() {
         </button>
 
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => { soundButtonClick(); fileInputRef.current?.click(); }}
           className="w-full sk-btn old-btn px-4 py-3 rounded-xl text-sm font-bold
             flex items-center gap-3 cursor-pointer"
         >

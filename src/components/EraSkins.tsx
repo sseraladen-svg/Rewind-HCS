@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { RotateCcw } from 'lucide-react';
 import { getEraSkinId, setEraSkinId, clearEraSkin } from '@/lib/idb-store';
+import { soundButtonClick, soundSave } from '@/lib/sounds';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -349,6 +350,7 @@ export default function EraSkins() {
   }, []);
 
   const handleApply = useCallback((skin: EraSkin) => {
+    soundButtonClick();
     if (skin.id === 'default') {
       applyDefault();
       setActiveSkinId(null);
@@ -356,9 +358,11 @@ export default function EraSkins() {
       applySkin(skin);
       setActiveSkinId(skin.id);
     }
+    soundSave();
   }, []);
 
   const handleReset = useCallback(() => {
+    soundButtonClick();
     applyDefault();
     setActiveSkinId(null);
   }, []);

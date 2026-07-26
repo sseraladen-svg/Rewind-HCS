@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { REACTIONS, type ReactionType } from '@/lib/memory-reel/types';
+import { soundButtonClick } from '@/lib/sounds';
 
 /* ═══════ REACTION ROW ═══════ */
 
@@ -18,6 +19,7 @@ export default function ReactionRow({
   const current = REACTIONS.find(r => r.type === currentReaction);
 
   const handleToggle = useCallback((type: ReactionType) => {
+    soundButtonClick();
     if (currentReaction === type) {
       // Deselect
       onReact('');
@@ -31,7 +33,7 @@ export default function ReactionRow({
     <div className="relative">
       {/* Current reaction pill (or + button) */}
       <button
-        onClick={() => setExpanded(e => !e)}
+        onClick={() => { soundButtonClick(); setExpanded(e => !e); }}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full
           text-xs shadow-sm transition-shadow hover:shadow-md cursor-pointer"
         style={{

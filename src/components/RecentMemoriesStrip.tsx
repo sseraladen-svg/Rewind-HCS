@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { getAllCameraPhotos } from '@/lib/idb-store';
 import type { CameraPhotoRecord } from '@/lib/idb-store/types';
+import { soundPageTurn, soundButtonClick } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    Recent Memories Strip
@@ -85,14 +86,14 @@ export default function RecentMemoriesStrip({ onOpenMemory }: { onOpenMemory: ()
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => scroll('left')}
+            onClick={() => { soundPageTurn(); scroll('left'); }}
             className="p-1.5 rounded-md sk-btn hover:bg-[#c4956a]/20 transition-colors cursor-pointer"
             aria-label="Scroll left"
           >
             <ChevronLeft className="h-4 w-4 text-[#5c4033]" />
           </button>
           <button
-            onClick={() => scroll('right')}
+            onClick={() => { soundPageTurn(); scroll('right'); }}
             className="p-1.5 rounded-md sk-btn hover:bg-[#c4956a]/20 transition-colors cursor-pointer"
             aria-label="Scroll right"
           >
@@ -115,7 +116,7 @@ export default function RecentMemoriesStrip({ onOpenMemory }: { onOpenMemory: ()
             transition={{ duration: 0.4, delay: i * 0.08 }}
             className="flex-shrink-0 cursor-pointer group"
             style={{ scrollSnapAlign: 'start' }}
-            onClick={onOpenMemory}
+            onClick={() => { soundButtonClick(); onOpenMemory(); }}
           >
             {/* Polaroid frame */}
             <div className="sk-polaroid p-2 pb-8 w-36 sm:w-40 relative transition-all duration-300 group-hover:-translate-y-2 group-hover:shadow-xl">

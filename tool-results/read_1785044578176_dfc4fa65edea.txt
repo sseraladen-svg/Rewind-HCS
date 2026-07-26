@@ -1,0 +1,1000 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  ChevronLeft,
+     7→  ChevronRight,
+     8→  Camera,
+     9→  BookOpen,
+    10→  Phone,
+    11→  Gamepad2,
+    12→  PartyPopper,
+    13→  Clock,
+    14→  Sparkles,
+    15→} from 'lucide-react';
+    16→import { getDB, setEraSkinId, getEraSkinId } from '@/lib/idb-store';
+    17→import { soundButtonClick, soundChime, soundTabSwitch } from '@/lib/sounds';
+    18→
+    19→/* ═══════════════════════════════════════════════════════════════
+    20→   Types
+    21→   ═══════════════════════════════════════════════════════════════ */
+    22→
+    23→interface OnboardingFlowProps {
+    24→  onComplete: (data: { birthYear: number; eraSkin: string }) => void;
+    25→}
+    26→
+    27→interface OnboardingRecord {
+    28→  id: string;
+    29→  birthYear: number | null;
+    30→  eraSkin: string | null;
+    31→  complete: boolean;
+    32→}
+    33→
+    34→/* ═══════════════════════════════════════════════════════════════
+    35→   Constants
+    36→   ═══════════════════════════════════════════════════════════════ */
+    37→
+    38→const TOTAL_STEPS = 4;
+    39→const ONBOARDING_ID = 'onboarding';
+    40→const STEP_DIRECTION = { forward: 1, backward: -1 } as const;
+    41→
+    42→const DECADE_QUICK_PICKS = [
+    43→  { label: "80s Kid", emoji: "📺", year: 1985, decadeRange: "1980–1989" },
+    44→  { label: "90s Kid", emoji: "🎧", year: 1995, decadeRange: "1990–1999" },
+    45→  { label: "2000s Kid", emoji: "💿", year: 2005, decadeRange: "2000–2009" },
+    46→  { label: "2010s Kid", emoji: "📱", year: 2012, decadeRange: "2010–2015" },
+    47→] as const;
+    48→
+    49→const ERA_OPTIONS = [
+    50→  {
+    51→    id: '80s-neon',
+    52→    name: '80s',
+    53→    subtitle: 'Neon Nights',
+    54→    description: 'Synthwave vibes, Miami sunsets, and electric dreams',
+    55→    colors: ['#1a1a2e', '#ff00ff', '#00d4ff', '#ff4488'],
+    56→    accent: '#ff00ff',
+    57→    bg: '#1a1a2e',
+    58→    emoji: '🦹',
+    59→  },
+    60→  {
+    61→    id: '90s-grunge',
+    62→    name: '90s',
+    63→    subtitle: 'Grunge & Flannel',
+    64→    description: 'Flannel shirts, coffee shops, and raw authenticity',
+    65→    colors: ['#2d2d2d', '#8b4513', '#6b8e23', '#d4c8b0'],
+    66→    accent: '#8b4513',
+    67→    bg: '#2d2d2d',
+    68→    emoji: '🎸',
+    69→  },
+    70→  {
+    71→    id: '2000s-y2k',
+    72→    name: '2000s',
+    73→    subtitle: 'Y2K Future',
+    74→    description: 'Frosted glass, iMac colors, and the digital dawn',
+    75→    colors: ['#e8f0fe', '#0066cc', '#6699cc', '#f0f5ff'],
+    76→    accent: '#0066cc',
+    77→    bg: '#e8f0fe',
+    78→    emoji: '💿',
+    79→  },
+    80→  {
+    81→    id: 'mixed',
+    82→    name: 'Mixed',
+    83→    subtitle: 'A Bit of Everything',
+    84→    description: 'The best of all eras — nostalgia without borders',
+    85→    colors: ['#f5edd6', '#8b5e3c', '#c4956a', '#d4a574'],
+    86→    accent: '#c4956a',
+    87→    bg: '#f5edd6',
+    88→    emoji: '📼',
+    89→  },
+    90→] as const;
+    91→
+    92→const FEATURE_CARDS = [
+    93→  {
+    94→    icon: Camera,
+    95→    emoji: '📸',
+    96→    title: 'Memory Reel',
+    97→    description: 'Your memories, retro style',
+    98→  },
+    99→  {
+   100→    icon: BookOpen,
+   101→    emoji: '📔',
+   102→    title: 'Journal',
+   103→    description: "Write like it's 1999",
+   104→  },
+   105→  {
+   106→    icon: Phone,
+   107→    emoji: '📞',
+   108→    title: 'Contacts',
+   109→    description: 'Rotary phones & AIM chat',
+   110→  },
+   111→  {
+   112→    icon: Gamepad2,
+   113→    emoji: '🎮',
+   114→    title: 'Games',
+   115→    description: 'Classic games, classic vibes',
+   116→  },
+   117→] as const;
+   118→
+   119→/* ═══════════════════════════════════════════════════════════════
+   120→   Animation Variants
+   121→   ═══════════════════════════════════════════════════════════════ */
+   122→
+   123→const slideVariants = {
+   124→  enter: (direction: number) => ({
+   125→    x: direction > 0 ? '100%' : '-100%',
+   126→    opacity: 0,
+   127→  }),
+   128→  center: {
+   129→    x: 0,
+   130→    opacity: 1,
+   131→  },
+   132→  exit: (direction: number) => ({
+   133→    x: direction > 0 ? '-30%' : '30%',
+   134→    opacity: 0,
+   135→  }),
+   136→};
+   137→
+   138→const slideTransition = {
+   139→  type: 'spring' as const,
+   140→  stiffness: 300,
+   141→  damping: 30,
+   142→};
+   143→
+   144→const fadeUp = {
+   145→  initial: { opacity: 0, y: 20 },
+   146→  animate: { opacity: 1, y: 0 },
+   147→  transition: { duration: 0.5 },
+   148→};
+   149→
+   150→const staggerContainer = {
+   151→  animate: {
+   152→    transition: { staggerChildren: 0.1 },
+   153→  },
+   154→};
+   155→
+   156→const staggerItem = {
+   157→  initial: { opacity: 0, y: 15 },
+   158→  animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+   159→};
+   160→
+   161→/* ═══════════════════════════════════════════════════════════════
+   162→   Progress Dots
+   163→   ═══════════════════════════════════════════════════════════════ */
+   164→
+   165→function ProgressDots({
+   166→  current,
+   167→  total,
+   168→}: {
+   169→  current: number;
+   170→  total: number;
+   171→}) {
+   172→  return (
+   173→    <div className="flex items-center justify-center gap-2">
+   174→      {Array.from({ length: total }, (_, i) => (
+   175→        <motion.div
+   176→          key={i}
+   177→          className="rounded-full"
+   178→          animate={{
+   179→            width: i === current ? 24 : 8,
+   180→            height: 8,
+   181→            backgroundColor: i === current ? '#8b5e3c' : '#d4c5a9',
+   182→          }}
+   183→          transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+   184→        />
+   185→      ))}
+   186→    </div>
+   187→  );
+   188→}
+   189→
+   190→/* ═══════════════════════════════════════════════════════════════
+   191→   Step 1: Welcome
+   192→   ═══════════════════════════════════════════════════════════════ */
+   193→
+   194→function WelcomeStep({ onNext }: { onNext: () => void }) {
+   195→  return (
+   196→    <motion.div
+   197→      className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center"
+   198→      variants={staggerContainer}
+   199→      initial="initial"
+   200→      animate="animate"
+   201→    >
+   202→      {/* Retro Illustration — CSS art with emojis */}
+   203→      <motion.div
+   204→        variants={staggerItem}
+   205→        className="relative mb-8"
+   206→      >
+   207→        <motion.div
+   208→          className="sk-paper rounded-2xl p-8 relative overflow-hidden"
+   209→          initial={{ scale: 0.8, rotate: -5 }}
+   210→          animate={{ scale: 1, rotate: 0 }}
+   211→          transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
+   212→          style={{ '--tape-rotate': `${-3}deg` } as React.CSSProperties}
+   213→        >
+   214→          {/* Decorative tape strip */}
+   215→          <div className="sk-tape" />
+   216→
+   217→          {/* CSS art — a retro TV / VCR scene */}
+   218→          <div className="flex flex-col items-center gap-3 py-2">
+   219→            <div className="relative">
+   220→              {/* TV body */}
+   221→              <div className="w-36 h-28 rounded-lg border-4 border-[#5c4033] bg-[#1a1a2e] relative overflow-hidden">
+   222→                {/* Screen content */}
+   223→                <div className="absolute inset-1.5 rounded-sm bg-[#0d0d1a] flex items-center justify-center">
+   224→                  <motion.span
+   225→                    className="text-4xl"
+   226→                    animate={{ rotate: [0, 5, -5, 0] }}
+   227→                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+   228→                  >
+   229→                    📼
+   230→                  </motion.span>
+   231→                </div>
+   232→                {/* Scanlines overlay */}
+   233→                <div
+   234→                  className="absolute inset-0 opacity-20 pointer-events-none"
+   235→                  style={{
+   236→                    backgroundImage:
+   237→                      'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)',
+   238→                  }}
+   239→                />
+   240→                {/* Screen glow */}
+   241→                <div
+   242→                  className="absolute inset-0 pointer-events-none"
+   243→                  style={{
+   244→                    boxShadow: 'inset 0 0 20px rgba(0,212,255,0.15)',
+   245→                  }}
+   246→                />
+   247→              </div>
+   248→              {/* TV antenna */}
+   249→              <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex gap-3">
+   250→                <div className="w-0.5 h-5 bg-[#5c4033] origin-bottom rotate-[-20deg]" />
+   251→                <div className="w-0.5 h-5 bg-[#5c4033] origin-bottom rotate-[20deg]" />
+   252→              </div>
+   253→              {/* TV knobs */}
+   254→              <div className="absolute -bottom-3 right-2 flex gap-1.5">
+   255→                <div className="w-3 h-3 rounded-full bg-[#8b5e3c] border border-[#5c4033]" />
+   256→                <div className="w-3 h-3 rounded-full bg-[#c4956a] border border-[#5c4033]" />
+   257→              </div>
+   258→            </div>
+   259→
+   260→            {/* Decorative stars / sparkles */}
+   261→            <div className="flex gap-2 text-lg opacity-60">
+   262→              <span>✦</span>
+   263→              <span>★</span>
+   264→              <span>✦</span>
+   265→            </div>
+   266→          </div>
+   267→        </motion.div>
+   268→      </motion.div>
+   269→
+   270→      {/* Welcome text */}
+   271→      <motion.h1
+   272→        variants={staggerItem}
+   273→        className="old-title text-4xl sm:text-5xl font-black tracking-tight mb-3"
+   274→        style={{
+   275→          backgroundImage: 'linear-gradient(180deg, #5c4033 0%, #8b5e3c 40%, #c4956a 100%)',
+   276→          WebkitBackgroundClip: 'text',
+   277→          WebkitTextFillColor: 'transparent',
+   278→          backgroundClip: 'text',
+   279→        }}
+   280→      >
+   281→        Welcome to Rewind
+   282→      </motion.h1>
+   283→
+   284→      <motion.p
+   285→        variants={staggerItem}
+   286→        className="old-body text-lg text-[#8b7355] mb-10 max-w-xs"
+   287→      >
+   288→        Your personal time machine.
+   289→        <br />
+   290→        Let&apos;s set up your era.
+   291→      </motion.p>
+   292→
+   293→      {/* Let's Go button */}
+   294→      <motion.button
+   295→        variants={staggerItem}
+   296→        onClick={onNext}
+   297→        whileHover={{ scale: 1.03, y: -2 }}
+   298→        whileTap={{ scale: 0.97 }}
+   299→        className="sk-leather old-btn text-[#faf6eb] font-bold text-lg px-10 py-3.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] flex items-center gap-2"
+   300→      >
+   301→        <Sparkles className="h-5 w-5" />
+   302→        Let&apos;s Go
+   303→        <ChevronRight className="h-4 w-4" />
+   304→      </motion.button>
+   305→    </motion.div>
+   306→  );
+   307→}
+   308→
+   309→/* ═══════════════════════════════════════════════════════════════
+   310→   Step 2: Birth Year
+   311→   ═══════════════════════════════════════════════════════════════ */
+   312→
+   313→function BirthYearStep({
+   314→  birthYear,
+   315→  setBirthYear,
+   316→  onNext,
+   317→  onBack,
+   318→  canContinue,
+   319→}: {
+   320→  birthYear: string;
+   321→  setBirthYear: (y: string) => void;
+   322→  onNext: () => void;
+   323→  onBack: () => void;
+   324→  canContinue: boolean;
+   325→}) {
+   326→  const [tapeRotate] = useState(() => -2 + Math.random() * 4);
+   327→
+   328→  const handleSubmit = () => {
+   329→    const y = parseInt(birthYear);
+   330→    if (y >= 1970 && y <= 2015) onNext();
+   331→  };
+   332→
+   333→  const yearNum = parseInt(birthYear);
+   334→
+   335→  return (
+   336→    <motion.div
+   337→      className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center"
+   338→      variants={staggerContainer}
+   339→      initial="initial"
+   340→      animate="animate"
+   341→    >
+   342→      {/* Heading */}
+   343→      <motion.div variants={staggerItem} className="mb-6">
+   344→        <Clock className="h-8 w-8 mx-auto mb-3 text-[#8b5e3c]" />
+   345→        <h2 className="old-title text-3xl sm:text-4xl font-black tracking-tight text-[#5c4033]">
+   346→          When did you grow up?
+   347→        </h2>
+   348→        <p className="old-body text-base text-[#8b7355] mt-2">
+   349→          Pick the year you were born
+   350→        </p>
+   351→      </motion.div>
+   352→
+   353→      {/* Year input card */}
+   354→      <motion.div
+   355→        variants={staggerItem}
+   356→        className="w-full max-w-xs"
+   357→      >
+   358→        <div
+   359→          className="sk-paper rounded-lg p-6 relative overflow-hidden sk-noise"
+   360→          style={{ '--tape-rotate': `${tapeRotate}deg` } as React.CSSProperties}
+   361→        >
+   362→          <div className="sk-tape" />
+   363→          <label className="old-label block text-sm font-bold text-[#5c4033] mb-3">
+   364→            Birth Year
+   365→          </label>
+   366→          <div className="flex gap-2">
+   367→            <input
+   368→              type="number"
+   369→              min={1970}
+   370→              max={2015}
+   371→              placeholder="e.g. 1992"
+   372→              value={birthYear}
+   373→              onChange={(e) => {
+   374→                const val = e.target.value;
+   375→                if (val === '' || /^\d{0,4}$/.test(val)) {
+   376→                  setBirthYear(val);
+   377→                }
+   378→              }}
+   379→              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+   380→              className="sk-inset old-typewriter flex-1 text-center text-2xl font-bold rounded-lg p-3 text-[#5c4033] focus:outline-none transition-shadow focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),0_0_0_2px_#8b5e3c]"
+   381→              aria-label="Birth year"
+   382→              autoFocus
+   383→            />
+   384→          </div>
+   385→
+   386→          {/* Quick pick decade buttons */}
+   387→          <p className="old-typewriter text-[10px] text-[#8b7355] mt-4 mb-2 uppercase tracking-wider">
+   388→            or pick your decade
+   389→          </p>
+   390→          <div className="grid grid-cols-2 gap-2">
+   391→            {DECADE_QUICK_PICKS.map((decade) => (
+   392→              <motion.button
+   393→                key={decade.year}
+   394→                whileHover={{ scale: 1.04, y: -1 }}
+   395→                whileTap={{ scale: 0.96 }}
+   396→                onClick={() => setBirthYear(String(decade.year))}
+   397→                className={`sk-btn old-typewriter rounded-lg px-3 py-2.5 text-sm font-bold cursor-pointer transition-all duration-200 flex items-center gap-1.5 ${
+   398→                  yearNum === decade.year
+   399→                    ? 'ring-2 ring-[#8b5e3c] ring-offset-2 ring-offset-[#faf6eb]'
+   400→                    : ''
+   401→                }`}
+   402→              >
+   403→                <span>{decade.emoji}</span>
+   404→                <span>{decade.label}</span>
+   405→              </motion.button>
+   406→            ))}
+   407→          </div>
+   408→
+   409→          {/* Range hint */}
+   410→          <p className="old-typewriter text-[10px] text-[#8b7355] mt-3 opacity-60">
+   411→            1970 – 2015
+   412→          </p>
+   413→        </div>
+   414→      </motion.div>
+   415→
+   416→      {/* Action buttons */}
+   417→      <motion.div
+   418→        variants={staggerItem}
+   419→        className="flex items-center gap-3 mt-6 w-full max-w-xs"
+   420→      >
+   421→        <motion.button
+   422→          onClick={onBack}
+   423→          whileHover={{ scale: 1.05 }}
+   424→          whileTap={{ scale: 0.95 }}
+   425→          className="sk-btn old-btn rounded-lg px-4 py-2.5 text-sm cursor-pointer flex items-center gap-1"
+   426→        >
+   427→          <ChevronLeft className="h-4 w-4" />
+   428→          Back
+   429→        </motion.button>
+   430→        <motion.button
+   431→          whileHover={canContinue ? { scale: 1.03, y: -1 } : {}}
+   432→          whileTap={canContinue ? { scale: 0.97 } : {}}
+   433→          onClick={canContinue ? onNext : undefined}
+   434→          disabled={!canContinue}
+   435→          className={`sk-leather old-btn flex-1 text-[#faf6eb] font-bold text-base py-2.5 rounded-lg cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 ${
+   436→            canContinue
+   437→              ? 'hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]'
+   438→              : 'opacity-50 cursor-not-allowed'
+   439→          }`}
+   440→        >
+   441→          Continue
+   442→          <ChevronRight className="h-4 w-4" />
+   443→        </motion.button>
+   444→      </motion.div>
+   445→    </motion.div>
+   446→  );
+   447→}
+   448→
+   449→/* ═══════════════════════════════════════════════════════════════
+   450→   Step 3: Era Skin
+   451→   ═══════════════════════════════════════════════════════════════ */
+   452→
+   453→function EraSkinStep({
+   454→  selectedEra,
+   455→  setSelectedEra,
+   456→  onNext,
+   457→  onBack,
+   458→}: {
+   459→  selectedEra: string | null;
+   460→  setSelectedEra: (id: string) => void;
+   461→  onNext: () => void;
+   462→  onBack: () => void;
+   463→}) {
+   464→  return (
+   465→    <motion.div
+   466→      className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center"
+   467→      variants={staggerContainer}
+   468→      initial="initial"
+   469→      animate="animate"
+   470→    >
+   471→      {/* Heading */}
+   472→      <motion.div variants={staggerItem} className="mb-6">
+   473→        <Sparkles className="h-8 w-8 mx-auto mb-3 text-[#8b5e3c]" />
+   474→        <h2 className="old-title text-3xl sm:text-4xl font-black tracking-tight text-[#5c4033]">
+   475→          What&apos;s your era?
+   476→        </h2>
+   477→        <p className="old-body text-base text-[#8b7355] mt-2">
+   478→          Pick a vibe that speaks to you
+   479→        </p>
+   480→      </motion.div>
+   481→
+   482→      {/* Era cards */}
+   483→      <motion.div
+   484→        variants={staggerItem}
+   485→        className="grid grid-cols-2 gap-3 w-full max-w-sm"
+   486→      >
+   487→        {ERA_OPTIONS.map((era) => {
+   488→          const isSelected = selectedEra === era.id;
+   489→          return (
+   490→            <motion.button
+   491→              key={era.id}
+   492→              whileHover={{ scale: 1.04, y: -3 }}
+   493→              whileTap={{ scale: 0.96 }}
+   494→              onClick={() => { soundTabSwitch(); setSelectedEra(era.id); }}
+   495→              className={`rounded-xl overflow-hidden cursor-pointer transition-all duration-300 relative ${
+   496→                isSelected
+   497→                  ? 'ring-2 ring-offset-2'
+   498→                  : 'ring-1 ring-[#c4b594]'
+   499→              }`}
+   500→              style={{
+   501→                background: era.bg,
+   502→                ringColor: era.accent,
+   503→                '--tw-ring-color': era.accent,
+   504→                '--tw-ring-offset-color': '#f5edd6',
+   505→              } as React.CSSProperties}
+   506→            >
+   507→              {/* Glow effect for selected */}
+   508→              {isSelected && (
+   509→                <motion.div
+   510→                  className="absolute inset-0 pointer-events-none rounded-xl"
+   511→                  initial={{ opacity: 0 }}
+   512→                  animate={{ opacity: 1 }}
+   513→                  style={{
+   514→                    boxShadow: `0 0 16px ${era.accent}60, 0 0 32px ${era.accent}30, inset 0 0 12px ${era.accent}20`,
+   515→                  }}
+   516→                />
+   517→              )}
+   518→
+   519→              {/* Color palette preview */}
+   520→              <div className="flex h-10">
+   521→                {era.colors.map((color, i) => (
+   522→                  <div
+   523→                    key={i}
+   524→                    className="flex-1 transition-transform duration-200"
+   525→                    style={{ backgroundColor: color }}
+   526→                  />
+   527→                ))}
+   528→              </div>
+   529→
+   530→              {/* Card content */}
+   531→              <div
+   532→                className="p-3 text-left"
+   533→                style={{ color: era.id === '2000s-y2k' ? '#333366' : era.id === '90s-grunge' ? '#d4c8b0' : '#3d2b1f' }}
+   534→              >
+   535→                <div className="flex items-center gap-1.5">
+   536→                  <span className="text-lg">{era.emoji}</span>
+   537→                  <span className="old-title font-bold text-sm">{era.name}</span>
+   538→                </div>
+   539→                <p
+   540→                  className="old-typewriter text-[10px] mt-0.5 opacity-70 leading-tight"
+   541→                >
+   542→                  {era.subtitle}
+   543→                </p>
+   544→              </div>
+   545→
+   546→              {/* Selected indicator */}
+   547→              {isSelected && (
+   548→                <motion.div
+   549→                  className="absolute top-1.5 right-1.5"
+   550→                  initial={{ scale: 0 }}
+   551→                  animate={{ scale: 1 }}
+   552→                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+   553→                >
+   554→                  <div
+   555→                    className="w-5 h-5 rounded-full flex items-center justify-center"
+   556→                    style={{ backgroundColor: era.accent }}
+   557→                  >
+   558→                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+   559→                      <path
+   560→                        d="M2 6L5 9L10 3"
+   561→                        stroke="white"
+   562→                        strokeWidth="2"
+   563→                        strokeLinecap="round"
+   564→                        strokeLinejoin="round"
+   565→                      />
+   566→                    </svg>
+   567→                  </div>
+   568→                </motion.div>
+   569→              )}
+   570→            </motion.button>
+   571→          );
+   572→        })}
+   573→      </motion.div>
+   574→
+   575→      {/* Era description */}
+   576→      {selectedEra && (
+   577→        <motion.p
+   578→          key={selectedEra}
+   579→          initial={{ opacity: 0, y: 5 }}
+   580→          animate={{ opacity: 1, y: 0 }}
+   581→          className="old-body text-sm text-[#8b7355] mt-4 max-w-xs"
+   582→        >
+   583→          {ERA_OPTIONS.find((e) => e.id === selectedEra)?.description}
+   584→        </motion.p>
+   585→      )}
+   586→
+   587→      {/* Action buttons */}
+   588→      <motion.div
+   589→        variants={staggerItem}
+   590→        className="flex items-center gap-3 mt-6 w-full max-w-xs"
+   591→      >
+   592→        <motion.button
+   593→          onClick={onBack}
+   594→          whileHover={{ scale: 1.05 }}
+   595→          whileTap={{ scale: 0.95 }}
+   596→          className="sk-btn old-btn rounded-lg px-4 py-2.5 text-sm cursor-pointer flex items-center gap-1"
+   597→        >
+   598→          <ChevronLeft className="h-4 w-4" />
+   599→          Back
+   600→        </motion.button>
+   601→        <motion.button
+   602→          whileHover={selectedEra ? { scale: 1.03, y: -1 } : {}}
+   603→          whileTap={selectedEra ? { scale: 0.97 } : {}}
+   604→          onClick={selectedEra ? onNext : undefined}
+   605→          disabled={!selectedEra}
+   606→          className={`sk-leather old-btn flex-1 text-[#faf6eb] font-bold text-base py-2.5 rounded-lg cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 ${
+   607→            selectedEra
+   608→              ? 'hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]'
+   609→              : 'opacity-50 cursor-not-allowed'
+   610→          }`}
+   611→        >
+   612→          Continue
+   613→          <ChevronRight className="h-4 w-4" />
+   614→        </motion.button>
+   615→      </motion.div>
+   616→    </motion.div>
+   617→  );
+   618→}
+   619→
+   620→/* ═══════════════════════════════════════════════════════════════
+   621→   Step 4: Feature Tour
+   622→   ═══════════════════════════════════════════════════════════════ */
+   623→
+   624→function FeatureTourStep({
+   625→  currentFeature,
+   626→  setCurrentFeature,
+   627→  onNext,
+   628→  onBack,
+   629→}: {
+   630→  currentFeature: number;
+   631→  setCurrentFeature: (i: number) => void;
+   632→  onNext: () => void;
+   633→  onBack: () => void;
+   634→}) {
+   635→  const feature = FEATURE_CARDS[currentFeature];
+   636→  const FeatureIcon = feature.icon;
+   637→
+   638→  return (
+   639→    <motion.div
+   640→      className="flex flex-col items-center justify-center min-h-[75vh] px-6 text-center"
+   641→      variants={staggerContainer}
+   642→      initial="initial"
+   643→      animate="animate"
+   644→    >
+   645→      {/* Heading */}
+   646→      <motion.div variants={staggerItem} className="mb-6">
+   647→        <h2 className="old-title text-3xl sm:text-4xl font-black tracking-tight text-[#5c4033]">
+   648→          Here&apos;s what awaits
+   649→        </h2>
+   650→        <p className="old-body text-base text-[#8b7355] mt-2">
+   651→          Swipe through your toolkit
+   652→        </p>
+   653→      </motion.div>
+   654→
+   655→      {/* Feature card */}
+   656→      <motion.div variants={staggerItem} className="w-full max-w-xs">
+   657→        <AnimatePresence mode="wait">
+   658→          <motion.div
+   659→            key={currentFeature}
+   660→            initial={{ opacity: 0, x: 30 }}
+   661→            animate={{ opacity: 1, x: 0 }}
+   662→            exit={{ opacity: 0, x: -30 }}
+   663→            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+   664→            className="sk-paper rounded-xl p-8 relative overflow-hidden sk-noise"
+   665→          >
+   666→            <div className="sk-tape" />
+   667→
+   668→            {/* Feature icon + emoji */}
+   669→            <motion.div
+   670→              className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#8b5e3c]/10 flex items-center justify-center"
+   671→              initial={{ scale: 0.8, rotate: -10 }}
+   672→              animate={{ scale: 1, rotate: 0 }}
+   673→              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+   674→            >
+   675→              <FeatureIcon className="h-8 w-8 text-[#8b5e3c]" />
+   676→            </motion.div>
+   677→
+   678→            <div className="text-4xl mb-3">{feature.emoji}</div>
+   679→
+   680→            <h3 className="old-title text-2xl font-bold text-[#5c4033] mb-2">
+   681→              {feature.title}
+   682→            </h3>
+   683→            <p className="old-body text-base text-[#8b7355] leading-relaxed">
+   684→              {feature.description}
+   685→            </p>
+   686→          </motion.div>
+   687→        </AnimatePresence>
+   688→      </motion.div>
+   689→
+   690→      {/* Swipe dots */}
+   691→      <motion.div variants={staggerItem} className="flex items-center gap-2 mt-5">
+   692→        {FEATURE_CARDS.map((_, i) => (
+   693→          <button
+   694→            key={i}
+   695→            onClick={() => setCurrentFeature(i)}
+   696→            className={`rounded-full transition-all duration-300 ${
+   697→              i === currentFeature
+   698→                ? 'w-6 h-2.5 bg-[#8b5e3c]'
+   699→                : 'w-2.5 h-2.5 bg-[#d4c5a9] hover:bg-[#b8a888]'
+   700→            }`}
+   701→            aria-label={`Feature ${i + 1}`}
+   702→          />
+   703→        ))}
+   704→      </motion.div>
+   705→
+   706→      {/* Swipe hint */}
+   707→      <motion.div variants={staggerItem} className="flex items-center gap-2 mt-2">
+   708→        {currentFeature > 0 && (
+   709→          <button
+   710→            onClick={() => setCurrentFeature(currentFeature - 1)}
+   711→            className="old-typewriter text-xs text-[#8b7355] cursor-pointer hover:text-[#5c4033] transition-colors"
+   712→          >
+   713→            ← Prev
+   714→          </button>
+   715→        )}
+   716→        {currentFeature < FEATURE_CARDS.length - 1 && (
+   717→          <button
+   718→            onClick={() => setCurrentFeature(currentFeature + 1)}
+   719→            className="old-typewriter text-xs text-[#8b7355] cursor-pointer hover:text-[#5c4033] transition-colors"
+   720→          >
+   721→            Next →
+   722→          </button>
+   723→        )}
+   724→      </motion.div>
+   725→
+   726→      {/* Action buttons */}
+   727→      <motion.div
+   728→        variants={staggerItem}
+   729→        className="flex items-center gap-3 mt-5 w-full max-w-xs"
+   730→      >
+   731→        <motion.button
+   732→          onClick={onBack}
+   733→          whileHover={{ scale: 1.05 }}
+   734→          whileTap={{ scale: 0.95 }}
+   735→          className="sk-btn old-btn rounded-lg px-4 py-2.5 text-sm cursor-pointer flex items-center gap-1"
+   736→        >
+   737→          <ChevronLeft className="h-4 w-4" />
+   738→          Back
+   739→        </motion.button>
+   740→        <motion.button
+   741→          whileHover={{ scale: 1.03, y: -1 }}
+   742→          whileTap={{ scale: 0.97 }}
+   743→          onClick={onNext}
+   744→          className="sk-leather old-btn flex-1 text-[#faf6eb] font-bold text-base py-2.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] flex items-center justify-center gap-2"
+   745→        >
+   746→          <PartyPopper className="h-4 w-4" />
+   747→          Start Rewinding!
+   748→        </motion.button>
+   749→      </motion.div>
+   750→    </motion.div>
+   751→  );
+   752→}
+   753→
+   754→/* ═══════════════════════════════════════════════════════════════
+   755→   Main OnboardingFlow Component
+   756→   ═══════════════════════════════════════════════════════════════ */
+   757→
+   758→export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+   759→  const [currentStep, setCurrentStep] = useState(0);
+   760→  const [direction, setDirection] = useState<number>(STEP_DIRECTION.forward);
+   761→  const [birthYear, setBirthYearState] = useState('');
+   762→  const [selectedEra, setSelectedEra] = useState<string | null>(null);
+   763→  const [currentFeature, setCurrentFeature] = useState(0);
+   764→  const [isLoaded, setIsLoaded] = useState(false);
+   765→  const [isCompleting, setIsCompleting] = useState(false);
+   766→
+   767→  /* ───── Check IndexedDB on mount ───── */
+   768→  useEffect(() => {
+   769→    let cancelled = false;
+   770→
+   771→    (async () => {
+   772→      try {
+   773→        const db = await getDB();
+   774→        if (cancelled) return;
+   775→
+   776→        const record: any = await db.get('era_skin', ONBOARDING_ID);
+   777→        if (cancelled) return;
+   778→
+   779→        if (record?.complete) {
+   780→          // Already onboarded — restore state and skip
+   781→          const savedBirthYear = record.birthYear ?? null;
+   782→          const savedEra = record.eraSkin ?? null;
+   783→
+   784→          if (savedBirthYear && savedEra) {
+   785→            onComplete({ birthYear: savedBirthYear, eraSkin: savedEra });
+   786→            return;
+   787→          }
+   788→        }
+   789→        setIsLoaded(true);
+   790→      } catch {
+   791→        // If IDB fails, still show onboarding
+   792→        setIsLoaded(true);
+   793→      }
+   794→    })();
+   795→
+   796→    return () => { cancelled = true; };
+   797→  }, [onComplete]);
+   798→
+   799→  /* ───── Persistence helpers ───── */
+   800→  const saveOnboardingData = useCallback(
+   801→    async (year: number, era: string) => {
+   802→      const db = await getDB();
+   803→      const record: OnboardingRecord = {
+   804→        id: ONBOARDING_ID,
+   805→        birthYear: year,
+   806→        eraSkin: era,
+   807→        complete: true,
+   808→      };
+   809→      await db.put('era_skin', record as any);
+   810→      // Also set the era skin in the standard location
+   811→      if (era !== 'mixed') {
+   812→        await setEraSkinId(era);
+   813→      }
+   814→    },
+   815→    [],
+   816→  );
+   817→
+   818→  /* ───── Navigation helpers ───── */
+   819→  const goNext = useCallback(() => {
+   820→    soundButtonClick();
+   821→    setDirection(STEP_DIRECTION.forward);
+   822→    setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+   823→  }, []);
+   824→
+   825→  const goBack = useCallback(() => {
+   826→    soundButtonClick();
+   827→    setDirection(STEP_DIRECTION.backward);
+   828→    setCurrentStep((s) => Math.max(s - 1, 0));
+   829→  }, []);
+   830→
+   831→  const setBirthYear = useCallback((val: string) => {
+   832→    setBirthYearState(val);
+   833→  }, []);
+   834→
+   835→  const canContinueBirthYear = useMemo(() => {
+   836→    const y = parseInt(birthYear);
+   837→    return y >= 1970 && y <= 2015;
+   838→  }, [birthYear]);
+   839→
+   840→  /* ───── Handle final completion ───── */
+   841→  const handleComplete = useCallback(() => {
+   842→    soundChime();
+   843→    const year = parseInt(birthYear);
+   844→    const era = selectedEra || 'mixed';
+   845→    setIsCompleting(true);
+   846→
+   847→    // Small delay for the exit animation to feel natural
+   848→    setTimeout(async () => {
+   849→      try {
+   850→        await saveOnboardingData(year, era);
+   851→      } catch (err) {
+   852→        console.warn('[Onboarding] Failed to persist:', err);
+   853→      }
+   854→      onComplete({ birthYear: year, eraSkin: era });
+   855→    }, 600);
+   856→  }, [birthYear, selectedEra, saveOnboardingData, onComplete]);
+   857→
+   858→  /* ───── Loading state while checking IDB ───── */
+   859→  if (!isLoaded) {
+   860→    return (
+   861→      <div className="min-h-screen flex items-center justify-center bg-[#f5edd6]">
+   862→        <motion.div
+   863→          initial={{ opacity: 0 }}
+   864→          animate={{ opacity: 1 }}
+   865→          className="text-center"
+   866→        >
+   867→          <div className="text-4xl mb-3">📼</div>
+   868→          <p className="old-typewriter text-sm text-[#8b7355]">Loading...</p>
+   869→        </motion.div>
+   870→      </div>
+   871→    );
+   872→  }
+   873→
+   874→  /* ───── Render current step ───── */
+   875→  const renderStep = () => {
+   876→    switch (currentStep) {
+   877→      case 0:
+   878→        return <WelcomeStep onNext={goNext} />;
+   879→      case 1:
+   880→        return (
+   881→          <BirthYearStep
+   882→            birthYear={birthYear}
+   883→            setBirthYear={setBirthYear}
+   884→            onNext={goNext}
+   885→            onBack={goBack}
+   886→            canContinue={canContinueBirthYear}
+   887→          />
+   888→        );
+   889→      case 2:
+   890→        return (
+   891→          <EraSkinStep
+   892→            selectedEra={selectedEra}
+   893→            setSelectedEra={setSelectedEra}
+   894→            onNext={goNext}
+   895→            onBack={goBack}
+   896→          />
+   897→        );
+   898→      case 3:
+   899→        return (
+   900→          <FeatureTourStep
+   901→            currentFeature={currentFeature}
+   902→            setCurrentFeature={setCurrentFeature}
+   903→            onNext={handleComplete}
+   904→            onBack={goBack}
+   905→          />
+   906→        );
+   907→      default:
+   908→        return null;
+   909→    }
+   910→  };
+   911→
+   912→  return (
+   913→    <AnimatePresence mode="wait">
+   914→      {!isCompleting ? (
+   915→        <motion.div
+   916→          key="onboarding-container"
+   917→          initial={{ opacity: 0 }}
+   918→          animate={{ opacity: 1 }}
+   919→          exit={{ opacity: 0, scale: 0.95, y: -20 }}
+   920→          transition={{ duration: 0.6, ease: 'easeInOut' }}
+   921→          className="min-h-screen flex flex-col"
+   922→          style={{
+   923→            background:
+   924→              'linear-gradient(180deg, #f5edd6 0%, #ede0c8 40%, #e8d8b8 100%)',
+   925→          }}
+   926→        >
+   927→          {/* Main step area */}
+   928→          <div className="flex-1 flex items-center justify-center overflow-hidden">
+   929→            <AnimatePresence custom={direction} mode="wait">
+   930→              <motion.div
+   931→                key={currentStep}
+   932→                custom={direction}
+   933→                variants={slideVariants}
+   934→                initial="enter"
+   935→                animate="center"
+   936→                exit="exit"
+   937→                transition={slideTransition}
+   938→                className="w-full"
+   939→              >
+   940→                {renderStep()}
+   941→              </motion.div>
+   942→            </AnimatePresence>
+   943→          </div>
+   944→
+   945→          {/* Progress dots — fixed at bottom */}
+   946→          <div className="pb-8 pt-4">
+   947→            <ProgressDots current={currentStep} total={TOTAL_STEPS} />
+   948→          </div>
+   949→        </motion.div>
+   950→      ) : (
+   951→        /* Completion celebration overlay */
+   952→        <motion.div
+   953→          key="onboarding-complete"
+   954→          initial={{ opacity: 0 }}
+   955→          animate={{ opacity: 1 }}
+   956→          className="min-h-screen flex items-center justify-center bg-[#f5edd6]"
+   957→        >
+   958→          <motion.div
+   959→            initial={{ scale: 0, rotate: -20 }}
+   960→            animate={{ scale: 1, rotate: 0 }}
+   961→            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+   962→            className="text-center px-6"
+   963→          >
+   964→            <motion.div
+   965→              className="text-6xl mb-4"
+   966→              animate={{ rotate: [0, 10, -10, 0] }}
+   967→              transition={{ duration: 0.8, repeat: 2 }}
+   968→            >
+   969→              🎉
+   970→            </motion.div>
+   971→            <h2 className="old-title text-3xl font-black text-[#5c4033] mb-2">
+   972→              All Set!
+   973→            </h2>
+   974→            <p className="old-body text-[#8b7355]">
+   975→              Rewinding to your era...
+   976→            </p>
+   977→            <motion.div
+   978→              className="mt-6 mx-auto"
+   979→              style={{ width: 120, height: 4, borderRadius: 2 }}
+   980→              initial={{ opacity: 0.3 }}
+   981→              animate={{ opacity: [0.3, 1, 0.3] }}
+   982→              transition={{ duration: 1.2, repeat: Infinity }}
+   983→            >
+   984→              <div
+   985→                className="h-full rounded-full"
+   986→                style={{
+   987→                  width: '100%',
+   988→                  background: 'linear-gradient(90deg, #8b5e3c, #c4956a, #8b5e3c)',
+   989→                  backgroundSize: '200% 100%',
+   990→                  animation: 'rewind-shimmer 1.5s ease-in-out infinite',
+   991→                }}
+   992→              />
+   993→            </motion.div>
+   994→          </motion.div>
+   995→        </motion.div>
+   996→      )}
+   997→    </AnimatePresence>
+   998→  );
+   999→}
+  1000→

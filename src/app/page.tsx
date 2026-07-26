@@ -817,20 +817,17 @@ export default function Home() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       runMigration().catch(err => console.warn('[rewind] Migration error:', err));
-      // Check if onboarding was completed — only pre-fill, never auto-skip
+      // Check if onboarding was completed — always start fresh after deploy
       (async () => {
         try {
           const db = await getDB();
-          const record: any = await db.get('era_skin', 'onboarding');
-          if (record?.complete && record.birthYear) {
-            // Pre-fill the year on landing page, but don't auto-navigate
-            setPrefilledYear(String(record.birthYear));
-          } else {
-            setShowOnboarding(true);
-          }
+          // Clear stale onboarding data so the proper flow always shows
+          await db.delete('era_skin', 'onboarding');
         } catch {
-          setShowOnboarding(true);
+          // ignore — if delete fails, onboarding will show anyway
         }
+        // Always show onboarding for a clean experience
+        setShowOnboarding(true);
         setOnboardingChecked(true);
       })();
     }

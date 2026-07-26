@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Tv, Sparkles, ChevronDown, Star, Clock, Loader2 } from 'lucide-react';
+import { soundButtonClick, soundGalleryOpen } from '@/lib/sounds';
 
 interface MovieItem {
   id: string;
@@ -110,16 +111,16 @@ export default function MoviesTab({ birthYear }: { birthYear: number }) {
 
       {/* Category filter buttons */}
       <div className="flex flex-wrap gap-2 justify-center">
-        <FilterBtn active={category === 'all'} onClick={() => setCategory('all')}>
+        <FilterBtn active={category === 'all'} onClick={() => { soundButtonClick(); setCategory('all'); }}>
           All
         </FilterBtn>
-        <FilterBtn active={category === 'movie'} onClick={() => setCategory('movie')}>
+        <FilterBtn active={category === 'movie'} onClick={() => { soundButtonClick(); setCategory('movie'); }}>
           <Film className="h-3.5 w-3.5" /> Movies
         </FilterBtn>
-        <FilterBtn active={category === 'tv'} onClick={() => setCategory('tv')}>
+        <FilterBtn active={category === 'tv'} onClick={() => { soundButtonClick(); setCategory('tv'); }}>
           <Tv className="h-3.5 w-3.5" /> TV Shows
         </FilterBtn>
-        <FilterBtn active={category === 'cartoon'} onClick={() => setCategory('cartoon')}>
+        <FilterBtn active={category === 'cartoon'} onClick={() => { soundButtonClick(); setCategory('cartoon'); }}>
           <Sparkles className="h-3.5 w-3.5" /> Cartoons
         </FilterBtn>
       </div>
@@ -145,7 +146,11 @@ export default function MoviesTab({ birthYear }: { birthYear: number }) {
               item={item}
               index={i}
               expanded={expandedId === item.id}
-              onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
+              onToggle={() => {
+                const willExpand = expandedId !== item.id;
+                if (willExpand) soundGalleryOpen();
+                setExpandedId(expandedId === item.id ? null : item.id);
+              }}
             />
           ))}
         </div>

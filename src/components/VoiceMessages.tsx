@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllVoicemails, addVoicemail, deleteVoicemail } from '@/lib/idb-store';
+import { soundButtonClick, soundRecordStart, soundRecordStop, soundDelete } from '@/lib/sounds';
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -181,6 +182,7 @@ export default function VoiceMessages() {
       };
 
       recorder.start();
+      soundRecordStart();
       playBeep(800, 0.1, 'square');
       setStatus('recording');
       setRecordingTime(0);
@@ -216,12 +218,14 @@ export default function VoiceMessages() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
+    soundRecordStop();
     playBeep(600, 0.2, 'sine');
     setStatus('ready');
   }, []);
 
   // ── Toggle Recording ──
   const toggleRecording = useCallback(() => {
+    soundButtonClick();
     if (status === 'recording') {
       stopRecording();
     } else if (status === 'ready') {
@@ -303,6 +307,7 @@ export default function VoiceMessages() {
   // ── Delete a message ──
   const deleteMessage = useCallback(
     (id: string) => {
+      soundDelete();
       if (playingId === id && audioElRef.current) {
         audioElRef.current.pause();
         audioElRef.current = null;
@@ -635,7 +640,7 @@ export default function VoiceMessages() {
                 <div className="flex items-center gap-3">
                   {/* Play / Pause */}
                   <button
-                    onClick={() => togglePlay(msg)}
+                    onClick={() => { soundButtonClick(); togglePlay(msg); }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#3d2b1f] text-[#f5edd6] old-typewriter text-[10px] tracking-wider hover:bg-[#5a4030] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     aria-label={isThisPlaying ? 'Pause' : 'Play'}
                   >
@@ -662,7 +667,7 @@ export default function VoiceMessages() {
 
                   {/* Delete */}
                   <button
-                    onClick={() => deleteMessage(msg.id)}
+                    onClick={() => { soundButtonClick(); deleteMessage(msg.id); }}
                     className="text-[#8b7355] hover:text-red-700 transition-colors opacity-60 group-hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded p-1"
                     aria-label="Delete message"
                   >

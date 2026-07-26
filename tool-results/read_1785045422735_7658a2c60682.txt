@@ -1,0 +1,1157 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useEffect, useRef, useCallback } from 'react';
+     4→     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→     5→import {
+     6→     6→  X,
+     7→     7→  ArrowLeft,
+     8→     8→  Check,
+     9→     9→  Download,
+    10→    10→  Share2,
+    11→    11→  Camera,
+    12→    12→  Loader2,
+    13→    13→  Film,
+    14→    14→  Tv,
+    15→    15→  Frame,
+    16→    16→  ImageOff,
+    17→    17→} from 'lucide-react';
+    18→    18→import { getAllCameraPhotos } from '@/lib/idb-store';
+    19→    19→import type { CameraPhotoRecord } from '@/lib/idb-store/types';
+    20→    20→import { processFrame, PIPELINE_PRESETS } from '@/lib/image-pipeline';
+    21→    21→
+    22→    22→/* ═══════ TYPES ═══════ */
+    23→    23→
+    24→    24→export interface ShareRewindProps {
+    25→    25→  open: boolean;
+    26→    26→  onClose: () => void;
+    27→    27→}
+    28→    28→
+    29→    29→type CollageStyle = 'vhs' | 'polaroid' | 'filmstrip';
+    30→    30→type Step = 'select' | 'style' | 'preview';
+    31→    31→
+    32→    32→interface PhotoItem {
+    33→    33→  id: string;
+    34→    34→  url: string;
+    35→    35→  blob: Blob;
+    36→    36→  filter_used: string;
+    37→    37→  created_at: number;
+    38→    38→  naturalWidth: number;
+    39→    39→  naturalHeight: number;
+    40→    40→}
+    41→    41→
+    42→    42→/* ═══════ STYLE DEFINITIONS ═══════ */
+    43→    43→
+    44→    44→const STYLES: {
+    45→    45→  key: CollageStyle;
+    46→    46→  label: string;
+    47→    47→  emoji: string;
+    48→    48→  icon: typeof Tv;
+    49→    49→  presetKey: string;
+    50→    50→  description: string;
+    51→    51→}[] = [
+    52→    52→  {
+    53→    53→    key: 'vhs',
+    54→    54→    label: 'VHS Static',
+    55→    55→    emoji: '📼',
+    56→    56→    icon: Tv,
+    57→    57→    presetKey: 'vhs',
+    58→    58→    description: 'Tracking lines, chromatic shift & CRT glow',
+    59→    59→  },
+    60→    60→  {
+    61→    61→    key: 'polaroid',
+    62→    62→    label: 'Polaroid Stack',
+    63→    63→    emoji: '📸',
+    64→    64→    icon: Frame,
+    65→    65→    presetKey: 'polaroid',
+    66→    66→    description: 'Soft vintage tones, white frame & shadow',
+    67→    67→  },
+    68→    68→  {
+    69→    69→    key: 'filmstrip',
+    70→    70→    label: 'Film Strip',
+    71→    71→    emoji: '🎞️',
+    72→    72→    icon: Film,
+    73→    73→    presetKey: 'kodak',
+    74→    74→    description: 'Classic 35mm film layout with sprocket holes',
+    75→    75→  },
+    76→    76→];
+    77→    77→
+    78→    78→const MIN_PHOTOS = 3;
+    79→    79→const MAX_PHOTOS = 6;
+    80→    80→
+    81→    81→/* ═══════ ANIMATION VARIANTS ═══════ */
+    82→    82→
+    83→    83→const overlayVariants = {
+    84→    84→  hidden: { opacity: 0 },
+    85→    85→  visible: { opacity: 1 },
+    86→    86→  exit: { opacity: 0 },
+    87→    87→} as const;
+    88→    88→
+    89→    89→const panelVariants = {
+    90→    90→  hidden: { y: 40, opacity: 0 },
+    91→    91→  visible: {
+    92→    92→    y: 0,
+    93→    93→    opacity: 1,
+    94→    94→    transition: { type: 'spring' as const, damping: 28, stiffness: 300 },
+    95→    95→  },
+    96→    96→  exit: { y: 40, opacity: 0 },
+    97→    97→};
+    98→    98→
+    99→    99→const stepContentVariants = {
+   100→   100→  enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+   101→   101→  center: { x: 0, opacity: 1, transition: { duration: 0.35, ease: 'easeOut' as const } },
+   102→   102→  exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+   103→   103→};
+   104→   104→
+   105→   105→/* ═══════ HELPERS ═══════ */
+   106→   106→
+   107→   107→function loadImage(url: string): Promise<HTMLImageElement> {
+   108→   108→  return new Promise((resolve, reject) => {
+   109→   109→    const img = new Image();
+   110→   110→    img.crossOrigin = 'anonymous';
+   111→   111→    img.onload = () => resolve(img);
+   112→   112→    img.onerror = reject;
+   113→   113→    img.src = url;
+   114→   114→  });
+   115→   115→}
+   116→   116→
+   117→   117→/** Draw a rounded rectangle path (no fill/stroke) */
+   118→   118→function roundRectPath(
+   119→   119→  ctx: CanvasRenderingContext2D,
+   120→   120→  x: number, y: number, w: number, h: number,
+   121→   121→  r: number,
+   122→   122→) {
+   123→   123→  ctx.beginPath();
+   124→   124→  ctx.moveTo(x + r, y);
+   125→   125→  ctx.lineTo(x + w - r, y);
+   126→   126→  ctx.arcTo(x + w, y, x + w, y + r, r);
+   127→   127→  ctx.lineTo(x + w, y + h - r);
+   128→   128→  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+   129→   129→  ctx.lineTo(x + r, y + h);
+   130→   130→  ctx.arcTo(x, y + h, x, y + h - r, r);
+   131→   131→  ctx.lineTo(x, y + r);
+   132→   132→  ctx.arcTo(x, y, x + r, y, r);
+   133→   133→  ctx.closePath();
+   134→   134→}
+   135→   135→
+   136→   136→/** Draw VHS scanlines on a canvas */
+   137→   137→function drawScanlines(
+   138→   138→  ctx: CanvasRenderingContext2D,
+   139→   139→  w: number,
+   140→   140→  h: number,
+   141→   141→  opacity = 0.08,
+   142→   142→) {
+   143→   143→  ctx.save();
+   144→   144→  ctx.globalAlpha = opacity;
+   145→   145→  ctx.fillStyle = '#000';
+   146→   146→  for (let y = 0; y < h; y += 3) {
+   147→   147→    ctx.fillRect(0, y, w, 1);
+   148→   148→  }
+   149→   149→  ctx.restore();
+   150→   150→}
+   151→   151→
+   152→   152→/** Draw VHS tracking glitch bands */
+   153→   153→function drawTrackingGlitch(
+   154→   154→  ctx: CanvasRenderingContext2D,
+   155→   155→  w: number,
+   156→   156→  h: number,
+   157→   157→) {
+   158→   158→  ctx.save();
+   159→   159→  const glitchBands = 2 + Math.floor(Math.random() * 3);
+   160→   160→  for (let i = 0; i < glitchBands; i++) {
+   161→   161→    const bandY = Math.random() * h;
+   162→   162→    const bandH = 2 + Math.random() * 8;
+   163→   163→    ctx.globalAlpha = 0.15 + Math.random() * 0.2;
+   164→   164→    ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#888';
+   165→   165→    ctx.fillRect(0, bandY, w, bandH);
+   166→   166→  }
+   167→   167→  ctx.restore();
+   168→   168→}
+   169→   169→
+   170→   170→/** Draw timestamp like a VHS recording */
+   171→   171→function drawVHSTimestamp(
+   172→   172→  ctx: CanvasRenderingContext2D,
+   173→   173→  w: number,
+   174→   174→  h: number,
+   175→   175→) {
+   176→   176→  ctx.save();
+   177→   177→  ctx.font = '16px monospace';
+   178→   178→  ctx.fillStyle = '#fff';
+   179→   179→  ctx.shadowColor = 'rgba(255,255,255,0.6)';
+   180→   180→  ctx.shadowBlur = 4;
+   181→   181→  ctx.globalAlpha = 0.85;
+   182→   182→  const date = new Date();
+   183→   183→  const stamp = `${date.toLocaleDateString('en-US').replace(/\//g, '.')} ${date.toLocaleTimeString('en-US', { hour12: false })}`;
+   184→   184→  ctx.textAlign = 'right';
+   185→   185→  ctx.fillText(stamp, w - 20, h - 20);
+   186→   186→  // REC dot
+   187→   187→  ctx.fillStyle = '#ff3333';
+   188→   188→  ctx.beginPath();
+   189→   189→  ctx.arc(w - ctx.measureText(stamp).width - 36, h - 27, 5, 0, Math.PI * 2);
+   190→   190→  ctx.fill();
+   191→   191→  ctx.restore();
+   192→   192→}
+   193→   193→
+   194→   194→/** Draw film sprocket holes along one edge */
+   195→   195→function drawSprocketHoles(
+   196→   196→  ctx: CanvasRenderingContext2D,
+   197→   197→  x: number,
+   198→   198→  yStart: number,
+   199→   199→  yEnd: number,
+   200→   200→  holeWidth: number,
+   201→   201→  holeHeight: number,
+   202→   202→  gap: number,
+   203→   203→  color: string,
+   204→   204→) {
+   205→   205→  ctx.save();
+   206→   206→  ctx.fillStyle = color;
+   207→   207→  for (let y = yStart + gap; y < yEnd - gap; y += gap) {
+   208→   208→    roundRectPath(ctx, x, y, holeWidth, holeHeight, 2);
+   209→   209→    ctx.fill();
+   210→   210→  }
+   211→   211→  ctx.restore();
+   212→   212→}
+   213→   213→
+   214→   214→/** Draw REWIND branding watermark */
+   215→   215→function drawWatermark(
+   216→   216→  ctx: CanvasRenderingContext2D,
+   217→   217→  w: number,
+   218→   218→  h: number,
+   219→   219→) {
+   220→   220→  ctx.save();
+   221→   221→  ctx.globalAlpha = 0.35;
+   222→   222→  ctx.font = 'bold 14px monospace';
+   223→   223→  ctx.fillStyle = '#fff';
+   224→   224→  ctx.textAlign = 'left';
+   225→   225→  ctx.fillText('⏪ REWIND', 16, h - 16);
+   226→   226→  ctx.restore();
+   227→   227→}
+   228→   228→
+   229→   229→/* ═══════ COLLAGE RENDERERS ═══════ */
+   230→   230→
+   231→   231→/**
+   232→   232→ * Render a VHS-style collage to a canvas.
+   233→   233→ * Photos are arranged in a grid, processed with the VHS filter,
+   234→   234→ * overlaid with scanlines, glitch bands, timestamp, and CRT vignette.
+   235→   235→ */
+   236→   236→async function renderVHSCollage(
+   237→   237→  canvas: HTMLCanvasElement,
+   238→   238→  photos: PhotoItem[],
+   239→   239→): Promise<HTMLCanvasElement> {
+   240→   240→  const cols = photos.length <= 4 ? 2 : 3;
+   241→   241→  const rows = Math.ceil(photos.length / cols);
+   242→   242→  const cellW = 400;
+   243→   243→  const cellH = 300;
+   244→   244→  const padding = 12;
+   245→   245→  const headerH = 60;
+   246→   246→
+   247→   247→  canvas.width = cols * cellW + (cols + 1) * padding;
+   248→   248→  canvas.height = rows * cellH + (rows + 1) * padding + headerH;
+   249→   249→  const ctx = canvas.getContext('2d')!;
+   250→   250→
+   251→   251→  // Dark CRT background
+   252→   252→  ctx.fillStyle = '#1a1a1a';
+   253→   253→  ctx.fillRect(0, 0, canvas.width, canvas.height);
+   254→   254→
+   255→   255→  // Header
+   256→   256→  ctx.save();
+   257→   257→  ctx.globalAlpha = 0.7;
+   258→   258→  ctx.fillStyle = '#ff3333';
+   259→   259→  ctx.beginPath();
+   260→   260→  ctx.arc(28, headerH / 2, 6, 0, Math.PI * 2);
+   261→   261→  ctx.fill();
+   262→   262→  ctx.font = 'bold 22px monospace';
+   263→   263→  ctx.fillStyle = '#fff';
+   264→   264→  ctx.fillText('⏪ REWIND', 44, headerH / 2 + 8);
+   265→   265→  ctx.font = '14px monospace';
+   266→   266→  ctx.globalAlpha = 0.5;
+   267→   267→  ctx.textAlign = 'right';
+   268→   268→  ctx.fillText(`PLAY ▶  ${photos.length} MEMORIES`, canvas.width - 20, headerH / 2 + 6);
+   269→   269→  ctx.restore();
+   270→   270→
+   271→   271→  // Draw each photo
+   272→   272→  for (let i = 0; i < photos.length; i++) {
+   273→   273→    const col = i % cols;
+   274→   274→    const row = Math.floor(i / cols);
+   275→   275→    const x = padding + col * (cellW + padding);
+   276→   276→    const y = headerH + padding + row * (cellH + padding);
+   277→   277→
+   278→   278→    // Create temp canvas for processing
+   279→   279→    const tmp = document.createElement('canvas');
+   280→   280→    tmp.width = cellW;
+   281→   281→    tmp.height = cellH;
+   282→   282→    const tmpCtx = tmp.getContext('2d')!;
+   283→   283→
+   284→   284→    // Load and draw image
+   285→   285→    const img = await loadImage(photos[i].url);
+   286→   286→    const scale = Math.max(cellW / img.width, cellH / img.height);
+   287→   287→    const sw = cellW / scale;
+   288→   288→    const sh = cellH / scale;
+   289→   289→    const sx = (img.width - sw) / 2;
+   290→   290→    const sy = (img.height - sh) / 2;
+   291→   291→    tmpCtx.drawImage(img, sx, sy, sw, sh, 0, 0, cellW, cellH);
+   292→   292→
+   293→   293→    // Apply VHS pipeline
+   294→   294→    processFrame(tmpCtx, cellW, cellH, 'vhs');
+   295→   295→
+   296→   296→    // Draw to main canvas
+   297→   297→    ctx.drawImage(tmp, x, y, cellW, cellH);
+   298→   298→
+   299→   299→    // Slight glow/border
+   300→   300→    ctx.save();
+   301→   301→    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+   302→   302→    ctx.lineWidth = 1;
+   303→   303→    ctx.strokeRect(x, y, cellW, cellH);
+   304→   304→    ctx.restore();
+   305→   305→  }
+   306→   306→
+   307→   307→  // Overlays on top
+   308→   308→  drawScanlines(ctx, canvas.width, canvas.height, 0.06);
+   309→   309→  drawTrackingGlitch(ctx, canvas.width, canvas.height);
+   310→   310→  drawVHSTimestamp(ctx, canvas.width, canvas.height);
+   311→   311→
+   312→   312→  // CRT vignette
+   313→   313→  ctx.save();
+   314→   314→  const vg = ctx.createRadialGradient(
+   315→   315→    canvas.width / 2, canvas.height / 2, canvas.width * 0.25,
+   316→   316→    canvas.width / 2, canvas.height / 2, canvas.width * 0.65,
+   317→   317→  );
+   318→   318→  vg.addColorStop(0, 'rgba(0,0,0,0)');
+   319→   319→  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+   320→   320→  ctx.fillStyle = vg;
+   321→   321→  ctx.fillRect(0, 0, canvas.width, canvas.height);
+   322→   322→  ctx.restore();
+   323→   323→
+   324→   324→  drawWatermark(ctx, canvas.width, canvas.height);
+   325→   325→
+   326→   326→  return canvas;
+   327→   327→}
+   328→   328→
+   329→   329→/**
+   330→   330→ * Render a Polaroid-style collage.
+   331→   331→ * Photos are shown as Polaroids with white borders, slightly
+   332→   332→ * rotated and stacked with drop shadows.
+   333→   333→ */
+   334→   334→async function renderPolaroidCollage(
+   335→   335→  canvas: HTMLCanvasElement,
+   336→   336→  photos: PhotoItem[],
+   337→   337→): Promise<HTMLCanvasElement> {
+   338→   338→  const polaroidW = 320;
+   339→   339→  const polaroidH = 380;
+   340→   340→  const photoInsetTop = 28;
+   341→   341→  const photoInsetSide = 24;
+   342→   342→  const photoW = polaroidW - photoInsetSide * 2;
+   343→   343→  const photoH = polaroidH - photoInsetTop - 70;
+   344→   344→  const bottomLabelH = 50;
+   345→   345→
+   346→   346→  canvas.width = photos.length <= 3
+   347→   347→    ? photos.length * polaroidW + (photos.length + 1) * 30
+   348→   348→    : Math.ceil(photos.length / 2) * (polaroidW + 30) + 30;
+   349→   349→  canvas.height = photos.length <= 3
+   350→   350→    ? polaroidH + 100
+   351→   351→    : 2 * (polaroidH + 30) + 30;
+   352→   352→  const ctx = canvas.getContext('2d')!;
+   353→   353→
+   354→   354→  // Warm paper background
+   355→   355→  ctx.fillStyle = '#f5edd6';
+   356→   356→  ctx.fillRect(0, 0, canvas.width, canvas.height);
+   357→   357→
+   358→   358→  // Subtle paper texture
+   359→   359→  ctx.save();
+   360→   360→  ctx.globalAlpha = 0.03;
+   361→   361→  for (let i = 0; i < 4000; i++) {
+   362→   362→    ctx.fillStyle = Math.random() > 0.5 ? '#000' : '#8b7355';
+   363→   363→    ctx.fillRect(
+   364→   364→      Math.random() * canvas.width,
+   365→   365→      Math.random() * canvas.height,
+   366→   366→      1, 1,
+   367→   367→    );
+   368→   368→  }
+   369→   369→  ctx.restore();
+   370→   370→
+   371→   371→  const rotations = [-3, 2, -1.5, 2.5, -2, 1.5];
+   372→   372→  const cols = photos.length <= 3 ? photos.length : Math.ceil(photos.length / 2);
+   373→   373→
+   374→   374→  for (let i = 0; i < photos.length; i++) {
+   375→   375→    const col = i % cols;
+   376→   376→    const row = Math.floor(i / cols);
+   377→   377→    const cx = 30 + col * (polaroidW + 30) + polaroidW / 2;
+   378→   378→    const cy = 30 + row * (polaroidH + 30) + polaroidH / 2;
+   379→   379→    const rotation = (rotations[i % rotations.length] * Math.PI) / 180;
+   380→   380→
+   381→   381→    ctx.save();
+   382→   382→    ctx.translate(cx, cy);
+   383→   383→    ctx.rotate(rotation);
+   384→   384→
+   385→   385→    // Shadow
+   386→   386→    ctx.save();
+   387→   387→    ctx.shadowColor = 'rgba(0,0,0,0.25)';
+   388→   388→    ctx.shadowBlur = 18;
+   389→   389→    ctx.shadowOffsetX = 4;
+   390→   390→    ctx.shadowOffsetY = 6;
+   391→   391→    ctx.fillStyle = '#fff';
+   392→   392→    ctx.fillRect(-polaroidW / 2, -polaroidH / 2, polaroidW, polaroidH);
+   393→   393→    ctx.restore();
+   394→   394→
+   395→   395→    // White border
+   396→   396→    ctx.fillStyle = '#faf6eb';
+   397→   397→    ctx.fillRect(-polaroidW / 2, -polaroidH / 2, polaroidW, polaroidH);
+   398→   398→
+   399→   399→    // Draw photo
+   400→   400→    const tmp = document.createElement('canvas');
+   401→   401→    tmp.width = photoW;
+   402→   402→    tmp.height = photoH;
+   403→   403→    const tmpCtx = tmp.getContext('2d')!;
+   404→   404→
+   405→   405→    const img = await loadImage(photos[i].url);
+   406→   406→    const scale = Math.max(photoW / img.width, photoH / img.height);
+   407→   407→    const sw = photoW / scale;
+   408→   408→    const sh = photoH / scale;
+   409→   409→    const sx = (img.width - sw) / 2;
+   410→   410→    const sy = (img.height - sh) / 2;
+   411→   411→    tmpCtx.drawImage(img, sx, sy, sw, sh, 0, 0, photoW, photoH);
+   412→   412→
+   413→   413→    // Apply polaroid filter
+   414→   414→    processFrame(tmpCtx, photoW, photoH, 'polaroid');
+   415→   415→
+   416→   416→    ctx.drawImage(tmp, -polaroidW / 2 + photoInsetSide, -polaroidH / 2 + photoInsetTop, photoW, photoH);
+   417→   417→
+   418→   418→    // Subtle date label at bottom
+   419→   419→    ctx.save();
+   420→   420→    ctx.globalAlpha = 0.45;
+   421→   421→    ctx.font = '12px "Special Elite", monospace';
+   422→   422→    ctx.fillStyle = '#8b7355';
+   423→   423→    ctx.textAlign = 'center';
+   424→   424→    const dateStr = new Date(photos[i].created_at).toLocaleDateString('en-US', {
+   425→   425→      month: 'short',
+   426→   426→      day: 'numeric',
+   427→   427→      year: 'numeric',
+   428→   428→    });
+   429→   429→    ctx.fillText(dateStr, 0, polaroidH / 2 - 18);
+   430→   430→    ctx.restore();
+   431→   431→
+   432→   432→    ctx.restore();
+   433→   433→  }
+   434→   434→
+   435→   435→  drawWatermark(ctx, canvas.width, canvas.height);
+   436→   436→  return canvas;
+   437→   437→}
+   438→   438→
+   439→   439→/**
+   440→   440→ * Render a film strip collage.
+   441→   441→ * Photos are laid out vertically in a 35mm film strip
+   442→   442→ * with sprocket holes on both sides.
+   443→   443→ */
+   444→   444→async function renderFilmStripCollage(
+   445→   445→  canvas: HTMLCanvasElement,
+   446→   446→  photos: PhotoItem[],
+   447→   447→): Promise<HTMLCanvasElement> {
+   448→   448→  const stripW = 520;
+   449→   449→  const filmBorder = 36;
+   450→   450→  const sprocketH = 18;
+   451→   451→  const sprocketGap = 32;
+   452→   452→  const photoH = 360;
+   453→   453→  const photoW = stripW - filmBorder * 2;
+   454→   454→  const frameGap = 10;
+   455→   455→
+   456→   456→  canvas.width = stripW;
+   457→   457→  canvas.height =
+   458→   458→    filmBorder + photos.length * (photoH + frameGap) + filmBorder;
+   459→   459→  const ctx = canvas.getContext('2d')!;
+   460→   460→
+   461→   461→  // Film base — dark brown/black
+   462→   462→  ctx.fillStyle = '#1a1410';
+   463→   463→  ctx.fillRect(0, 0, stripW, canvas.height);
+   464→   464→
+   465→   465→  // Slight film grain texture
+   466→   466→  ctx.save();
+   467→   467→  ctx.globalAlpha = 0.06;
+   468→   468→  for (let i = 0; i < 3000; i++) {
+   469→   469→    ctx.fillStyle = '#fff';
+   470→   470→    ctx.fillRect(
+   471→   471→      Math.random() * stripW,
+   472→   472→      Math.random() * canvas.height,
+   473→   473→      1, 1,
+   474→   474→    );
+   475→   475→  }
+   476→   476→  ctx.restore();
+   477→   477→
+   478→   478→  // Sprocket holes — left side
+   479→   479→  drawSprocketHoles(
+   480→   480→    ctx,
+   481→   481→    8,
+   482→   482→    filmBorder,
+   483→   483→    canvas.height - filmBorder,
+   484→   484→    20,
+   485→   485→    sprocketH,
+   486→   486→    sprocketGap,
+   487→   487→    '#2a2018',
+   488→   488→  );
+   489→   489→
+   490→   490→  // Sprocket holes — right side
+   491→   491→  drawSprocketHoles(
+   492→   492→    ctx,
+   493→   493→    stripW - 28,
+   494→   494→    filmBorder,
+   495→   495→    canvas.height - filmBorder,
+   496→   496→    20,
+   497→   497→    sprocketH,
+   498→   498→    sprocketGap,
+   499→   499→    '#2a2018',
+   500→   500→  );
+   501→   501→
+   502→   502→  // Draw each photo frame
+   503→   503→  for (let i = 0; i < photos.length; i++) {
+   504→   504→    const y = filmBorder + i * (photoH + frameGap);
+   505→   505→
+   506→   506→    // Frame number
+   507→   507→    ctx.save();
+   508→   508→    ctx.globalAlpha = 0.35;
+   509→   509→    ctx.font = '9px monospace';
+   510→   510→    ctx.fillStyle = '#d4a574';
+   511→   511→    ctx.textAlign = 'right';
+   512→   512→    ctx.fillText(`${String(i + 1).padStart(2, '0')}A`, stripW - 6, y + photoH - 4);
+   513→   513→    ctx.restore();
+   514→   514→
+   515→   515→    // Photo
+   516→   516→    const tmp = document.createElement('canvas');
+   517→   517→    tmp.width = photoW;
+   518→   518→    tmp.height = photoH;
+   519→   519→    const tmpCtx = tmp.getContext('2d')!;
+   520→   520→
+   521→   521→    const img = await loadImage(photos[i].url);
+   522→   522→    const scale = Math.max(photoW / img.width, photoH / img.height);
+   523→   523→    const sw = photoW / scale;
+   524→   524→    const sh = photoH / scale;
+   525→   525→    const sx = (img.width - sw) / 2;
+   526→   526→    const sy = (img.height - sh) / 2;
+   527→   527→    tmpCtx.drawImage(img, sx, sy, sw, sh, 0, 0, photoW, photoH);
+   528→   528→
+   529→   529→    // Apply kodak filter
+   530→   530→    processFrame(tmpCtx, photoW, photoH, 'kodak');
+   531→   531→
+   532→   532→    ctx.drawImage(tmp, filmBorder, y, photoW, photoH);
+   533→   533→
+   534→   534→    // Frame divider line
+   535→   535→    if (i < photos.length - 1) {
+   536→   536→      ctx.save();
+   537→   537→      ctx.strokeStyle = 'rgba(200,180,140,0.15)';
+   538→   538→      ctx.lineWidth = 1;
+   539→   539→      ctx.beginPath();
+   540→   540→      ctx.moveTo(filmBorder, y + photoH + frameGap / 2);
+   541→   541→      ctx.lineTo(stripW - filmBorder, y + photoH + frameGap / 2);
+   542→   542→      ctx.stroke();
+   543→   543→      ctx.restore();
+   544→   544→    }
+   545→   545→  }
+   546→   546→
+   547→   547→  drawWatermark(ctx, stripW, canvas.height);
+   548→   548→  return canvas;
+   549→   549→}
+   550→   550→
+   551→   551→/* ═══════ PREVIEW STYLING (CSS) ═══════ */
+   552→   552→
+   553→   553→const STYLE_CSS_CLASS: Record<CollageStyle, string> = {
+   554→   554→  vhs: 'sepia(0.15) contrast(1.2) brightness(0.88) saturate(0.85)',
+   555→   555→  polaroid: 'sepia(0.2) contrast(0.95) brightness(1.12) saturate(1.35)',
+   556→   556→  filmstrip: 'sepia(0.1) contrast(1.08) brightness(1.05) saturate(1.5)',
+   557→   557→};
+   558→   558→
+   559→   559→/* ═══════ SHARE REWIND COMPONENT ═══════ */
+   560→   560→
+   561→   561→export default function ShareRewind({ open, onClose }: ShareRewindProps) {
+   562→   562→  /* ── state ── */
+   563→   563→  const [step, setStep] = useState<Step>('select');
+   564→   564→  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+   565→   565→  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+   566→   566→  const [style, setStyle] = useState<CollageStyle>('vhs');
+   567→   567→  const [loading, setLoading] = useState(true);
+   568→   568→  const [rendering, setRendering] = useState(false);
+   569→   569→  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+   570→   570→  const [canShare, setCanShare] = useState(false);
+   571→   571→  const [dir, setDir] = useState(1);
+   572→   572→
+   573→   573→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   574→   574→  const objectUrlsRef = useRef<string[]>([]);
+   575→   575→
+   576→   576→  /* ── Load photos from IDB ── */
+   577→   577→  useEffect(() => {
+   578→   578→    if (!open) return;
+   579→   579→
+   580→   580→    let cancelled = false;
+   581→   581→
+   582→   582→    (async () => {
+   583→   583→      setLoading(true);
+   584→   584→      setSelectedIds(new Set());
+   585→   585→      setPreviewUrl(null);
+   586→   586→      setStep('select');
+   587→   587→
+   588→   588→      try {
+   589→   589→        const records = await getAllCameraPhotos();
+   590→   590→        if (cancelled) return;
+   591→   591→
+   592→   592→        const items: PhotoItem[] = [];
+   593→   593→        const urls: string[] = [];
+   594→   594→
+   595→   595→        for (const rec of records) {
+   596→   596→          const url = URL.createObjectURL(rec.image_blob);
+   597→   597→          urls.push(url);
+   598→   598→          // Get natural dimensions
+   599→   599→          const img = await loadImage(url);
+   600→   600→          if (cancelled) {
+   601→   601→            urls.forEach(u => URL.revokeObjectURL(u));
+   602→   602→            return;
+   603→   603→          }
+   604→   604→          items.push({
+   605→   605→            id: rec.id,
+   606→   606→            url,
+   607→   607→            blob: rec.image_blob,
+   608→   608→            filter_used: rec.filter_used,
+   609→   609→            created_at: rec.created_at,
+   610→   610→            naturalWidth: img.naturalWidth,
+   611→   611→            naturalHeight: img.naturalHeight,
+   612→   612→          });
+   613→   613→        }
+   614→   614→
+   615→   615→        // Cleanup previous URLs
+   616→   616→        objectUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+   617→   617→        objectUrlsRef.current = urls;
+   618→   618→        setPhotos(items);
+   619→   619→      } catch (err) {
+   620→   620→        console.error('Failed to load camera photos:', err);
+   621→   621→      } finally {
+   622→   622→        if (!cancelled) setLoading(false);
+   623→   623→      }
+   624→   624→    })();
+   625→   625→
+   626→   626→    return () => {
+   627→   627→      cancelled = true;
+   628→   628→    };
+   629→   629→  }, [open]);
+   630→   630→
+   631→   631→  /* ── Check Web Share API ── */
+   632→   632→  useEffect(() => {
+   633→   633→    setCanShare(typeof navigator !== 'undefined' && !!navigator.share && !!navigator.canShare);
+   634→   634→  }, []);
+   635→   635→
+   636→   636→  /* ── Cleanup URLs on unmount ── */
+   637→   637→  useEffect(() => {
+   638→   638→    return () => {
+   639→   639→      objectUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+   640→   640→    };
+   641→   641→  }, []);
+   642→   642→
+   643→   643→  /* ── Step navigation ── */
+   644→   644→  const goNext = useCallback(() => {
+   645→   645→    if (step === 'select') {
+   646→   646→      setDir(1);
+   647→   647→      setStep('style');
+   648→   648→    } else if (step === 'style') {
+   649→   649→      setDir(1);
+   650→   650→      setStep('preview');
+   651→   651→      // Render the collage
+   652→   652→      renderCollage();
+   653→   653→    }
+   654→   654→  }, [step, selectedIds, style, photos]);
+   655→   655→
+   656→   656→  const goBack = useCallback(() => {
+   657→   657→    setDir(-1);
+   658→   658→    if (step === 'preview') {
+   659→   659→      setStep('style');
+   660→   660→      setPreviewUrl(null);
+   661→   661→    } else if (step === 'style') {
+   662→   662→      setStep('select');
+   663→   663→    } else {
+   664→   664→      onClose();
+   665→   665→    }
+   666→   666→  }, [step, onClose]);
+   667→   667→
+   668→   668→  /* ── Toggle photo selection ── */
+   669→   669→  const togglePhoto = useCallback(
+   670→   670→    (id: string) => {
+   671→   671→      setSelectedIds(prev => {
+   672→   672→        const next = new Set(prev);
+   673→   673→        if (next.has(id)) {
+   674→   674→          next.delete(id);
+   675→   675→        } else if (next.size < MAX_PHOTOS) {
+   676→   676→          next.add(id);
+   677→   677→        }
+   678→   678→        return next;
+   679→   679→      });
+   680→   680→    },
+   681→   681→    [],
+   682→   682→  );
+   683→   683→
+   684→   684→  /* ── Render collage to canvas ── */
+   685→   685→  const renderCollage = useCallback(async () => {
+   686→   686→    const selected = photos.filter(p => selectedIds.has(p.id));
+   687→   687→    if (selected.length < MIN_PHOTOS || !canvasRef.current) return;
+   688→   688→
+   689→   689→    setRendering(true);
+   690→   690→    try {
+   691→   691→      const canvas = canvasRef.current;
+   692→   692→      switch (style) {
+   693→   693→        case 'vhs':
+   694→   694→          await renderVHSCollage(canvas, selected);
+   695→   695→          break;
+   696→   696→        case 'polaroid':
+   697→   697→          await renderPolaroidCollage(canvas, selected);
+   698→   698→          break;
+   699→   699→        case 'filmstrip':
+   700→   700→          await renderFilmStripCollage(canvas, selected);
+   701→   701→          break;
+   702→   702→      }
+   703→   703→
+   704→   704→      // Convert canvas to blob URL for preview
+   705→   705→      const blob = await new Promise<Blob>((resolve, reject) => {
+   706→   706→        canvas.toBlob(b => (b ? resolve(b) : reject(new Error('Canvas toBlob failed'))), 'image/png');
+   707→   707→      });
+   708→   708→
+   709→   709→      if (previewUrl) URL.revokeObjectURL(previewUrl);
+   710→   710→      const url = URL.createObjectURL(blob);
+   711→   711→      setPreviewUrl(url);
+   712→   712→    } catch (err) {
+   713→   713→      console.error('Collage render error:', err);
+   714→   714→    } finally {
+   715→   715→      setRendering(false);
+   716→   716→    }
+   717→   717→  }, [photos, selectedIds, style, previewUrl]);
+   718→   718→
+   719→   719→  /* ── Download ── */
+   720→   720→  const handleDownload = useCallback(() => {
+   721→   721→    if (!canvasRef.current) return;
+   722→   722→    const link = document.createElement('a');
+   723→   723→    link.download = `rewind-collage-${Date.now()}.png`;
+   724→   724→    link.href = canvasRef.current.toDataURL('image/png');
+   725→   725→    link.click();
+   726→   726→  }, []);
+   727→   727→
+   728→   728→  /* ── Share ── */
+   729→   729→  const handleShare = useCallback(async () => {
+   730→   730→    if (!canvasRef.current) return;
+   731→   731→    try {
+   732→   732→      const blob = await new Promise<Blob>((resolve, reject) => {
+   733→   733→        canvasRef.current!.toBlob(
+   734→   734→          b => (b ? resolve(b) : reject(new Error('Blob failed'))),
+   735→   735→          'image/png',
+   736→   736→        );
+   737→   737→      });
+   738→   738→      const file = new File([blob], `rewind-collage-${Date.now()}.png`, {
+   739→   739→        type: 'image/png',
+   740→   740→      });
+   741→   741→
+   742→   742→      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+   743→   743→        await navigator.share({
+   744→   744→          title: 'My Rewind Collage ⏪',
+   745→   745→          text: 'Check out this nostalgia collage from Rewind!',
+   746→   746→          files: [file],
+   747→   747→        });
+   748→   748→      }
+   749→   749→    } catch (err) {
+   750→   750→      if ((err as Error).name !== 'AbortError') {
+   751→   751→        console.error('Share failed:', err);
+   752→   752→      }
+   753→   753→    }
+   754→   754→  }, []);
+   755→   755→
+   756→   756→  /* ── Derived state ── */
+   757→   757→  const selectedPhotos = photos.filter(p => selectedIds.has(p.id));
+   758→   758→  const isNextDisabled =
+   759→   759→    step === 'select'
+   760→   760→      ? selectedIds.size < MIN_PHOTOS
+   761→   761→      : false;
+   762→   762→
+   763→   763→  /* ── Render ── */
+   764→   764→  return (
+   765→   765→    <AnimatePresence>
+   766→   766→      {open && (
+   767→   767→        <>
+   768→   768→          {/* Backdrop */}
+   769→   769→          <motion.div
+   770→   770→            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+   771→   771→            variants={overlayVariants}
+   772→   772→            initial="hidden"
+   773→   773→            animate="visible"
+   774→   774→            exit="exit"
+   775→   775→            onClick={onClose}
+   776→   776→          />
+   777→   777→
+   778→   778→          {/* Panel */}
+   779→   779→          <motion.div
+   780→   780→            className="fixed inset-0 z-50 flex flex-col overflow-hidden sk-leather"
+   781→   781→            variants={panelVariants}
+   782→   782→            initial="hidden"
+   783→   783→            animate="visible"
+   784→   784→            exit="exit"
+   785→   785→          >
+   786→   786→            {/* ── HEADER ── */}
+   787→   787→            <header className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+   788→   788→              <div className="flex items-center gap-3">
+   789→   789→                {step !== 'select' && (
+   790→   790→                  <button
+   791→   791→                    onClick={goBack}
+   792→   792→                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+   793→   793→                    aria-label="Go back"
+   794→   794→                  >
+   795→   795→                    <ArrowLeft className="w-5 h-5 text-white/80" />
+   796→   796→                  </button>
+   797→   797→                )}
+   798→   798→                <div>
+   799→   799→                  <h1 className="old-title text-white text-lg leading-tight">
+   800→   800→                    ⏪ Share a Rewind
+   801→   801→                  </h1>
+   802→   802→                  <p className="text-white/50 text-xs old-body mt-0.5">
+   803→   803→                    {step === 'select' && 'Pick your favorite memories'}
+   804→   804→                    {step === 'style' && 'Choose a retro style'}
+   805→   805→                    {step === 'preview' && 'Preview & share your collage'}
+   806→   806→                  </p>
+   807→   807→                </div>
+   808→   808→              </div>
+   809→   809→
+   810→   810→              {/* Step indicators */}
+   811→   811→              <div className="flex items-center gap-2">
+   812→   812→                {(['select', 'style', 'preview'] as const).map((s, i) => (
+   813→   813→                  <div
+   814→   814→                    key={s}
+   815→   815→                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+   816→   816→                      step === s
+   817→   817→                        ? 'bg-white scale-125'
+   818→   818→                        : ['select', 'style', 'preview'].indexOf(step) > i
+   819→   819→                          ? 'bg-white/50'
+   820→   820→                          : 'bg-white/20'
+   821→   821→                    }`}
+   822→   822→                  />
+   823→   823→                ))}
+   824→   824→                <button
+   825→   825→                  onClick={onClose}
+   826→   826→                  className="ml-3 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+   827→   827→                  aria-label="Close"
+   828→   828→                >
+   829→   829→                  <X className="w-5 h-5 text-white/80" />
+   830→   830→                </button>
+   831→   831→              </div>
+   832→   832→            </header>
+   833→   833→
+   834→   834→            {/* ── CONTENT ── */}
+   835→   835→            <main className="flex-1 overflow-y-auto sk-noise">
+   836→   836→              <AnimatePresence mode="wait" custom={dir}>
+   837→   837→                {/* ── STEP 1: PHOTO SELECTION ── */}
+   838→   838→                {step === 'select' && (
+   839→   839→                  <motion.div
+   840→   840→                    key="select"
+   841→   841→                    custom={dir}
+   842→   842→                    variants={stepContentVariants}
+   843→   843→                    initial="enter"
+   844→   844→                    animate="center"
+   845→   845→                    exit="exit"
+   846→   846→                    className="h-full"
+   847→   847→                  >
+   848→   848→                    {loading ? (
+   849→   849→                      <div className="flex flex-col items-center justify-center h-full gap-3">
+   850→   850→                        <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
+   851→   851→                        <p className="text-white/50 old-body">Loading your memories...</p>
+   852→   852→                      </div>
+   853→   853→                    ) : photos.length === 0 ? (
+   854→   854→                      /* ── Empty state ── */
+   855→   855→                      <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
+   856→   856→                        <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+   857→   857→                          <ImageOff className="w-10 h-10 text-white/40" />
+   858→   858→                        </div>
+   859→   859→                        <div>
+   860→   860→                          <h2 className="old-title text-white text-xl">
+   861→   861→                            No Memories Yet
+   862→   862→                          </h2>
+   863→   863→                          <p className="old-body text-white/60 mt-2 max-w-xs">
+   864→   864→                            Take some photos with the vintage camera first, then come back to create your collage!
+   865→   865→                          </p>
+   866→   866→                        </div>
+   867→   867→                        <button
+   868→   868→                          onClick={onClose}
+   869→   869→                          className="old-btn px-6 py-2.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition-colors mt-2"
+   870→   870→                        >
+   871→   871→                          📸 Open Camera
+   872→   872→                        </button>
+   873→   873→                      </div>
+   874→   874→                    ) : (
+   875→   875→                      <div className="p-4">
+   876→   876→                        {/* Selection counter */}
+   877→   877→                        <div className="flex items-center justify-between mb-4">
+   878→   878→                          <p className="old-body text-white/70 text-sm">
+   879→   879→                            Select {MIN_PHOTOS}–{MAX_PHOTOS} photos
+   880→   880→                          </p>
+   881→   881→                          <div className="flex items-center gap-1.5">
+   882→   882→                            <span
+   883→   883→                              className={`old-title text-lg ${
+   884→   884→                                selectedIds.size >= MIN_PHOTOS ? 'text-white' : 'text-white/40'
+   885→   885→                              }`}
+   886→   886→                            >
+   887→   887→                              {selectedIds.size}
+   888→   888→                            </span>
+   889→   889→                            <span className="text-white/30">/</span>
+   890→   890→                            <span className="text-white/40 old-body text-sm">{MAX_PHOTOS}</span>
+   891→   891→                          </div>
+   892→   892→                        </div>
+   893→   893→
+   894→   894→                        {/* Photo grid */}
+   895→   895→                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 max-h-[calc(100vh-220px)] overflow-y-auto pb-4">
+   896→   896→                          {photos.map((photo) => {
+   897→   897→                            const isSelected = selectedIds.has(photo.id);
+   898→   898→                            return (
+   899→   899→                              <motion.button
+   900→   900→                                key={photo.id}
+   901→   901→                                onClick={() => togglePhoto(photo.id)}
+   902→   902→                                className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+   903→   903→                                  isSelected
+   904→   904→                                    ? 'border-white shadow-[0_0_12px_rgba(255,255,255,0.3)] scale-[0.97]'
+   905→   905→                                    : 'border-white/20 hover:border-white/40'
+   906→   906→                                } ${selectedIds.size >= MAX_PHOTOS && !isSelected ? 'opacity-40 pointer-events-none' : ''}`}
+   907→   907→                                whileTap={{ scale: 0.93 }}
+   908→   908→                              >
+   909→   909→                                {/* Photo */}
+   910→   910→                                <img
+   911→   911→                                  src={photo.url}
+   912→   912→                                  alt={`Memory ${photo.id}`}
+   913→   913→                                  className="w-full h-full object-cover"
+   914→   914→                                  style={{ filter: STYLE_CSS_CLASS.vhs }}
+   915→   915→                                  loading="lazy"
+   916→   916→                                />
+   917→   917→
+   918→   918→                                {/* Check overlay */}
+   919→   919→                                <AnimatePresence>
+   920→   920→                                  {isSelected && (
+   921→   921→                                    <motion.div
+   922→   922→                                      initial={{ scale: 0 }}
+   923→   923→                                      animate={{ scale: 1 }}
+   924→   924→                                      exit={{ scale: 0 }}
+   925→   925→                                      className="absolute inset-0 bg-white/20 flex items-center justify-center"
+   926→   926→                                    >
+   927→   927→                                      <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-md">
+   928→   928→                                        <Check className="w-4 h-4 text-foreground" />
+   929→   929→                                      </div>
+   930→   930→                                    </motion.div>
+   931→   931→                                  )}
+   932→   932→                                </AnimatePresence>
+   933→   933→
+   934→   934→                                {/* Order number */}
+   935→   935→                                {isSelected && (
+   936→   936→                                  <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-foreground/80 text-background text-[10px] font-bold flex items-center justify-center old-title">
+   937→   937→                                    {Array.from(selectedIds).indexOf(photo.id) + 1}
+   938→   938→                                  </div>
+   939→   939→                                )}
+   940→   940→                              </motion.button>
+   941→   941→                            );
+   942→   942→                          })}
+   943→   943→                        </div>
+   944→   944→                      </div>
+   945→   945→                    )}
+   946→   946→                  </motion.div>
+   947→   947→                )}
+   948→   948→
+   949→   949→                {/* ── STEP 2: STYLE PICKER ── */}
+   950→   950→                {step === 'style' && (
+   951→   951→                  <motion.div
+   952→   952→                    key="style"
+   953→   953→                    custom={dir}
+   954→   954→                    variants={stepContentVariants}
+   955→   955→                    initial="enter"
+   956→   956→                    animate="center"
+   957→   957→                    exit="exit"
+   958→   958→                    className="h-full flex flex-col items-center justify-center p-6 gap-6"
+   959→   959→                  >
+   960→   960→                    <p className="old-body text-white/70 text-center max-w-md">
+   961→   961→                      Choose a retro style for your {selectedIds.size} memories
+   962→   962→                    </p>
+   963→   963→
+   964→   964→                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
+   965→   965→                      {STYLES.map((s) => {
+   966→   966→                        const Icon = s.icon;
+   967→   967→                        const isActive = style === s.key;
+   968→   968→                        return (
+   969→   969→                          <motion.button
+   970→   970→                            key={s.key}
+   971→   971→                            onClick={() => setStyle(s.key)}
+   972→   972→                            className={`relative sk-paper rounded-xl p-5 text-left transition-all duration-200 ${
+   973→   973→                              isActive
+   974→   974→                                ? 'ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+   975→   975→                                : 'hover:shadow-md'
+   976→   976→                            }`}
+   977→   977→                            whileTap={{ scale: 0.97 }}
+   978→   978→                          >
+   979→   979→                            {/* Selected badge */}
+   980→   980→                            {isActive && (
+   981→   981→                              <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center shadow-md">
+   982→   982→                                <Check className="w-3.5 h-3.5" />
+   983→   983→                              </div>
+   984→   984→                            )}
+   985→   985→
+   986→   986→                            <div className="flex items-center gap-3 mb-2">
+   987→   987→                              <div
+   988→   988→                                className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+   989→   989→                                  isActive ? 'bg-foreground/15' : 'bg-foreground/8'
+   990→   990→                                }`}
+   991→   991→                              >
+   992→   992→                                <Icon
+   993→   993→                                  className={`w-5 h-5 ${
+   994→   994→                                    isActive ? 'text-foreground' : 'text-foreground/60'
+   995→   995→                                  }`}
+   996→   996→                                />
+   997→   997→                              </div>
+   998→   998→                              <div>
+   999→   999→                                <p className="old-title text-foreground text-sm">
+  1000→  1000→                                  {s.emoji} {s.label}
+  1001→  1001→                                </p>
+  1002→  1002→                                <p className="old-body text-foreground/60 text-xs mt-0.5 leading-tight">
+  1003→  1003→                                  {s.description}
+  1004→  1004→                                </p>
+  1005→  1005→                              </div>
+  1006→  1006→                            </div>
+  1007→  1007→
+  1008→  1008→                            {/* Mini preview thumbnails */}
+  1009→  1009→                            <div className="flex gap-1 mt-3">
+  1010→  1010→                              {selectedPhotos.slice(0, 3).map((p, idx) => (
+  1011→  1011→                                <div
+  1012→  1012→                                  key={p.id}
+  1013→  1013→                                  className="w-12 h-12 rounded overflow-hidden border border-foreground/15"
+  1014→  1014→                                  style={{
+  1015→  1015→                                    filter: STYLE_CSS_CLASS[s.key],
+  1016→  1016→                                  }}
+  1017→  1017→                                >
+  1018→  1018→                                  <img
+  1019→  1019→                                    src={p.url}
+  1020→  1020→                                    alt=""
+  1021→  1021→                                    className="w-full h-full object-cover"
+  1022→  1022→                                  />
+  1023→  1023→                                </div>
+  1024→  1024→                              ))}
+  1025→  1025→                              {selectedPhotos.length > 3 && (
+  1026→  1026→                                <div className="w-12 h-12 rounded bg-foreground/8 border border-foreground/15 flex items-center justify-center">
+  1027→  1027→                                  <span className="text-foreground/50 text-xs old-title">
+  1028→  1028→                                    +{selectedPhotos.length - 3}
+  1029→  1029→                                  </span>
+  1030→  1030→                                </div>
+  1031→  1031→                              )}
+  1032→  1032→                            </div>
+  1033→  1033→                          </motion.button>
+  1034→  1034→                        );
+  1035→  1035→                      })}
+  1036→  1036→                    </div>
+  1037→  1037→                  </motion.div>
+  1038→  1038→                )}
+  1039→  1039→
+  1040→  1040→                {/* ── STEP 3: PREVIEW ── */}
+  1041→  1041→                {step === 'preview' && (
+  1042→  1042→                  <motion.div
+  1043→  1043→                    key="preview"
+  1044→  1044→                    custom={dir}
+  1045→  1045→                    variants={stepContentVariants}
+  1046→  1046→                    initial="enter"
+  1047→  1047→                    animate="center"
+  1048→  1048→                    exit="exit"
+  1049→  1049→                    className="h-full flex flex-col items-center p-4"
+  1050→  1050→                  >
+  1051→  1051→                    {rendering ? (
+  1052→  1052→                      <div className="flex-1 flex flex-col items-center justify-center gap-3">
+  1053→  1053→                        <Loader2 className="w-10 h-10 text-white/50 animate-spin" />
+  1054→  1054→                        <p className="old-body text-white/60 text-sm">
+  1055→  1055→                          Processing your collage...
+  1056→  1056→                        </p>
+  1057→  1057→                        <p className="text-white/40 text-xs">
+  1058→  1058→                          Applying {STYLES.find(s => s.key === style)?.label} effects
+  1059→  1059→                        </p>
+  1060→  1060→                      </div>
+  1061→  1061→                    ) : (
+  1062→  1062→                      <div className="flex-1 flex flex-col items-center justify-center gap-4 w-full max-w-3xl">
+  1063→  1063→                        {/* Canvas preview */}
+  1064→  1064→                        <div className="relative rounded-xl overflow-hidden shadow-2xl border border-white/10 max-h-[60vh]">
+  1065→  1065→                          {previewUrl && (
+  1066→  1066→                            <img
+  1067→  1067→                              src={previewUrl}
+  1068→  1068→                              alt="Rewind collage preview"
+  1069→  1069→                              className="max-w-full max-h-[60vh] object-contain"
+  1070→  1070→                            />
+  1071→  1071→                          )}
+  1072→  1072→                        </div>
+  1073→  1073→
+  1074→  1074→                        {/* Style label */}
+  1075→  1075→                        <div className="flex items-center gap-2 text-white/60">
+  1076→  1076→                          <span className="text-lg">{STYLES.find(s => s.key === style)?.emoji}</span>
+  1077→  1077→                          <span className="old-body text-sm">
+  1078→  1078→                            {STYLES.find(s => s.key === style)?.label} · {selectedPhotos.length} memories
+  1079→  1079→                          </span>
+  1080→  1080→                        </div>
+  1081→  1081→                      </div>
+  1082→  1082→                    )}
+  1083→  1083→                  </motion.div>
+  1084→  1084→                )}
+  1085→  1085→              </AnimatePresence>
+  1086→  1086→            </main>
+  1087→  1087→
+  1088→  1088→            {/* ── FOOTER ── */}
+  1089→  1089→            {step !== 'select' && step !== 'preview' && (
+  1090→  1090→              <footer className="px-4 py-3 border-t border-white/10 bg-black/30 backdrop-blur-sm">
+  1091→  1091→                <div className="flex items-center justify-center">
+  1092→  1092→                  <button
+  1093→  1093→                    onClick={goNext}
+  1094→  1094→                    className="old-btn px-8 py-2.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition-all duration-200 text-sm"
+  1095→  1095→                  >
+  1096→  1096→                    Continue →
+  1097→  1097→                  </button>
+  1098→  1098→                </div>
+  1099→  1099→              </footer>
+  1100→  1100→            )}
+  1101→  1101→
+  1102→  1102→            {step === 'select' && photos.length > 0 && (
+  1103→  1103→              <footer className="px-4 py-3 border-t border-white/10 bg-black/30 backdrop-blur-sm">
+  1104→  1104→                <div className="flex items-center justify-between">
+  1105→  1105→                  <p className="text-white/40 text-xs old-body">
+  1106→  1106→                    {selectedIds.size < MIN_PHOTOS
+  1107→  1107→                      ? `${MIN_PHOTOS - selectedIds.size} more needed`
+  1108→  1108→                      : `${selectedIds.size} selected — ready!`}
+  1109→  1109→                  </p>
+  1110→  1110→                  <button
+  1111→  1111→                    onClick={goNext}
+  1112→  1112→                    disabled={isNextDisabled}
+  1113→  1113→                    className={`old-btn px-8 py-2.5 rounded-lg transition-all duration-200 text-sm ${
+  1114→  1114→                      isNextDisabled
+  1115→  1115→                        ? 'bg-white/5 text-white/30 cursor-not-allowed'
+  1116→  1116→                        : 'bg-white/15 hover:bg-white/25 text-white'
+  1117→  1117→                    }`}
+  1118→  1118→                  >
+  1119→  1119→                    Pick Style →
+  1120→  1120→                  </button>
+  1121→  1121→                </div>
+  1122→  1122→              </footer>
+  1123→  1123→            )}
+  1124→  1124→
+  1125→  1125→            {step === 'preview' && !rendering && previewUrl && (
+  1126→  1126→              <footer className="px-4 py-3 border-t border-white/10 bg-black/30 backdrop-blur-sm">
+  1127→  1127→                <div className="flex items-center justify-center gap-3">
+  1128→  1128→                  <button
+  1129→  1129→                    onClick={handleDownload}
+  1130→  1130→                    className="old-btn flex items-center gap-2 px-6 py-2.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition-all duration-200 text-sm"
+  1131→  1131→                  >
+  1132→  1132→                    <Download className="w-4 h-4" />
+  1133→  1133→                    Download
+  1134→  1134→                  </button>
+  1135→  1135→
+  1136→  1136→                  {canShare && (
+  1137→  1137→                    <button
+  1138→  1138→                      onClick={handleShare}
+  1139→  1139→                      className="old-btn flex items-center gap-2 px-6 py-2.5 rounded-lg bg-foreground/80 hover:bg-foreground text-background transition-all duration-200 text-sm"
+  1140→  1140→                    >
+  1141→  1141→                      <Share2 className="w-4 h-4" />
+  1142→  1142→                      Share
+  1143→  1143→                    </button>
+  1144→  1144→                  )}
+  1145→  1145→                </div>
+  1146→  1146→              </footer>
+  1147→  1147→            )}
+  1148→  1148→
+  1149→  1149→            {/* Hidden canvas for rendering */}
+  1150→  1150→            <canvas ref={canvasRef} className="hidden" />
+  1151→  1151→          </motion.div>
+  1152→  1152→        </>
+  1153→  1153→      )}
+  1154→  1154→    </AnimatePresence>
+  1155→  1155→  );
+  1156→  1156→}
+  1157→  1157→

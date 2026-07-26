@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { nostalgiaData, type NostalgiaItem, type DecadeData } from '@/lib/nostalgia-data';
 import { getAllJournalEntries, getAllCameraPhotos } from '@/lib/idb-store';
+import { soundButtonClick } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
    Types
@@ -290,6 +291,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
   // Click outside handler
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === overlayRef.current) {
+      soundButtonClick();
       onClose();
     }
   };
@@ -348,7 +350,7 @@ export default function SearchOverlay({ open, onClose, onNavigate }: SearchOverl
                   </button>
                 )}
                 <button
-                  onClick={onClose}
+                  onClick={() => { soundButtonClick(); onClose(); }}
                   className="sk-btn old-btn px-2.5 py-1 rounded-lg text-[10px] text-[#8b7355] cursor-pointer"
                 >
                   ESC
@@ -501,7 +503,7 @@ function ResultCard({
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.15 }}
-      onClick={item.action}
+      onClick={() => { soundButtonClick(); item.action?.(); }}
       className="w-full text-left sk-inset rounded-lg px-3 py-2.5 flex items-start gap-3 hover:bg-[#e8dcc8]/80 active:scale-[0.98] transition-all cursor-pointer group"
     >
       {/* Emoji */}

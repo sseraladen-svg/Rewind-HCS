@@ -5,6 +5,7 @@ import {
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowUp, ArrowDown } from 'lucide-react';
+import { soundPageTurn, soundButtonClick } from '@/lib/sounds';
 import { generateFeed, saveThenVsNowReflection, saveMoodTag } from '@/lib/memory-reel/generateFeed';
 import type { FeedCard, CardReaction } from '@/lib/memory-reel/types';
 import { getReelReactions, setReelReaction } from '@/lib/idb-store';
@@ -58,10 +59,12 @@ export default function MemoryReelFeed({
   }, []);
 
   const goNext = useCallback(() => {
+    soundPageTurn();
     setActiveIndex(i => Math.min(i + 1, feed.length - 1));
   }, [feed.length]);
 
   const goPrev = useCallback(() => {
+    soundPageTurn();
     setActiveIndex(i => Math.max(i - 1, 0));
   }, []);
 
@@ -206,7 +209,7 @@ export default function MemoryReelFeed({
 
       {/* Close button */}
       <button
-        onClick={onClose}
+        onClick={() => { soundButtonClick(); onClose(); }}
         className="absolute top-3 right-3 z-40 w-9 h-9 rounded-full sk-btn flex items-center
           justify-center cursor-pointer shadow-md hover:shadow-lg transition-shadow"
       >
