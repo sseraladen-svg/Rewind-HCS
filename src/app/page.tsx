@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
-  type DecadeData,
 } from '@/lib/nostalgia-data';
 import OldJournal from '@/components/OldJournal';
 
@@ -34,11 +33,9 @@ import MemoryBoard from '@/components/MemoryBoard';
 import { runMigration } from '@/lib/idb-store/migrate';
 import { useSession, signOut } from 'next-auth/react';
 import { useSync } from '@/hooks/useSync';
-import { SessionProvider } from 'next-auth/react';
-import { getDB } from '@/lib/idb-store';
 import {
   initAudio, soundBootBeep, soundBootReady, soundButtonClick, soundTabSwitch,
-  soundCassetteRewind, soundVhsGlitch, soundChime, soundShutter,
+  soundCassetteRewind, soundVhsGlitch, soundShutter,
 } from '@/lib/sounds';
 
 /* ═══════════════════════════════════════════════════
@@ -586,7 +583,7 @@ function Dashboard({ birthYear }: { birthYear: number }) {
                     <p className="old-body text-xs text-[#8b7355] leading-relaxed">
                       Every memory on this page is a piece of who you are. The world moves fast, but your roots are deep. You came from simpler times, and that strength lives in you still. Take care of yourself.
                     </p>
-                    <button onClick={onBack} className="sk-btn old-btn px-5 py-2.5 rounded-lg font-bold mt-4 cursor-pointer inline-flex items-center gap-2">
+                    <button onClick={() => window.location.reload()} className="sk-btn old-btn px-5 py-2.5 rounded-lg font-bold mt-4 cursor-pointer inline-flex items-center gap-2">
                       <RefreshCw className="h-4 w-4" /> Start Over
                     </button>
                   </div>
@@ -669,61 +666,22 @@ function Dashboard({ birthYear }: { birthYear: number }) {
 /* ═══════════════════════════════════════════════════
    APP ROOT
    ═══════════════════════════════════════════════════ */
-export default function Home() {
-  const [birthYear, setBirthYear] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [prefilledYear, setPrefilledYear] = useState<string>('');
+const DEFAULT_BIRTH_YEAR = 1990;
 
-  // Run one-time localStorage → IndexedDB migration on first load
+export default function Home() {
+  const [loading, setLoading] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(false);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       runMigration().catch(err => console.warn('[rewind] Migration error:', err));
-      // Check if onboarding was completed — always start fresh after deploy
-      (async () => {
-        try {
-          const db = await getDB();
-          // Clear stale onboarding data so the proper flow always shows
-          await db.delete('era_skin', 'onboarding');
-        } catch {
-          // ignore — if delete fails, onboarding will show anyway
-        }
-        // Always show onboarding for a clean experience
-        setShowOnboarding(true);
-        setOnboardingChecked(true);
-      })();
     }
   }, []);
 
   const handleLoadingDone = useCallback(() => {
     setLoading(false);
-  }, []);
-
-  const handleSubmit = useCallback((year: number) => {
-    triggerOldLoader('Tuning into your era...');
-    setTimeout(() => {
-      setBirthYear(year);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      hideOldLoader();
-    }, 1100);
-  }, []);
-
-  const handleOnboardingComplete = useCallback((data: { birthYear: number; eraSkin: string }) => {
-    setShowOnboarding(false);
-    triggerOldLoader('Tuning into your era...');
-    setTimeout(() => {
-      setBirthYear(data.birthYear);
-      hideOldLoader();
-    }, 1100);
-  }, []);
-
-  const handleBack = useCallback(() => {
-    triggerOldLoader('Rewinding...');
-    setTimeout(() => {
-      setBirthYear(null);
-      hideOldLoader();
-    }, 850);
+    // Small delay then show dashboard directly
+    setTimeout(() => setShowDashboard(true), 200);
   }, []);
 
   return (
@@ -731,38 +689,18 @@ export default function Home() {
       {/* CRT Boot Loading Screen */}
       {loading && <CrtLoadingScreen onDone={handleLoadingDone} />}
 
-      {/* Onboarding (first visit only) */}
-      <AnimatePresence>
-        {showOnboarding && onboardingChecked && (
-          <OnboardingFlow onComplete={handleOnboardingComplete} />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence mode="wait">
-        {!showOnboarding && birthYear === null && onboardingChecked ? (
-          <motion.div
-            key="hero"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            style={{ opacity: loading ? 0 : 1 }}
-          >
-            <HeroSection onSubmit={handleSubmit} prefilledYear={prefilledYear} />
-          </motion.div>
-        ) : birthYear !== null ? (
-          <motion.div
-            key="dashboard"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col min-h-screen"
-          >
-            <Dashboard birthYear={birthYear} onBack={handleBack} />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {/* Dashboard — shown directly after CRT boot */}
+      {!loading && showDashboard && (
+        <motion.div
+          key="dashboard"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col min-h-screen"
+        >
+          <Dashboard birthYear={DEFAULT_BIRTH_YEAR} />
+        </motion.div>
+      )}
     </div>
   );
 }
