@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Gamepad2, BookOpen, Pin,
-  ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings, CheckCircle2,
+  ChevronRight, RefreshCw, Brain, User, LogOut, Settings, CheckCircle2,
   Clapperboard, Phone, Film, Camera, ImageIcon, SearchIcon,
 } from 'lucide-react';
 import {
@@ -32,7 +32,6 @@ import RecentMemoriesStrip from '@/components/RecentMemoriesStrip';
 import PhotoTimeline from '@/components/PhotoTimeline';
 import MemoryBoard from '@/components/MemoryBoard';
 import { runMigration } from '@/lib/idb-store/migrate';
-import OnboardingFlow from '@/components/OnboardingFlow';
 import { useSession, signOut } from 'next-auth/react';
 import { useSync } from '@/hooks/useSync';
 import { SessionProvider } from 'next-auth/react';
@@ -203,139 +202,7 @@ function DustMotes() {
   );
 }
 
-/* ═══════════════════════════════════════════════════
-   HERO / LANDING (SKEUOMORPHIC)
-   ═══════════════════════════════════════════════════ */
-function HeroSection({ onSubmit, prefilledYear }: { onSubmit: (year: number) => void; prefilledYear: string }) {
-  const [year, setYear] = useState(prefilledYear);
-  const [hoveredDecade, setHoveredDecade] = useState<string | null>(null);
-  const [tapeRotate] = useState(() => -2 + Math.random() * 4);
 
-  const handleSubmit = () => {
-    const y = parseInt(year);
-    if (y >= 1970 && y <= 2019) {
-      soundButtonClick();
-      soundCassetteRewind();
-      onSubmit(y);
-    }
-  };
-
-  const decades = Object.values(nostalgiaData);
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative">
-      <DustMotes />
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="text-center mb-8 z-10"
-      >
-        <motion.div
-          animate={{ rotate: [0, 3, -3, 0] }}
-          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-6xl md:text-8xl mb-3"
-          style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
-        >
-          📼
-        </motion.div>
-        <h1 className="old-title text-5xl md:text-7xl font-black tracking-tight mb-3 text-transparent bg-clip-text"
-          style={{
-            backgroundImage: 'linear-gradient(180deg, #5c4033 0%, #8b5e3c 40%, #c4956a 100%)',
-          }}
-        >
-          Rewind
-        </h1>
-        <p className="old-body text-base md:text-lg text-[#8b7355] max-w-md mx-auto leading-relaxed">
-          Take a trip back to the days when life was simple.
-          <br className="hidden md:block" />
-          Remember who you were before the world told you who to be.
-        </p>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, rotate: -1 }}
-        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-        transition={{ duration: 0.7, delay: 0.2, type: 'spring' }}
-        className="z-10 w-full max-w-sm"
-      >
-        <div className="sk-paper rounded-lg p-6 sk-tape relative overflow-hidden sk-noise" style={{ '--tape-rotate': `${tapeRotate}deg` } as React.CSSProperties}>
-          <label className="old-label block text-sm font-bold text-[#5c4033] mb-3 text-center">
-            When were you born?
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min={1970}
-              max={2019}
-              placeholder="e.g. 1992"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-              className="sk-inset old-typewriter flex-1 text-center text-2xl font-bold rounded-lg p-3 text-[#5c4033] focus:outline-none transition-shadow focus:shadow-[inset_0_2px_4px_rgba(0,0,0,0.2),0_0_0_2px_#8b5e3c]"
-              aria-label="Birth year"
-            />
-          </div>
-          <button
-            onClick={handleSubmit}
-            className="sk-leather old-btn w-full mt-4 text-[#faf6eb] font-bold text-lg py-3.5 rounded-lg cursor-pointer transition-all duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] active:translate-y-0.5 active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] flex items-center justify-center gap-2"
-          >
-            <Clock className="h-5 w-5" />
-            Take Me Back
-          </button>
-          <p className="old-typewriter text-xs text-center text-[#8b7355] mt-3 font-medium">
-            1970 – 2019 &nbsp;·&nbsp; Your memories, your era
-          </p>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className="flex flex-wrap justify-center gap-3 mt-8 z-10 max-w-lg"
-      >
-        {decades.map((d, i) => (
-          <motion.button
-            key={d.decade}
-            onMouseEnter={() => setHoveredDecade(d.decade)}
-            onMouseLeave={() => setHoveredDecade(null)}
-            onClick={() => {
-              const y = parseInt(d.years.split('–')[0]);
-              setYear(String(y));
-              soundButtonClick();
-              soundCassetteRewind();
-              onSubmit(y);
-            }}
-            whileHover={{ scale: 1.08, y: -3 }}
-            whileTap={{ scale: 0.95 }}
-            className="sk-paper old-typewriter rounded-lg px-4 py-2 text-sm font-bold cursor-pointer transition-all duration-200 relative overflow-hidden sk-noise"
-            style={{
-              borderColor: hoveredDecade === d.decade ? d.color : '#c4b594',
-              color: hoveredDecade === d.decade ? '#5c4033' : '#8b7355',
-              boxShadow: hoveredDecade === d.decade
-                ? `0 4px 16px ${d.color}40, 0 1px 3px rgba(0,0,0,0.1)`
-                : '0 2px 6px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.06)',
-            }}
-          >
-            {d.decade}
-          </motion.button>
-        ))}
-      </motion.div>
-
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-        className="old-body text-center text-[#8b7355] text-sm mt-8 z-10 max-w-sm leading-relaxed"
-      >
-        Everybody is running for jobs, money, markets…
-        <br />but you&apos;re still <span className="old-title font-extrabold text-[#5c4033]">human</span>. Take a breath. Remember the good days.
-      </motion.p>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════
    QUOTE BANNER
@@ -423,7 +290,7 @@ const DECADE_BG: Record<string, string> = {
   '2000s': '#d6eaff',
 };
 
-function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => void }) {
+function Dashboard({ birthYear }: { birthYear: number }) {
   const decadeKey = getDecadeForYear(birthYear);
   const data = nostalgiaData[decadeKey];
   const decadeTheme = getDecadeTheme(birthYear);
@@ -496,10 +363,6 @@ function Dashboard({ birthYear, onBack }: { birthYear: number; onBack: () => voi
       <header className="sticky top-0 z-30 sk-wood px-2 py-0">
         <div className="max-w-5xl mx-auto py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => { soundButtonClick(); soundVhsGlitch(); onBack(); }} className="sk-btn old-btn px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer">
-              <ArrowLeft className="h-3.5 w-3.5" /> Back
-            </button>
-            <div className="h-4 w-px bg-[#a08868]" />
             <h2 className="old-title font-black text-base text-[#faf6eb] tracking-wide" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
               Rewind
             </h2>
