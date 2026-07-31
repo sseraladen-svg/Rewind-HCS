@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import ZAI from "z-ai-web-dev-sdk";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+    }
+
     const { entries, birthYear } = await req.json();
 
     if (!entries || !Array.isArray(entries) || entries.length === 0) {

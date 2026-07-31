@@ -1,6 +1,5 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db } from "@/lib/prisma-client";
 import bcrypt from "bcryptjs";
 
@@ -38,7 +37,6 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
-  adapter: PrismaAdapter(db) as any,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -47,23 +45,23 @@ export const authOptions: NextAuthOptions = {
     signIn: "/",
   },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        const dbUser = await db.user.findUnique({ where: { id: user.id } });
-        if (dbUser) {
-          (session.user as Record<string, unknown>).birthYear = dbUser.birthYear;
-          (session.user as Record<string, unknown>).eraSkin = dbUser.eraSkin;
-        }
+    async session({ session, token }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
+        (session.user as Record<string, unknown>).birthYear = token.birthYear;
+        (session.user as Record<string, unknown>).eraSkin = token.eraSkin;
       }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        (token as Record<string, unknown>).birthYear = (user as unknown as Record<string, unknown>).birthYear;
+        const u = user as unknown as Record<string, unknown>;
+        token.birthYear = u.birthYear;
+        token.eraSkin = u.eraSkin;
       }
       return token;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "rewind-secret-key-change-in-production",
+  secret: process.env.NEXTAUTH_SECRET,
 };
