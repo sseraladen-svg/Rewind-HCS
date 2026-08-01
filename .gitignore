@@ -51,6 +51,11 @@ upload/
 claude-
 .z-ai-config
 
+# database
+/db/
+*.db
+*.db-journal
+
 # non-app directories
 examples/
 skills/

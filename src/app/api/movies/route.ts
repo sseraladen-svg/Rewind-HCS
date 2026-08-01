@@ -286,9 +286,12 @@ interface MovieItem {
 /* ── GET handler ──────────────────────────── */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const birthYear = parseInt(searchParams.get('birthYear') || '1990');
-  const category = searchParams.get('category') || 'all'; // all, movie, tv, cartoon
-  const page = parseInt(searchParams.get('page') || '1');
+  const birthYearRaw = parseInt(searchParams.get('birthYear') || '1990');
+  const birthYear = Number.isNaN(birthYearRaw) ? 1990 : Math.max(1940, Math.min(2015, birthYearRaw));
+  const allowedCategories = ['all', 'movie', 'tv', 'cartoon'];
+  const category = allowedCategories.includes(searchParams.get('category') || '') ? (searchParams.get('category') || 'all') : 'all';
+  const pageRaw = parseInt(searchParams.get('page') || '1');
+  const page = Number.isNaN(pageRaw) ? 1 : Math.max(1, Math.min(10, pageRaw));
 
   // Core age filter: birth year to 18 years old
   const minYear = birthYear;

@@ -13,9 +13,31 @@ export async function POST(req: Request) {
       );
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Please provide a valid email address" },
+        { status: 400 }
+      );
+    }
+
+    if (typeof name !== 'string' || name.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Name must be a non-empty string" },
+        { status: 400 }
+      );
+    }
+
     if (password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (password.length > 128) {
+      return NextResponse.json(
+        { error: "Password must be 128 characters or fewer" },
         { status: 400 }
       );
     }

@@ -666,7 +666,7 @@ export default function OldJournal() {
         {view === 'cover' && (
           <JournalCover
             key="cover"
-            onOpen={() => { soundPageTurn(); entries.length > 0 ? setView('list') : setView('write'); }}
+            onOpen={() => { soundPageTurn(); if (entries.length > 0) { setView('list'); } else { setView('write'); } }}
             entryCount={entries.length}
           />
         )}

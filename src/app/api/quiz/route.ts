@@ -68,8 +68,10 @@ function seededShuffle(arr: typeof quizData['80s'], seed: string) {
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const decade = searchParams.get('decade') || '90s';
-  const count = Math.min(parseInt(searchParams.get('count') || '5'), 20);
+  const allowedDecades = ['70s', '80s', '90s', '2000s'];
+  const decade = allowedDecades.includes(searchParams.get('decade') || '') ? (searchParams.get('decade') || '90s') : '90s';
+  const countRaw = parseInt(searchParams.get('count') || '5');
+  const count = Number.isNaN(countRaw) ? 5 : Math.max(1, Math.min(20, countRaw));
 
   const questions = quizData[decade] || quizData['90s'];
   const selected = seededShuffle(questions, `${decade}-${new Date().toDateString()}`).slice(0, count);
