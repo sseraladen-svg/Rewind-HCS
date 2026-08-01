@@ -221,7 +221,7 @@ export default function VoiceMessages() {
     soundRecordStop();
     playBeep(600, 0.2, 'sine');
     setStatus('ready');
-  }, []);
+  }, [playBeep]);
 
   // ── Toggle Recording ──
   const toggleRecording = useCallback(() => {
