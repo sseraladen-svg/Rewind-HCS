@@ -60,3 +60,10 @@ claude-
 examples/
 skills/
 src/docs/
+tool-results/
+.zscripts/
+upload/
+worklog.md
+Caddyfile
+PROJECT_CONTEXT.md
+mini-services/
