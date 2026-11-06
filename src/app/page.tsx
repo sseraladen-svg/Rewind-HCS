@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Gamepad2, BookOpen, Pin,
   ChevronRight, ArrowLeft, RefreshCw, Brain, User, LogOut, Settings, CheckCircle2,
-  Clapperboard, Phone, Film, Camera, ImageIcon, SearchIcon,
+  Clapperboard, Phone, Camera, ImageIcon, SearchIcon,
 } from 'lucide-react';
 import {
   nostalgiaData, getDecadeForYear, getPersonalTimeline,
@@ -17,11 +17,16 @@ import SearchOverlay from '@/components/SearchOverlay';
 import { MemoryReelFeed } from '@/components/memory-reel';
 import LocalDataBadge from '@/components/ui/LocalDataBadge';
 import AuthModal from '@/components/AuthModal';
+import {
+  FirstRunGuide,
+  MovieDevelopmentNotice,
+  MoviesTabIcon,
+  StarterGuideButton,
+} from '@/components/FirstRunGuide';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
 import GamesHub from '@/components/GamesHub';
 
 import ContactsTab from '@/components/ContactsTab';
-import MoviesTab from '@/components/MoviesTab';
 import MemoryTab from '@/components/MemoryTab';
 import VintageCamera from '@/components/VintageCamera';
 import ShareRewind from '@/components/ShareRewind';
@@ -432,8 +437,30 @@ function Dashboard({ birthYear }: { birthYear: number }) {
   const [showAuth, setShowAuth] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showMovieNotice, setShowMovieNotice] = useState(false);
   const { data: session } = useSession();
   const { syncStatus, syncNow } = useSync();
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem('rewind:first-run-guide:v1') !== 'complete') {
+        setShowGuide(true);
+      }
+    } catch (error) {
+      console.warn('[rewind] Could not read starter guide status:', error);
+      setShowGuide(true);
+    }
+  }, []);
+
+  const closeGuide = useCallback(() => {
+    setShowGuide(false);
+    try {
+      window.localStorage.setItem('rewind:first-run-guide:v1', 'complete');
+    } catch (error) {
+      console.warn('[rewind] Could not save starter guide status:', error);
+    }
+  }, []);
 
   // Keyboard shortcut: Cmd+K / Ctrl+K to toggle search
   useEffect(() => {
@@ -449,6 +476,11 @@ function Dashboard({ birthYear }: { birthYear: number }) {
 
   // Trigger old-style cassette loader when switching tabs
   const handleTabChange = useCallback((tabId: string) => {
+    if (tabId === 'movies') {
+      soundButtonClick();
+      setShowMovieNotice(true);
+      return;
+    }
     if (tabId === activeTab) {
       soundButtonClick();
       return;
@@ -476,7 +508,7 @@ function Dashboard({ birthYear }: { birthYear: number }) {
 
   const tabs = [
     { id: 'reel', label: 'Reel', icon: <Clapperboard className="h-4 w-4" /> },
-    { id: 'movies', label: 'Movies', icon: <Film className="h-4 w-4" /> },
+    { id: 'movies', label: 'Movies', icon: <MoviesTabIcon /> },
     { id: 'journal', label: 'Journal', icon: <BookOpen className="h-4 w-4" /> },
     { id: 'games', label: 'Games', icon: <Gamepad2 className="h-4 w-4" /> },
     { id: 'contacts', label: 'Contacts', icon: <Phone className="h-4 w-4" /> },
@@ -504,6 +536,7 @@ function Dashboard({ birthYear }: { birthYear: number }) {
             >
               <SearchIcon className="h-3.5 w-3.5 text-[#5c4033]" />
             </button>
+            <StarterGuideButton onClick={() => setShowGuide(true)} />
           </div>
           <div className="flex items-center gap-2">
             <div className="sk-vhs-label old-typewriter text-[10px] font-bold px-3 py-1 rounded" style={{ color: data.color, borderColor: data.color }}>
@@ -600,6 +633,8 @@ function Dashboard({ birthYear }: { birthYear: number }) {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
+                title={tab.id === 'movies' ? 'Movies is locked while in development' : tab.label}
+                aria-label={tab.id === 'movies' ? 'Movies, locked and in development' : tab.label}
                 className={`flex-1 py-2.5 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer old-typewriter ${
                   activeTab === tab.id
                     ? 'sk-paper shadow-[0_2px_4px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] text-[#3d2b1f]'
@@ -608,18 +643,14 @@ function Dashboard({ birthYear }: { birthYear: number }) {
               >
                 {tab.icon}
                 <span className="hidden sm:inline">{tab.label}</span>
+                {tab.id === 'movies' && (
+                  <span className="hidden md:inline text-[9px] uppercase tracking-wide text-[#8b5e3c]">
+                    Dev
+                  </span>
+                )}
               </button>
             ))}
           </div>
-
-          {/* ═══ MOVIES TAB ═══ */}
-          {activeTab === 'movies' && (
-            <AnimatePresence mode="wait">
-              <motion.div key="movies" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <MoviesTab birthYear={birthYear} />
-              </motion.div>
-            </AnimatePresence>
-          )}
 
           {/* ═══ JOURNAL TAB ═══ */}
           {activeTab === 'journal' && (
@@ -770,6 +801,12 @@ function Dashboard({ birthYear }: { birthYear: number }) {
           />
         )}
       </AnimatePresence>
+
+      <FirstRunGuide open={showGuide} birthYear={birthYear} onClose={closeGuide} />
+      <MovieDevelopmentNotice
+        open={showMovieNotice}
+        onClose={() => setShowMovieNotice(false)}
+      />
 
       {/* ═══ SETTINGS OVERLAY ═══ */}
       <AnimatePresence>

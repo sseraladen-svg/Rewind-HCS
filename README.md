@@ -37,30 +37,35 @@ A full walkthrough is available at `public/rewind-app-demo.mp4`. Screenshots are
 A cinematic loading sequence that mimics a vintage computer booting up. BIOS-style text appears line by line, followed by a glowing "REWIND" title with a progress bar, VHS scanlines, noise, and tracking distortion. Auto-dismisses after ~7 seconds or on completion.
 
 ### 2. Onboarding Flow
-First-time users are guided through a multi-step onboarding wizard where they:
-- Select their birth year (1970–2019)
-- Choose an era skin (Paper, Leather, Polaroid, VHS Label, Noise)
-- See a preview of their chosen decade's theme
+Users choose a birth year (1970–2019) on the welcome screen. The selected year shapes
+the decade theme, personal timeline, and nostalgic content throughout the dashboard.
 
-Selection is persisted to IndexedDB so returning users skip onboarding.
+### 3. First-Run Feature Guide
+The first time the dashboard opens, a step-by-step guide introduces the timeline,
+Memory Reel, games, camera, Memory, Journal, Contacts, search, and settings. It
+explains that the selected birth year influences the timeline and the look and content
+of the interface. Users can skip the guide, reopen it from the header at any time, or
+move through it one feature at a time.
 
-### 3. Hero / Landing Page
+### 4. Hero / Landing Page
 A skeuomorphic landing screen with:
 - Animated floating dust motes (25 particles)
 - A VHS tape cassette that gently rotates
 - Birth year input with decade quick-select buttons (70s, 80s, 90s, 2000s)
 - Rotating nostalgic quotes per decade
 
-### 4. Dashboard (7 Tabs)
+### 5. Dashboard (7 Tabs)
 Once the user enters their birth year, a full dashboard loads with a **wood-grain header**, **cork board main area**, and **leather footer**. The decade theme dynamically changes the background (80s = black, 90s = silver, 2000s = blue) via the `data-decade-theme` attribute and CSS variable swaps.
 
-The 7 tabs are:
+The dashboard has seven tabs. Reel, Journal, Games, Contacts, Memory, and Timeline
+are available. Movies is visibly locked while that feature is in development.
 
 #### Reel (Clapperboard icon)
 A fullscreen overlay that presents a scrollable **Memory Reel Feed** — a vertical card stack of nostalgic memories, growth signals, then-vs-now comparisons, discovery cards, and an end card. Each card uses Framer Motion for enter/exit transitions. Data is generated from the user's birth year decade.
 
-#### Movies (Film icon)
-Fetches decade-appropriate movies, TV shows, and cartoons from an internal API. Displays them in a filterable grid (Movies / TV Shows / Cartoons) with emoji poster fallbacks, ratings, and genre tags. Includes fake "Watch Now" and "Add to Queue" buttons.
+#### Movies (Film and lock icons)
+The Movies tab is locked and marked **In development**. Selecting it explains that
+the feature is not available yet.
 
 #### Journal (Book icon)
 A fully functional vintage journal with:
@@ -72,9 +77,10 @@ A fully functional vintage journal with:
 - **Sync** capability for authenticated users
 
 #### Games (Gamepad icon)
-Two complete retro-styled games:
+Three retro-styled games:
 - **Memory Match** — Flip cards to find matching pairs of nostalgic items (cartoons, toys, snacks). Tracks moves, matches, and time.
-- **Nostalgia Quiz** — Multiple-choice trivia questions generated from the decade's data (cartoons, toys, music, movies, tech, trends). 8 questions per round with score tracking.
+- **Guess The Year** — Multiple-choice trivia questions generated from the decade's data. Pick when an item became popular.
+- **Tap The Memory** — Tap nostalgic items as they appear before the 20-second timer runs out.
 
 #### Contacts (Phone icon)
 A subfolder navigator with three sections:
@@ -98,7 +104,7 @@ The richest tab, containing:
 - **AI Insights** — A panel for nostalgia-themed AI-generated insights
 - **Emotional closing card** with a "Start Over" button
 
-### 5. Vintage Camera (Header Icon Overlay)
+### 6. Vintage Camera (Header Icon Overlay)
 A full-screen camera overlay with:
 - **Live viewfinder** with real-time vintage filter preview (Canvas 2D)
 - **8 filter presets**: Sepia 70s, Faded 80s, Warm 90s, B&W 60s, Polaroid, VHS, Kodak, None
@@ -107,9 +113,10 @@ A full-screen camera overlay with:
 - **Gallery** of captured photos/videos with download and delete
 - **Front/back camera** switching
 - **Flash** toggle
+- **Browser permission** prompt when camera access is first requested
 - **Custom image processing pipeline** (823 lines) including Perlin noise, color science, gate flicker simulation, and optical imperfections
 
-### 6. Additional Overlays & Features
+### 7. Additional Overlays & Features
 - **Search Overlay** (Cmd/Ctrl+K) — Fuzzy search across tabs and content
 - **Auth Modal** — Sign in / Register with credentials
 - **Settings Panel** — Theme management, data export/import, account settings
@@ -197,7 +204,7 @@ src/
 │   ├── VintageCamera.tsx         # Full camera with 8 vintage filters (846 lines)
 │   ├── PhotoTimeline.tsx         # Chronological photo timeline
 │   ├── MemoryBoard.tsx           # Collaborative corkboard with sticky notes
-│   ├── OnboardingFlow.tsx       # Multi-step first-visit wizard
+│   ├── FirstRunGuide.tsx         # Step-by-step feature tour and Movies development notice
 │   ├── SettingsTab.tsx           # Settings panel with data management
 │   ├── SearchOverlay.tsx         # Cmd+K fuzzy search
 │   ├── AuthModal.tsx             # Login/Register modal
