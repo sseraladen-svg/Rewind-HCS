@@ -22,7 +22,7 @@ A full walkthrough is available at `public/rewind-app-demo.mp4`. Screenshots are
 | UI Components | shadcn/ui (Radix primitives) |
 | Animation | Framer Motion 12 |
 | State / Persistence | IndexedDB via `idb` library + Zustand |
-| Database | SQLite via Prisma ORM (server-side auth/sync) |
+| Database | PostgreSQL via Prisma ORM (server-side auth/sync) |
 | Auth | NextAuth 4 (credentials provider) |
 | Image Processing | Custom Canvas 2D pipeline (per-pixel color science) |
 | Icons | Lucide React |
@@ -242,7 +242,7 @@ src/
     └── STRUCTURE_RULES.md        # Component architecture guidelines
 
 prisma/
-└── schema.prisma                # SQLite schema: User, Session, Account, JournalSync, AiInsight, SyncRecord, UserProfile
+└── schema.prisma                # PostgreSQL schema: User, Session, Account, JournalSync, AiInsight, SyncRecord, UserProfile
 
 scripts/
 ├── capture-frames.cjs            # Playwright screenshot pipeline
@@ -264,9 +264,9 @@ tsconfig.json                         # TypeScript config
 
 ## Database Schema
 
-The app uses **SQLite** via Prisma ORM for server-side data (auth, sync, profiles). Client-side data (photos, journal, chat, settings) is stored in **IndexedDB**.
+The app uses **PostgreSQL** via Prisma ORM for server-side data (auth, sync, profiles). Client-side data (photos, journal, chat, settings) is stored in **IndexedDB**.
 
-### Server-side (Prisma/SQLite)
+### Server-side (Prisma/PostgreSQL)
 
 | Model | Purpose |
 |-------|---------|
@@ -323,13 +323,20 @@ The app will be available at `http://localhost:3000`.
 Create a `.env` file in the project root:
 
 ```env
-# Database (SQLite — defaults to file://./db/custom.db)
-DATABASE_URL="file:./db/custom.db"
+# PostgreSQL connection string (Neon URLs should include sslmode=require)
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
 
 # NextAuth
-NEXTAUTH_SECRET="your-secret-key-here"
+NEXTAUTH_SECRET="generate-a-long-random-secret"
 NEXTAUTH_URL="http://localhost:3000"
 ```
+
+For production, set `DATABASE_URL` to a reachable PostgreSQL database,
+`NEXTAUTH_SECRET` to a long random secret, and `NEXTAUTH_URL` to the canonical
+public site origin (`https://nostalgia-kohl.vercel.app` for the current deployment).
+The app’s production registration and sign-in endpoints both require the database.
+If the database is unavailable, the UI reports that account service is temporarily
+unavailable; reconnect or replace the database and redeploy.
 
 ---
 
