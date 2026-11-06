@@ -52,11 +52,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, password }),
+          body: JSON.stringify({ email: email.trim().toLowerCase(), name: name.trim(), password }),
         });
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error || 'Registration failed');
+          setError(data.error || 'Account creation failed. Please try again.');
           setLoading(false);
           return;
         }
@@ -64,21 +64,28 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
       }
 
       const result = await signIn('credentials', {
-        email,
+        email: email.trim().toLowerCase(),
         password,
         redirect: false,
       });
 
       if (result?.error) {
-        setError(mode === 'login' ? 'Invalid email or password' : 'Login failed after registration');
+        if (result.error.includes('AUTH_DATABASE_UNAVAILABLE')) {
+          setError('Sign-in is temporarily unavailable. Please try again later.');
+        } else if (mode === 'login') {
+          setError('Invalid email or password');
+        } else {
+          setError('Your account was created, but sign-in failed. Switch to Sign In and try again.');
+        }
         setLoading(false);
         return;
       }
 
       onAuthSuccess?.({ name: name || email.split('@')[0], email });
       handleClose();
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (error) {
+      console.error('[AuthModal] Authentication request failed:', error);
+      setError('Could not reach the account service. Please check your connection and try again.');
       setLoading(false);
     }
   };

@@ -3,6 +3,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/lib/prisma-client";
 import bcrypt from "bcryptjs";
 
+const DATABASE_UNAVAILABLE = "AUTH_DATABASE_UNAVAILABLE";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -12,19 +14,27 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (
+          typeof credentials?.email !== "string" ||
+          typeof credentials.password !== "string"
+        ) {
+          return null;
+        }
 
-        const user = await db.user.findUnique({
-          where: { email: credentials.email as string },
-        });
+        const email = credentials.email.trim().toLowerCase();
+        if (!email || !credentials.password) return null;
+
+        let user;
+        try {
+          user = await db.user.findUnique({ where: { email } });
+        } catch (error) {
+          console.error("[auth] User lookup failed", error);
+          throw new Error(DATABASE_UNAVAILABLE);
+        }
 
         if (!user) return null;
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-
+        const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
 
         return {
