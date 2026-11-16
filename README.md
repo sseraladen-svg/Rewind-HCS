@@ -19,6 +19,22 @@ play retro-inspired games, and explore a guided Memory Reel.
 - **Product walkthrough:** [Demo video](public/rewind-app-demo.mp4)
 - **Screenshots:** [download/](download/)
 
+## Contents
+
+- [Product capabilities](#product-capabilities)
+- [First-run walkthrough](#first-run-walkthrough)
+- [Design system](#design-system)
+- [Repository map](#repository-map)
+- [Architecture and data boundaries](#architecture-and-data-boundaries)
+- [Getting started](#getting-started)
+- [Available scripts](#available-scripts)
+- [Deployment](#deployment)
+- [Implementation notes](#implementation-notes)
+- [Troubleshooting and known limitations](#troubleshooting-and-known-limitations)
+- [Nostalgia data](#nostalgia-data)
+- [Browser support](#browser-support)
+- [License](#license)
+
 ---
 
 ## Demo Video
@@ -160,14 +176,14 @@ The entire palette is warm and earthy, defined as CSS custom properties:
 
 ---
 
-## Project Structure
+## Repository Map
 
 ```
 src/
 ├── app/
-│   ├── globals.css              # 1781 lines: theme vars, texture classes, CRT/VHS animations, decade themes
+│   ├── globals.css              # Theme variables, textures, animations, and decade styles
 │   ├── layout.tsx                # Root layout with Providers
-│   ├── page.tsx                  # Main app shell (~886 lines): CRT loader, Hero, Dashboard, 7 tabs
+│   ├── page.tsx                  # Landing page, dashboard, navigation, and overlays
 │   └── api/
 │       ├── auth/[...nextauth]/     # NextAuth credentials handler
 │       ├── auth/register/          # User registration endpoint
@@ -183,7 +199,7 @@ src/
 │   ├── MoviesTab.tsx             # Movie browser component; dashboard entry is locked
 │   ├── ContactsTab.tsx           # Subfolder navigator (phone/voice/chat)
 │   ├── MemoryTab.tsx             # Photo grid/filmstrip/lightbox
-│   ├── VintageCamera.tsx         # Full camera with 8 vintage filters (846 lines)
+│   ├── VintageCamera.tsx         # Camera capture and vintage filters
 │   ├── PhotoTimeline.tsx         # Chronological photo timeline
 │   ├── MemoryBoard.tsx           # Personal board and sample shared-board content
 │   ├── FirstRunGuide.tsx         # Step-by-step feature tour and Movies development notice
@@ -204,8 +220,8 @@ src/
 │   │   └── RetroChatFolder.tsx   # AIM-style chat with buddy list
 │   └── ui/                     # Shared UI primitives
 ├── lib/
-│   ├── nostalgia-data.ts         # 473 lines: Decade data (70s–2000s), items, timeline logic
-│   ├── image-pipeline.ts         # 823 lines: Per-pixel vintage filter engine
+│   ├── nostalgia-data.ts         # Decade data and personal timeline logic
+│   ├── image-pipeline.ts         # Canvas-based vintage image processing
 │   ├── idb-store/                # IndexedDB abstraction layer
 │   │   ├── index.ts           # CRUD operations for all stores
 │   │   ├── types.ts           # Type definitions
@@ -325,12 +341,12 @@ environment's public origin.
 |--------|---------|-------------|
 | `dev` | `npm run dev` | Start Next.js dev server on port 3000 (Turbopack) |
 | `build` | `npm run build` | Production build with standalone output |
-| `start` | `npm run start` | Start production server via Bun |
+| `start` | `npm run start` | Start the Node.js standalone server after building |
 | `lint` | `npm run lint` | Run ESLint |
 | `db:push` | `npm run db:push` | Push Prisma schema to database |
 | `db:generate` | `npm run db:generate` | Generate Prisma client |
 | `db:migrate` | `npm run db:migrate` | Run database migrations |
-| `db:reset` | `npm run db:reset` | Reset database to clean state |
+| `db:reset` | `npm run db:reset` | Destructively reset the configured database; use only for local development |
 
 ---
 
@@ -364,21 +380,13 @@ that `NEXTAUTH_URL` matches the deployed hostname. See
 
 ---
 
-## Architecture Decisions
+## Implementation Notes
 
-### Why IndexedDB for Client Data?
-Photos, journal entries, and chat messages can be large (Blob data). IndexedDB provides structured storage with indexes, far exceeding the 5–10 MB limit of localStorage. A migration path from localStorage to IndexedDB is built in (`lib/idb-store/migrate.ts`).
-
-### Why Canvas 2D for Image Filters?
-Instead of CSS filters (which are limited and non-portable), the app uses a full per-pixel processing pipeline written in TypeScript. This enables:
-- Perlin noise grain simulation
-- Color channel manipulation (cross-processing, color shifts)
-- Optical imperfections (vignette, chromatic aberration, gate flicker)
-- Real-time preview at reduced resolution, full-res capture
-- Consistent output across browsers
-
-### Why Skeuomorphic Design?
-The entire visual language is built around physical nostalgia — the texture of paper, the weight of leather, the grain of wood. This is achieved through pure CSS (gradients, box-shadows, pseudo-elements) rather than image assets, keeping the bundle small and the design infinitely scalable.
+- Canvas 2D powers the custom vintage image-processing pipeline and camera preview.
+- IndexedDB stores browser-local media and writing data; it is scoped to the current
+  browser profile and is not, by itself, a cross-device backup.
+- `src/lib/nostalgia-data.ts` supplies decade-oriented content to local experiences
+  such as the games, personal timeline, and Memory Reel.
 
 ## Troubleshooting and Known Limitations
 
@@ -400,53 +408,22 @@ reactions are examples, not live user-to-user collaboration. See
 
 ## Nostalgia Data
 
-The `lib/nostalgia-data.ts` file contains 473 lines of curated cultural data for four decades (1970s–2000s), organized into categories:
-
-- **Cartoons** — Iconic animated shows with detailed historical descriptions
-- **Toys** — Classic toys with sales figures and manufacturing history
-- **Music** — Definitive albums with chart performance and cultural impact
-- **Movies** — Era-defining films with box office and awards data
-- **Snacks** — Beloved snacks and candy with brand history
-- **Games** — Classic video games with sales and development trivia
-- **Trends** — Cultural phenomena and fads
-- **School Life** — Classroom and school experiences
-- **Tech** — Technology milestones and consumer electronics
-
-Each item includes a `title`, `description` (2–3 sentences of real historical detail), `emoji`, and `category`. This data powers the trivia quiz, memory match game, personal timeline, and memory reel.
-
----
-
-## Key Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `next` (16.1) | React framework with App Router |
-| `framer-motion` (12) | Page transitions, gestures, layout animations |
-| `idb` (8) | IndexedDB promise wrapper |
-| `zustand` (5) | Lightweight client state management |
-| `prisma` (6) | Type-safe database ORM |
-| `next-auth` (4) | Authentication (credentials provider) |
-| `@dnd-kit` (6/10) | Drag-and-drop for Memory Board |
-| `date-fns` (4) | Date formatting and manipulation |
-| `lucide-react` (0.525) | Icon library (100+ icons used) |
-| `sharp` (0.34) | Server-side image processing |
-| `react-markdown` (10) | Markdown rendering for AI insights |
-| `cmdk` (1.1) | Command palette for search |
-| `sonner` (2) | Toast notifications |
+`src/lib/nostalgia-data.ts` provides decade-based content for the 1970s through 2010s.
+The data is organized into categories such as cartoons, toys, music, movies, snacks,
+games, trends, school life, and technology. Local experiences use this content to
+personalize the timeline, games, and Memory Reel.
 
 ---
 
 ## Browser Support
 
-- Chrome 90+
-- Firefox 90+
-- Safari 15+
-- Edge 90+
-
-Requires: Camera API (for Vintage Camera), IndexedDB (for persistence), Canvas 2D (for image processing).
+No formal browser-version support matrix is published. Core experiences require
+IndexedDB and Canvas 2D. Camera capture requires `getUserMedia` and browser permission;
+video recording additionally depends on `MediaRecorder` support.
 
 ---
 
 ## License
 
-Private project. All rights reserved.
+No `LICENSE` file is currently published in this repository. Contact the repository
+owner for reuse or distribution permission.
