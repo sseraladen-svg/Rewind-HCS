@@ -380,8 +380,21 @@ Instead of CSS filters (which are limited and non-portable), the app uses a full
 ### Why Skeuomorphic Design?
 The entire visual language is built around physical nostalgia — the texture of paper, the weight of leather, the grain of wood. This is achieved through pure CSS (gradients, box-shadows, pseudo-elements) rather than image assets, keeping the bundle small and the design infinitely scalable.
 
-### Fake Buttons
-Several buttons throughout the app are "UI-complete placeholders" — they look fully functional with hover states, icons, and labels, but trigger no backend action. This is intentional for the demo/MVP stage, giving the appearance of a complete feature set.
+## Troubleshooting and Known Limitations
+
+| Symptom | Likely cause | What to check |
+|---|---|---|
+| “Sign-in is temporarily unavailable” or “Account creation is temporarily unavailable” | The authentication API cannot reach PostgreSQL. | Verify `DATABASE_URL`, database availability, network access from the deployment, and that the Prisma schema is applied. |
+| “Invalid email or password” | No matching account exists, or the password is incorrect. | Check the email spelling or create an account after the database service is available. |
+| Camera will not start | Permission was denied, the device has no camera, or the browser is not in a secure context. | Allow camera access for the site and use HTTPS (localhost is also supported). |
+| Photos or journal entries are missing on another device | The data is stored in this browser unless account sync is configured and working. | Return to the original browser or configure sign-in and sync. |
+| AI Insights cannot be generated | The user is not signed in, or the server-side AI integration is unavailable. | Check authentication and the configured AI provider service. |
+| Movies shows a lock | This is the intended product status. | Movies is in development and is not currently available. |
+
+Error messages are surfaced by the application; database details and credentials should
+not be shared in public issue reports. The shared-looking Memory Board content and
+reactions are examples, not live user-to-user collaboration. See
+[Product Capabilities](#product-capabilities) for the complete availability summary.
 
 ---
 
