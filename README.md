@@ -274,49 +274,48 @@ server routes for capabilities that require an account or external service.
 
 ### Prerequisites
 
-- **Node.js** 18+ or **Bun** latest
-- **npm** or **bun** as package manager
+- **Node.js** 20.9 or newer
+- **npm** (the repository includes `package-lock.json`)
+- **PostgreSQL** for account creation, sign-in, and server-backed sync
+- A browser with IndexedDB and Canvas 2D; camera features also require a camera and permission
 
 ### Installation
 
-```bash
-# Clone the repository
-git clone <repo-url>
-cd my-project
+```powershell
+git clone https://github.com/sseraladen-svg/Rewind-HCS.git
+Set-Location Rewind-HCS
 
-# Install dependencies
-npm install
-# or: bun install
+# Install dependencies and generate the Prisma client
+npm ci
 
-# Set up the database
-npx prisma db push
-npx prisma generate
+# Create local environment configuration
+Copy-Item .env.example .env
 
-# Start development server
+# Configure DATABASE_URL in .env before initializing the database
+npm run db:push
+
+# Start the development server
 npm run dev
 ```
 
-The app will be available at `http://localhost:3000`.
+Open `http://localhost:3000`. The app's local-first features can be explored in the
+browser; account creation and cloud sync require a reachable PostgreSQL database.
 
-### Environment Variables
+### Configuration and account requirements
 
-Create a `.env` file in the project root:
+Set these variables in `.env` for local development:
 
 ```env
-# PostgreSQL connection string (Neon URLs should include sslmode=require)
+# PostgreSQL connection string
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
-
-# NextAuth
-NEXTAUTH_SECRET="generate-a-long-random-secret"
+NEXTAUTH_SECRET="replace-with-a-long-random-secret"
 NEXTAUTH_URL="http://localhost:3000"
 ```
 
-For production, set `DATABASE_URL` to a reachable PostgreSQL database,
-`NEXTAUTH_SECRET` to a long random secret, and `NEXTAUTH_URL` to the canonical
-public site origin (`https://nostalgia-kohl.vercel.app` for the current deployment).
-The app’s production registration and sign-in endpoints both require the database.
-If the database is unavailable, the UI reports that account service is temporarily
-unavailable; reconnect or replace the database and redeploy.
+Generate a secret with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+Do not commit `.env` or production credentials. `DATABASE_URL` must point to a database
+that is reachable from the environment running the app; `NEXTAUTH_URL` must match that
+environment's public origin.
 
 ---
 
