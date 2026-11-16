@@ -179,13 +179,13 @@ src/
 │       └── user/profile/           # User profile CRUD
 ├── components/
 │   ├── OldJournal.tsx            # Vintage journal with mood/weather/tags (IndexedDB)
-│   ├── GamesHub.tsx             # Memory Match + Nostalgia Quiz
-│   ├── MoviesTab.tsx             # Movie/TV/Cartoon browser
+│   ├── GamesHub.tsx             # Memory Match, Guess The Year, and Tap The Memory
+│   ├── MoviesTab.tsx             # Movie browser component; dashboard entry is locked
 │   ├── ContactsTab.tsx           # Subfolder navigator (phone/voice/chat)
 │   ├── MemoryTab.tsx             # Photo grid/filmstrip/lightbox
 │   ├── VintageCamera.tsx         # Full camera with 8 vintage filters (846 lines)
 │   ├── PhotoTimeline.tsx         # Chronological photo timeline
-│   ├── MemoryBoard.tsx           # Collaborative corkboard with sticky notes
+│   ├── MemoryBoard.tsx           # Personal board and sample shared-board content
 │   ├── FirstRunGuide.tsx         # Step-by-step feature tour and Movies development notice
 │   ├── SettingsTab.tsx           # Settings panel with data management
 │   ├── SearchOverlay.tsx         # Cmd+K fuzzy search
@@ -202,7 +202,7 @@ src/
 │   ├── contacts/
 │   │   ├── RotaryPhoneFolder.tsx  # Interactive rotary dial
 │   │   └── RetroChatFolder.tsx   # AIM-style chat with buddy list
-│   └── ui/                     # 40+ shadcn/ui primitives
+│   └── ui/                     # Shared UI primitives
 ├── lib/
 │   ├── nostalgia-data.ts         # 473 lines: Decade data (70s–2000s), items, timeline logic
 │   ├── image-pipeline.ts         # 823 lines: Per-pixel vintage filter engine
@@ -213,7 +213,6 @@ src/
 │   │   └── migrate.ts         # localStorage → IndexedDB migration
 │   ├── memory-reel/              # Memory Reel data generation
 │   ├── auth.ts                    # Auth utilities
-│   ├── db.ts                      # Prisma client singleton
 │   ├── prisma-client.ts           # Prisma client initialization
 │   └── utils.ts                   # cn() helper, misc utilities
 ├── hooks/
@@ -236,8 +235,7 @@ public/
 ├── logo.svg                    # App logo
 └── robots.txt                   # Crawler rules
 
-Caddyfile                            # Reverse proxy config (port 81 → localhost:3000)
-next.config.ts                       # Standalone output, Turbopack, reactStrictMode off
+next.config.ts                       # Standalone output; React strict mode enabled
 tailwind.config.ts                    # Tailwind CSS 4 configuration
 tsconfig.json                         # TypeScript config
 ```
