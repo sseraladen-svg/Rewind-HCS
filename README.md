@@ -80,6 +80,34 @@ or prototype is not mistaken for a production integration.
 - **Timeline:** explore age-based milestones, captured-photo dates, and the sample
   Memory Board.
 
+## First-Run Walkthrough
+
+1. **Choose your birth year.** Enter a year from 1970 to 2019, or select a decade
+   shortcut. The year determines your era content and age-based life timeline; changing
+   the year can change the dashboard theme and the milestones shown.
+2. **Follow the starter guide.** When the dashboard first opens, use **Next** and
+   **Back** to learn one feature at a time. You can skip the tour and reopen it later
+   with the book icon in the header.
+3. **Start with the Memory Reel or Games.** Open **Reel** to move through a full-screen
+   memory feed. In **Games**, choose a game card, follow its on-screen instructions,
+   and use **Back to Games** to pick another.
+4. **Try the camera.** Select the camera icon in the header, allow camera access, choose
+   a filter, and capture a photo or record a short clip. Switch photo/video mode or
+   front/rear cameras from the camera controls. Camera access requires a secure browser
+   context (HTTPS, or localhost) and a camera-equipped device.
+5. **Review and keep photos.** Open **Memory** to browse captured photos, upload images
+   from your device, switch grid/filmstrip views, or download and delete items.
+6. **Write and explore.** Use **Journal** for a dated entry with mood and weather tags;
+   **Contacts** for the rotary phone, local voice recordings, and scripted chat; and
+   **Timeline** for milestones, photo dates, and the sample Memory Board.
+7. **Find tools and preferences.** Search with the magnifier or **Ctrl/⌘ K**. Use
+   **Settings** for preferences and data-management options. Sign-in is optional for
+   local browsing, but account and sync actions require the server services described
+   in [Configuration and account requirements](#configuration-and-account-requirements).
+8. **Know what is not open yet.** The **Movies** tab is locked while that feature is in
+   development. Its status notice is informational; movie browsing is not currently
+   available.
+
 ---
 
 ## Design System
