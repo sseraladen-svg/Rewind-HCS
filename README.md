@@ -244,31 +244,31 @@ tsconfig.json                         # TypeScript config
 
 ---
 
-## Database Schema
+## Architecture and Data Boundaries
 
-The app uses **PostgreSQL** via Prisma ORM for server-side data (auth, sync, profiles). Client-side data (photos, journal, chat, settings) is stored in **IndexedDB**.
+Rewind is a Next.js App Router application with browser-side interactive features and
+server routes for capabilities that require an account or external service.
 
-### Server-side (Prisma/PostgreSQL)
+| Layer | Responsibility | Persistence / dependency |
+|---|---|---|
+| App Router and React client components | Landing page, dashboard, feature guides, camera, games, and overlays | Browser |
+| Client data layer | Photos, journal entries, chat, and other local feature state | IndexedDB, with browser-local settings where applicable |
+| API routes | Registration, authentication, sync, history, movie data, and AI insights | Next.js server runtime |
+| Prisma data layer | Accounts, profiles, and sync records | PostgreSQL, configured by `DATABASE_URL` |
+| External integrations | AI insight generation and optional movie metadata lookup | Provider credentials and network availability |
 
-| Model | Purpose |
-|-------|---------|
-| `User` | User accounts with birth year and era skin preference |
-| `Session` | NextAuth session tokens |
-| `Account` | OAuth/provider accounts |
-| `JournalSync` | Cloud-synced journal entries per user |
-| `AiInsight` | AI-generated nostalgia insights |
-| `SyncRecord` | Generic sync records for any IDB store |
-| `UserProfile` | Extended profile with onboarding state |
+### Data and privacy expectations
 
-### Client-side (IndexedDB)
-
-| Store | Contents |
-|-------|----------|
-| `camera_photos` | Captured photos and videos (Blob URLs) |
-| `journal_entries` | Journal entries with mood/weather/tags |
-| `chat_messages` | AIM-style chat history |
-| `era_skin` | Selected era skin and onboarding state |
-| `memory_board` | Sticky notes for the Memory Board |
+- Photos and journal entries are stored in the current browser by default. They are not
+  automatically shared with other users.
+- Account-backed sync requires sign-in and a reachable PostgreSQL service. Sync is an
+  optional server feature; local browser storage does not depend on an account.
+- When a signed-in user requests AI insights, the server sends recent journal metadata
+  and short entry excerpts to the configured AI provider. Do not treat AI insights as
+  device-only processing.
+- The Memory Board's shared-looking area is seeded sample content with simulated
+  reactions; it is not a real-time collaboration service.
+- Browser camera access is requested by the client and depends on user permission.
 
 ---
 
