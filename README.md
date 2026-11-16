@@ -46,100 +46,39 @@ A full walkthrough is available at `public/rewind-app-demo.mp4`. Screenshots are
 
 ---
 
-## Features
+## Product Capabilities
 
-### 1. CRT / VHS Boot Screen
-A cinematic loading sequence that mimics a vintage computer booting up. BIOS-style text appears line by line, followed by a glowing "REWIND" title with a progress bar, VHS scanlines, noise, and tracking distortion. Auto-dismisses after ~7 seconds or on completion.
+The dashboard has seven sections. Feature status is stated explicitly so a visual demo
+or prototype is not mistaken for a production integration.
 
-### 2. Onboarding Flow
-Users choose a birth year (1970–2019) on the welcome screen. The selected year shapes
-the decade theme, personal timeline, and nostalgic content throughout the dashboard.
+| Capability | Status | Scope |
+|---|---|---|
+| Birth-year personalization | Available | Select 1970–2019 to set decade styling, timeline, and era content. |
+| First-run guide | Available | A dismissible, repeatable walkthrough introduces the dashboard features. |
+| Memory Reel | Available | Locally generated, scrollable cards with reactions and reflections. |
+| Retro games | Available | Memory Match, Guess The Year, and Tap The Memory run in the browser. |
+| Vintage Camera | Available with permission | Camera capture and filters require a supported browser and camera permission. |
+| Memory gallery | Available | Browse, upload, download, and remove photos stored in browser IndexedDB. |
+| Journal | Available locally | Write and browse entries saved in browser IndexedDB. |
+| Contacts | Interactive demo | Rotary-phone interactions, locally stored voice recordings, and scripted retro chat. |
+| Timeline | Available with demo content | Personal and photo timelines; the shared-board area includes sample content and simulated reactions, not live multi-user collaboration. |
+| AI Insights | Service-dependent | Requires sign-in and a working server-side AI provider integration. |
+| Account and cloud sync | Service-dependent | Require a reachable PostgreSQL database and valid authentication/deployment configuration. |
+| Movies | In development — locked | Not available from the dashboard. The tab displays a lock and explains the status. |
 
-### 3. First-Run Feature Guide
-The first time the dashboard opens, a step-by-step guide introduces the timeline,
-Memory Reel, games, camera, Memory, Journal, Contacts, search, and settings. It
-explains that the selected birth year influences the timeline and the look and content
-of the interface. Users can skip the guide, reopen it from the header at any time, or
-move through it one feature at a time.
+### User-facing details
 
-### 4. Hero / Landing Page
-A skeuomorphic landing screen with:
-- Animated floating dust motes (25 particles)
-- A VHS tape cassette that gently rotates
-- Birth year input with decade quick-select buttons (70s, 80s, 90s, 2000s)
-- Rotating nostalgic quotes per decade
-
-### 5. Dashboard (7 Tabs)
-Once the user enters their birth year, a full dashboard loads with a **wood-grain header**, **cork board main area**, and **leather footer**. The decade theme dynamically changes the background (80s = black, 90s = silver, 2000s = blue) via the `data-decade-theme` attribute and CSS variable swaps.
-
-The dashboard has seven tabs. Reel, Journal, Games, Contacts, Memory, and Timeline
-are available. Movies is visibly locked while that feature is in development.
-
-#### Reel (Clapperboard icon)
-A fullscreen overlay that presents a scrollable **Memory Reel Feed** — a vertical card stack of nostalgic memories, growth signals, then-vs-now comparisons, discovery cards, and an end card. Each card uses Framer Motion for enter/exit transitions. Data is generated from the user's birth year decade.
-
-#### Movies (Film and lock icons)
-The Movies tab is locked and marked **In development**. Selecting it explains that
-the feature is not available yet.
-
-#### Journal (Book icon)
-A fully functional vintage journal with:
-- **Mood selection** (8 moods with emoji)
-- **Weather tagging** (6 weather types)
-- **Rich text entry** with a lined-paper aesthetic
-- **Page navigation** (previous/next entries)
-- **Persistence** to IndexedDB
-- **Sync** capability for authenticated users
-
-#### Games (Gamepad icon)
-Three retro-styled games:
-- **Memory Match** — Flip cards to find matching pairs of nostalgic items (cartoons, toys, snacks). Tracks moves, matches, and time.
-- **Guess The Year** — Multiple-choice trivia questions generated from the decade's data. Pick when an item became popular.
-- **Tap The Memory** — Tap nostalgic items as they appear before the 20-second timer runs out.
-
-#### Contacts (Phone icon)
-A subfolder navigator with three sections:
-- **Rotary Phone** — A fully interactive rotary dial with trigonometric hole positioning, spin animation, ring shake effect, and nostalgic voicemail messages.
-- **Voice Messages** — Fake voice message inbox with playback UI.
-- **Retro Chat (AIM)** — A complete AIM-style instant messenger with buddy list (5 buddies with online/away/idle statuses), keyword-based auto-replies (28+ response patterns), typing indicators, timestamp display, sound toggle, and chat persistence in IndexedDB.
-
-#### Memory (Image icon)
-A photo management hub with:
-- **Grid view** and **filmstrip view** toggle
-- **Lightbox** with zoom and navigation
-- Photos from the Vintage Camera or device gallery uploads
-- Download and delete functionality
-- Filter label display (Sepia 70s, Faded 80s, Warm 90s, etc.)
-
-#### Timeline (Clock icon)
-The richest tab, containing:
-- **Personal Timeline** — Age-mapped life events from birth through each decade
-- **Photo Timeline** — Chronological vertical timeline of camera photos with date markers and filter badges
-- **Shared Memory Board** — A collaborative corkboard with sticky notes, themes (Cork, Chalkboard, Fridge), search, stats, and simulated friend reactions
-- **AI Insights** — A panel for nostalgia-themed AI-generated insights
-- **Emotional closing card** with a "Start Over" button
-
-### 6. Vintage Camera (Header Icon Overlay)
-A full-screen camera overlay with:
-- **Live viewfinder** with real-time vintage filter preview (Canvas 2D)
-- **8 filter presets**: Sepia 70s, Faded 80s, Warm 90s, B&W 60s, Polaroid, VHS, Kodak, None
-- **Photo capture** with instant vintage processing
-- **Video recording** (3/5/10s clips) with per-frame filter application
-- **Gallery** of captured photos/videos with download and delete
-- **Front/back camera** switching
-- **Flash** toggle
-- **Browser permission** prompt when camera access is first requested
-- **Custom image processing pipeline** (823 lines) including Perlin noise, color science, gate flicker simulation, and optical imperfections
-
-### 7. Additional Overlays & Features
-- **Search Overlay** (Cmd/Ctrl+K) — Fuzzy search across tabs and content
-- **Auth Modal** — Sign in / Register with credentials
-- **Settings Panel** — Theme management, data export/import, account settings
-- **Share Rewind** — Social sharing card generator
-- **This Day in History** — Historical events matching the current date
-- **Quote Banner** — Rotating decade-specific nostalgic quotes
-- **Recent Memories Strip** — Horizontal scroll of recent photos (shows only if photos exist)
-- **Cloud Sync** — Push/pull journal entries and photos to server for authenticated users
+- **Reel:** a full-screen feed of memories, discoveries, and then-versus-now cards.
+- **Games:** match era-themed cards, guess when a cultural item became popular, or tap
+  items in a timed round.
+- **Camera and Memory:** capture photos with vintage filters, then browse them in a
+  grid or filmstrip. Video clips are available in the camera session; photo persistence
+  is provided by the Memory gallery.
+- **Journal:** write entries and add mood or weather labels.
+- **Contacts:** try the rotary phone, record and play local voice messages, or chat with
+  scripted nostalgic auto-replies.
+- **Timeline:** explore age-based milestones, captured-photo dates, and the sample
+  Memory Board.
 
 ---
 
