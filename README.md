@@ -1,8 +1,23 @@
-# Rewind — Nostalgia-Themed SPA
+# Rewind
 
-> *Take a trip back to the days when life was simple. Remember who you were before the world told you who to be.*
+> **A personal nostalgia and memory experience, shaped by your era.**
 
-Rewind is a skeuomorphic, decade-themed single-page application built with Next.js 16. Users enter their birth year (1970–2019) and are immersed in a fully themed nostalgia experience — complete with a CRT/VHS boot sequence, vintage camera, AIM-style chat, retro games, a hand-written journal, and more. Every surface is textured: cork boards, wood grain, aged paper, VHS labels, leather, and metal — all driven by custom CSS classes and decade-specific color palettes.
+Rewind is a browser-based memory archive and interactive nostalgia experience. Choose a
+birth year from 1970–2019 to shape the dashboard’s decade theme, personal timeline, and
+era-specific content. Capture and organize photos, write locally stored journal entries,
+play retro-inspired games, and explore a guided Memory Reel.
+
+- **Product:** a personal, decade-aware space for revisiting memories and recording new ones.
+- **Experience:** a responsive Next.js single-page app with a tactile, analog-inspired visual system.
+- **Data model:** photos and journal entries are stored in browser IndexedDB; account, AI, and
+  optional sync features use server-side services and require their configured dependencies.
+
+## Project Links
+
+- **Live application:** [nostalgia-kohl.vercel.app](https://nostalgia-kohl.vercel.app/)
+- **Source repository:** [sseraladen-svg/Rewind-HCS](https://github.com/sseraladen-svg/Rewind-HCS)
+- **Product walkthrough:** [Demo video](public/rewind-app-demo.mp4)
+- **Screenshots:** [download/](download/)
 
 ---
 
