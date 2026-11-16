@@ -31,18 +31,18 @@ A full walkthrough is available at `public/rewind-app-demo.mp4`. Screenshots are
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16.1 (standalone output, Turbopack) |
-| Language | TypeScript 5 |
-| Styling | Tailwind CSS 4 + tw-animate-css |
-| UI Components | shadcn/ui (Radix primitives) |
-| Animation | Framer Motion 12 |
-| State / Persistence | IndexedDB via `idb` library + Zustand |
-| Database | PostgreSQL via Prisma ORM (server-side auth/sync) |
-| Auth | NextAuth 4 (credentials provider) |
-| Image Processing | Custom Canvas 2D pipeline (per-pixel color science) |
+| Web framework | Next.js 16 App Router |
+| Language and UI | TypeScript 5, React 19 |
+| Styling | Tailwind CSS 4, custom CSS, `tw-animate-css` |
+| UI primitives | Radix UI with project-local components |
+| Motion | Framer Motion 12 |
+| Browser persistence | IndexedDB through `idb` |
+| Server persistence | PostgreSQL through Prisma 6 |
+| Authentication | NextAuth 4 credentials provider |
+| Image processing | Project-specific Canvas 2D pipeline |
 | Icons | Lucide React |
-| Deployment | Caddy reverse proxy (port 81) |
-| Runtime | Bun / Node.js |
+| Hosting | Vercel production deployment |
+| Runtime | Node.js |
 
 ---
 
