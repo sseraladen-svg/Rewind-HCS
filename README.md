@@ -336,24 +336,31 @@ environment's public origin.
 
 ## Deployment
 
-### Production Build
+### Production application
 
-```bash
-npm run build
-npm run start
-```
+The public application is hosted on Vercel:
 
-The app outputs in **standalone mode** (configured in `next.config.ts`), which means all necessary files are self-contained in `.next/standalone/`.
+- **Live site:** [https://nostalgia-kohl.vercel.app](https://nostalgia-kohl.vercel.app/)
+- **Source:** [https://github.com/sseraladen-svg/Rewind-HCS](https://github.com/sseraladen-svg/Rewind-HCS)
 
-### Caddy Reverse Proxy
+The Vercel project builds from this repository. Changes merged to `main` trigger the
+production deployment; pull requests receive Vercel preview deployments. Preview
+addresses may require project access and are not the public product URL.
 
-A `Caddyfile` is included for reverse proxy configuration:
+### Production environment
 
-```:81 {
-    reverse_proxy localhost:3000
-}```
+Configure production variables in the hosting project, not in source control:
 
-The app is served behind Caddy on port 81, with support for dynamic port transformation via query parameters.
+| Variable | Requirement |
+|---|---|
+| `DATABASE_URL` | Reachable PostgreSQL connection string used by Prisma |
+| `NEXTAUTH_SECRET` | Long, private authentication secret |
+| `NEXTAUTH_URL` | Canonical public origin, currently `https://nostalgia-kohl.vercel.app` |
+| `TMDB_API_KEY` | Optional movie-data integration; Movies remains locked in the product UI |
+
+If authentication or sync fails after a deployment, verify database reachability and
+that `NEXTAUTH_URL` matches the deployed hostname. See
+[Troubleshooting and known limitations](#troubleshooting-and-known-limitations).
 
 ---
 
